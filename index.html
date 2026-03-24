@@ -975,20 +975,216 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       <div class="g4 mb15" id="app-kpis"></div>
       <div id="app-list" style="display:flex;flex-direction:column;gap:12px"></div>
       <div id="app-detail" style="display:none">
-        <button class="back-btn" onclick="document.getElementById('app-detail').style.display='none';document.getElementById('app-list').style.display='flex'">← Back</button>
+        <button class="back-btn" onclick="document.getElementById('app-detail').style.display='none';document.getElementById('app-list').style.display='flex'">← Back to applications</button>
+
+        <!-- Application info -->
         <div class="g2 mb15">
-          <div class="card"><div class="clbl mb12">Applicant</div><div id="app-detail-info" style="display:flex;flex-direction:column;gap:6px;font-size:13px"></div></div>
-          <div class="card"><div class="clbl mb12">Business idea</div><div id="app-detail-idea" style="font-size:13px;color:var(--t2);line-height:1.6"></div></div>
+          <div class="card">
+            <div class="clbl mb12">Lead applicant</div>
+            <div id="app-detail-info" style="display:flex;flex-direction:column;gap:6px;font-size:13px"></div>
+          </div>
+          <div class="card">
+            <div class="clbl mb12">Business idea</div>
+            <div id="app-detail-idea" style="font-size:13px;color:var(--t2);line-height:1.6"></div>
+          </div>
         </div>
-        <div class="card mb15"><div class="clbl mb12">Members</div><div id="app-detail-members"></div></div>
+        <div class="card mb15">
+          <div class="clbl mb12">Team members</div>
+          <div id="app-detail-members"></div>
+        </div>
+
+        <!-- ── SCORING RUBRIC ── -->
+        <div class="card mb15">
+          <div class="fbet mb15">
+            <div class="clbl" style="margin:0">Application assessment rubric</div>
+            <div class="fctr g8">
+              <span style="font-size:12px;color:var(--t3)">Total score:</span>
+              <span id="app-score-total" style="font-size:22px;font-weight:700;color:var(--or)">—</span>
+              <span style="font-size:12px;color:var(--t3)">/100</span>
+              <span id="app-score-badge" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--bg);border:0.5px solid var(--bdr)">Not scored</span>
+            </div>
+          </div>
+
+          <!-- Score progress bar -->
+          <div style="height:6px;background:var(--bg);border-radius:3px;margin-bottom:1.5rem;overflow:hidden">
+            <div id="app-score-bar" style="height:6px;background:var(--or);border-radius:3px;width:0%;transition:width .4s"></div>
+          </div>
+
+          <!-- Criteria sections -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem">
+
+            <!-- Problem & Opportunity -->
+            <div style="background:var(--bg);border-radius:10px;padding:1rem;border:0.5px solid var(--bdr)">
+              <div style="font-size:11px;font-weight:700;color:#0A1C3E;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">
+                Problem &amp; opportunity <span style="float:right;color:var(--t3);font-weight:400">max 25 pts</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Problem clarity &amp; relevance</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-problem" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Market opportunity &amp; size</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-market" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Innovation &amp; uniqueness</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-innovation" min="0" max="5" placeholder="0–5"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/5</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Solution & Business Model -->
+            <div style="background:var(--bg);border-radius:10px;padding:1rem;border:0.5px solid var(--bdr)">
+              <div style="font-size:11px;font-weight:700;color:#0A1C3E;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">
+                Solution &amp; business model <span style="float:right;color:var(--t3);font-weight:400">max 25 pts</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Solution quality &amp; feasibility</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-solution" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Revenue model clarity</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-revenue" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Has BMC / business stage</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-bmc" min="0" max="5" placeholder="0–5"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/5</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Team -->
+            <div style="background:var(--bg);border-radius:10px;padding:1rem;border:0.5px solid var(--bdr)">
+              <div style="font-size:11px;font-weight:700;color:#0A1C3E;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">
+                Team <span style="float:right;color:var(--t3);font-weight:400">max 25 pts</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Team composition &amp; diversity</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-team" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Commitment &amp; motivation</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-motivation" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Social impact potential</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-impact" min="0" max="5" placeholder="0–5"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/5</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Eligibility & Fit -->
+            <div style="background:var(--bg);border-radius:10px;padding:1rem;border:0.5px solid var(--bdr)">
+              <div style="font-size:11px;font-weight:700;color:#0A1C3E;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">
+                Eligibility &amp; program fit <span style="float:right;color:var(--t3);font-weight:400">max 25 pts</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Age &amp; eligibility criteria</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-eligibility" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">GIL program alignment</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-fit" min="0" max="10" placeholder="0–10"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/10</span>
+                  </div>
+                </div>
+                <div class="fbet" style="font-size:12px">
+                  <span style="color:var(--t2)">Partner / geography fit</span>
+                  <div class="fctr g6">
+                    <input type="number" id="sc-geography" min="0" max="5" placeholder="0–5"
+                      style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
+                      oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
+                    <span style="font-size:11px;color:var(--t3)">/5</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recommendation banner -->
+          <div id="app-recommendation" style="border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;background:var(--bg);border:0.5px solid var(--bdr);display:flex;align-items:center;gap:12px">
+            <span style="font-size:1.5rem">📊</span>
+            <div>
+              <p style="font-size:13px;font-weight:600;color:var(--t2)" id="app-rec-title">Enter scores above to get a recommendation</p>
+              <p style="font-size:12px;color:var(--t3)" id="app-rec-sub">Thresholds: ≥70 → eligible for FB1 · 50–69 → DT recommended · &lt;50 → ineligible</p>
+            </div>
+          </div>
+
+          <label class="flbl">Assessor notes</label>
+          <textarea class="txa mb12" rows="2" id="app-note" placeholder="Internal notes for this application..."></textarea>
+        </div>
+
+        <!-- Decision buttons -->
         <div class="card">
-          <div class="clbl mb12">Decision</div>
-          <label class="flbl">Note (optional)</label>
-          <textarea class="txa mb12" rows="2" id="app-note" placeholder="Internal note..."></textarea>
+          <div class="clbl mb12">Final decision</div>
+          <p style="font-size:12px;color:var(--t3);margin-bottom:1rem">The scoring above is a guide. You make the final call.</p>
           <div class="fctr g8">
-            <button class="btn-p" onclick="decideApp('approved_dt')" style="background:var(--dt)">✓ Assign to DT</button>
-            <button class="btn-p" onclick="decideApp('approved_fb1')" style="background:var(--fb1)">✓ Assign to FB1</button>
-            <button class="btn" onclick="decideApp('ineligible')" style="border-color:#A32D2D;color:#A32D2D">✗ Ineligible</button>
+            <button class="btn-p" onclick="decideApp('approved_fb1')" style="background:var(--fb1)">
+              ✓ Enroll directly in FB1
+            </button>
+            <button class="btn-p" onclick="decideApp('approved_dt')" style="background:var(--dt)">
+              ✓ Enroll in DT first
+            </button>
+            <button class="btn" onclick="decideApp('ineligible')" style="border-color:#A32D2D;color:#A32D2D">
+              ✗ Mark ineligible
+            </button>
           </div>
         </div>
       </div>
@@ -2384,6 +2580,79 @@ async function loadAnalytics(){
 
 // ── APPLICATIONS ──
 let _currentAppId=null;
+// ── APPLICATION SCORING ──
+function appRecalc() {
+  const fields = [
+    {id:'sc-problem',    max:10},
+    {id:'sc-market',     max:10},
+    {id:'sc-innovation', max:5},
+    {id:'sc-solution',   max:10},
+    {id:'sc-revenue',    max:10},
+    {id:'sc-bmc',        max:5},
+    {id:'sc-team',       max:10},
+    {id:'sc-motivation', max:10},
+    {id:'sc-impact',     max:5},
+    {id:'sc-eligibility',max:10},
+    {id:'sc-fit',        max:10},
+    {id:'sc-geography',  max:5},
+  ];
+  let total = 0, maxTotal = 100, filled = 0;
+  fields.forEach(f => {
+    const el = document.getElementById(f.id);
+    if(!el) return;
+    const raw = parseFloat(el.value);
+    if(!isNaN(raw)) {
+      const clamped = Math.min(Math.max(raw, 0), f.max);
+      el.value = clamped;
+      total += clamped;
+      filled++;
+    }
+  });
+
+  const scoreEl  = document.getElementById('app-score-total');
+  const badgeEl  = document.getElementById('app-score-badge');
+  const barEl    = document.getElementById('app-score-bar');
+  const recEl    = document.getElementById('app-recommendation');
+  const recTitle = document.getElementById('app-rec-title');
+  const recSub   = document.getElementById('app-rec-sub');
+
+  if(filled === 0) return;
+
+  // Scale to 100 based on filled fields
+  const scaled = Math.round((total / maxTotal) * 100);
+  if(scoreEl) scoreEl.textContent = total.toFixed(0);
+  if(barEl)   barEl.style.width   = Math.min(total, 100) + '%';
+
+  // Color and badge
+  let color, bg, badge, title, sub;
+  if(total >= 70) {
+    color = 'var(--fb1)'; bg = 'var(--fb1-bg)'; badge = '→ FB1 recommended';
+    title = '✅ Strong application — recommend direct enrollment in FB1';
+    sub   = 'Score ≥70: team has a solid BMC and is ready for Financial Bootcamp Stage 1';
+  } else if(total >= 50) {
+    color = 'var(--dt)'; bg = 'var(--dt-bg)'; badge = '→ DT recommended';
+    title = '🔵 Good application — recommend Design Thinking phase first';
+    sub   = 'Score 50–69: idea is promising but needs development through DT before FB1';
+  } else {
+    color = 'var(--fail)'; bg = 'var(--fail-bg)'; badge = '→ Ineligible';
+    title = '❌ Application does not meet minimum criteria';
+    sub   = 'Score <50: team does not meet the eligibility threshold for GIL 2026';
+  }
+
+  if(badgeEl) {
+    badgeEl.textContent  = badge;
+    badgeEl.style.background = bg;
+    badgeEl.style.color  = color;
+    badgeEl.style.border = '0.5px solid '+color;
+  }
+  if(barEl) barEl.style.background = color;
+  if(scoreEl) scoreEl.style.color = color;
+  if(recEl)  recEl.style.background = bg;
+  if(recEl)  recEl.style.borderColor = color;
+  if(recTitle){ recTitle.textContent = title; recTitle.style.color = color; }
+  if(recSub)   recSub.textContent = sub;
+}
+
 async function loadApplications(){
   const listEl=document.getElementById('app-list');
   const badgeEl=document.getElementById('app-pending-badge');
@@ -2422,6 +2691,22 @@ async function loadApplications(){
 
 async function openApp(id){
   _currentAppId=id;
+  // Reset scores
+  ['sc-problem','sc-market','sc-innovation','sc-solution','sc-revenue','sc-bmc',
+   'sc-team','sc-motivation','sc-impact','sc-eligibility','sc-fit','sc-geography'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('app-score-total').textContent='—';
+  document.getElementById('app-score-total').style.color='var(--or)';
+  document.getElementById('app-score-badge').textContent='Not scored';
+  document.getElementById('app-score-badge').style.cssText='font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--bg);border:0.5px solid var(--bdr)';
+  document.getElementById('app-score-bar').style.width='0%';
+  document.getElementById('app-score-bar').style.background='var(--or)';
+  document.getElementById('app-rec-title').textContent='Enter scores above to get a recommendation';
+  document.getElementById('app-rec-title').style.color='var(--t2)';
+  document.getElementById('app-recommendation').style.background='var(--bg)';
+  document.getElementById('app-recommendation').style.borderColor='var(--bdr)';
+  if(document.getElementById('app-note')) document.getElementById('app-note').value='';
   try{
     const rows=await sb.get('applications','select=*&id=eq.'+id);
     const r=rows[0];if(!r)return;
