@@ -834,7 +834,9 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
     <!-- ════ PARTICIPANT: NOTIFICATIONS ════ -->
     <div class="page" id="pg-p-notifications">
       <div class="sh mb15"><h2>Announcements</h2><p>Messages from the INJAZ Lebanon team</p></div>
-      <div id="p-notif-list"></div>
+      <div id="p-notif-list">
+        <p style="color:var(--t3);font-size:13px">Loading...</p>
+      </div>
     </div>
     <!-- ════ PARTICIPANT: MY JOURNEY ════ -->
     <div class="page" id="pg-journey">
@@ -846,13 +848,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <div class="card" id="journey-checklist"></div>
       </div>
       <div class="card" id="journey-docs"></div>
-      <div class="card mt1" id="journey-notifs-card" style="display:none">
-        <div class="fbet mb12">
-          <div class="clbl" style="margin:0">📢 Announcements</div>
-          <span id="journey-notif-count" style="font-size:11px;color:var(--t3)"></span>
-        </div>
-        <div id="journey-notifs-list"></div>
-      </div>
+
     </div>
 
     <!-- ════ PARTICIPANT: MY TEAM ════ -->
@@ -1121,7 +1117,7 @@ function nav(id){
   if(id==='pg-analytics') loadAnalytics();
   if(id==='pg-applications') loadApplications();
   if(id==='pg-notifications') loadNotifications();
-  if(id==='pg-notifications') loadNotifications();
+  if(id==='pg-p-notifications') loadParticipantNotifications();
 }
 
 // ── AUTH ──
@@ -2074,49 +2070,6 @@ async function loadJourney(){
       <p style="font-size:12px;color:var(--t2);margin-bottom:10px">${team.current_phase==='DT'?'7-day program':team.current_phase==='FB1'?'3-day bootcamp':team.current_phase==='FB2'?'5-day bootcamp':'Ongoing incubation'}</p>
       <div style="font-size:12px;color:var(--t3);padding:10px;background:var(--bg);border-radius:var(--r)">Phase gate locked until INJAZ team submits your assessment. You will be notified immediately.</div>`;
 
-    // Announcements for participant
-    try {
-      const notifs = await sb.get('notifications',
-        'select=id,message,audience,created_at&order=created_at.desc&limit=5'
-      );
-      const relevant = notifs.filter(n => n.audience==='all' || n.audience===team.current_phase);
-      if(relevant.length) {
-        const notifHtml = relevant.map(n => {
-          const when = new Date(n.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-          return `<div style="padding:8px 0;border-bottom:0.5px solid var(--bdr);font-size:13px">
-            <p style="font-weight:500;margin-bottom:2px">${n.message}</p>
-            <p style="font-size:11px;color:var(--t3)">${when} · INJAZ Lebanon</p>
-          </div>`;
-        }).join('');
-        document.getElementById('journey-result').insertAdjacentHTML('afterbegin',
-          `<div class="card mb15"><div class="clbl mb8">📢 Announcements</div>${notifHtml}</div>`
-        );
-      }
-    } catch(e) { /* no notifications table yet */ }
-
-    // Notifications for this participant's phase
-    try {
-      const phase = team.current_phase || 'DT';
-      const notifs = await sb.get('notifications',
-        'order=created_at.desc&limit=10'
-      );
-      // Filter: show 'all' audience + this phase's audience
-      const relevant = notifs.filter(n => n.audience === 'all' || n.audience === phase);
-      const card = document.getElementById('journey-notifs-card');
-      const list = document.getElementById('journey-notifs-list');
-      if(relevant.length && card && list) {
-        card.style.display = 'block';
-        document.getElementById('journey-notif-count').textContent = relevant.length + ' announcement' + (relevant.length!==1?'s':'');
-        list.innerHTML = relevant.map(n => {
-          const when = n.created_at ? new Date(n.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-          return `<div style="padding:10px 0;border-bottom:0.5px solid var(--bdr);last-child:border:none">
-            <p style="font-size:13px;margin-bottom:4px">${n.message}</p>
-            <span style="font-size:11px;color:var(--t3)">INJAZ Lebanon · ${when}</span>
-          </div>`;
-        }).join('');
-      }
-    } catch(e) { /* notifications table may not exist yet */ }
-
     // Documents
     const docs=await sb.get('documents','team_id=eq.'+teamId+'&order=created_at.desc');
     document.getElementById('journey-docs').innerHTML=docs.length?`
@@ -2130,23 +2083,6 @@ async function loadJourney(){
       </tr>`).join('')}</tbody></table>`
       :`<div class="clbl mb8">My documents</div>${emptyState('📄','No documents yet','Upload your BMC and business plan here')}`;
 
-    // Load and show notifications at bottom of journey
-    try {
-      const notifs = await sb.get('notifications','order=created_at.desc&limit=5');
-      if(notifs.length) {
-        const notifEl = document.createElement('div');
-        notifEl.className = 'card mt1';
-        notifEl.innerHTML = `<div class="clbl mb12">📢 Announcements from INJAZ</div>` +
-          notifs.map(n=>`<div style="padding:10px 0;border-bottom:0.5px solid var(--bdr)">
-            <div class="fbet mb4">
-              <span style="font-size:12px;font-weight:600">${n.sent_by_name||'INJAZ Lebanon'}</span>
-              <span style="font-size:11px;color:var(--t3)">${n.created_at?new Date(n.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</span>
-            </div>
-            <p style="font-size:13px;color:var(--t2);line-height:1.5">${n.message}</p>
-          </div>`).join('');
-        document.getElementById('pg-journey').appendChild(notifEl);
-      }
-    } catch(e) { /* notifications not set up yet */ }
 
   } catch(e){ toast('Error loading journey',e.message,'error'); }
 }
@@ -2534,7 +2470,7 @@ async function doEnrollInClass() {
 async function loadParticipantNotifications(){
   const el = document.getElementById('p-notif-list');
   if(!el) return;
-  el.innerHTML = '<p style="color:var(--t3);font-size:13px;padding:.5rem 0">Loading...</p>';
+  el.innerHTML = '';
   try {
     // Get participant's phase for filtering
     let phase = null;
@@ -2805,37 +2741,36 @@ async function checkApplicationStatus(){
     if(!apps.length)return emptyState('📋','No application yet','You have not submitted an application yet.');
     const app=apps[0];
     const s={pending:{icon:'⏳',title:'Application under review',color:'var(--warn)',bg:'var(--warn-bg)',msg:'The INJAZ Lebanon team is reviewing your application and will contact you soon.'},approved_dt:{icon:'✅',title:'Approved — Design Thinking',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to the Design Thinking phase. A coordinator will contact you.'},approved_fb1:{icon:'✅',title:'Approved — FB Stage 1',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to Financial Bootcamp Stage 1.'},ineligible:{icon:'❌',title:'Application not approved',color:'var(--fail)',bg:'var(--fail-bg)',msg:'Unfortunately your application did not meet eligibility criteria. Contact your coordinator.'}}[app.status]||{icon:'⏳',title:'Application submitted',color:'var(--warn)',bg:'var(--warn-bg)',msg:'Your application is being processed.'};
-    // Load notifications for this participant
-    let notifHtml = '';
-    try {
-      const notifs = await sb.get('notifications',
-        'order=created_at.desc&limit=5'
-      );
-      if(notifs.length) {
-        notifHtml = `<div class="card mt1">
-          <div class="clbl mb12">📢 Announcements</div>
-          ${notifs.map(n=>`<div style="padding:10px 0;border-bottom:0.5px solid var(--bdr)">
-            <div class="fbet mb4">
-              <span style="font-size:12px;font-weight:600">${n.sent_by_name||'INJAZ Lebanon'}</span>
-              <span style="font-size:11px;color:var(--t3)">${n.created_at?new Date(n.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</span>
-            </div>
-            <p style="font-size:13px;color:var(--t2);line-height:1.5">${n.message}</p>
-          </div>`).join('')}
-        </div>`;
-      }
-    } catch(e) { /* no notifications table yet */ }
-
     return `<div style="border-radius:var(--rl);padding:1.5rem;background:${s.bg};border:1px solid ${s.color};margin-bottom:1rem"><div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><span style="font-size:1.5rem">${s.icon}</span><p style="font-size:15px;font-weight:600;color:${s.color}">${s.title}</p></div><p style="font-size:13px;color:${s.color};line-height:1.6">${s.msg}</p></div>
       <div class="card"><div class="clbl mb12">Your application</div><div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
         <div class="fbet"><span style="color:var(--t3)">Idea</span><strong>${app.idea_title||'—'}</strong></div>
         <div class="fbet"><span style="color:var(--t3)">Team members</span><span>${app.member_count||1}</span></div>
         <div class="fbet"><span style="color:var(--t3)">Partner</span><span>${app.partner||'—'}</span></div>
         <div class="fbet"><span style="color:var(--t3)">Submitted</span><span>${app.created_at?new Date(app.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):''}</span></div>
-      </div></div>${notifHtml}`;
+      </div></div>`;
   }catch(e){return emptyState('🏁','No team yet','You have not been assigned to a team yet. Contact your INJAZ coordinator.');}
 }
 
+
+async function checkApplicationStatus(){
+  try{
+    const apps=await sb.get('applications','lead_auth_id=eq.'+PROFILE.auth_id+'&order=created_at.desc&limit=1');
+    if(!apps.length)return emptyState('📋','No application yet','You have not submitted an application yet.');
+    const app=apps[0];
+    const s={pending:{icon:'⏳',title:'Application under review',color:'var(--warn)',bg:'var(--warn-bg)',msg:'The INJAZ Lebanon team is reviewing your application and will contact you soon.'},approved_dt:{icon:'✅',title:'Approved — Design Thinking',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to the Design Thinking phase. A coordinator will contact you.'},approved_fb1:{icon:'✅',title:'Approved — FB Stage 1',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to Financial Bootcamp Stage 1.'},ineligible:{icon:'❌',title:'Application not approved',color:'var(--fail)',bg:'var(--fail-bg)',msg:'Unfortunately your application did not meet eligibility criteria. Contact your coordinator.'}}[app.status]||{icon:'⏳',title:'Application submitted',color:'var(--warn)',bg:'var(--warn-bg)',msg:'Your application is being processed.'};
+    return `<div style="border-radius:var(--rl);padding:1.5rem;background:${s.bg};border:1px solid ${s.color};margin-bottom:1rem"><div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><span style="font-size:1.5rem">${s.icon}</span><p style="font-size:15px;font-weight:600;color:${s.color}">${s.title}</p></div><p style="font-size:13px;color:${s.color};line-height:1.6">${s.msg}</p></div>
+      <div class="card"><div class="clbl mb12">Your application</div><div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+        <div class="fbet"><span style="color:var(--t3)">Idea</span><strong>${app.idea_title||'—'}</strong></div>
+        <div class="fbet"><span style="color:var(--t3)">Team members</span><span>${app.member_count||1}</span></div>
+        <div class="fbet"><span style="color:var(--t3)">Partner</span><span>${app.partner||'—'}</span></div>
+        <div class="fbet"><span style="color:var(--t3)">Submitted</span><span>${app.created_at?new Date(app.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):''}</span></div>
+      </div></div>`;
+  }catch(e){return emptyState('🏁','No team yet','You have not been assigned to a team yet. Contact your INJAZ coordinator.');}
+}
+
+
 </script>
+
 <!-- ENROLL IN CLASS MODAL -->
 <div id="enroll-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;">
   <div style="background:var(--card);border-radius:var(--rl);padding:1.5rem;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
