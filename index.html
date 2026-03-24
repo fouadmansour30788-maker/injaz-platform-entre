@@ -1,3 +1,31 @@
+function afAddMember(){
+  const list = document.getElementById('af-members-list');
+  const num  = list.querySelectorAll('.af-member-row').length + 2;
+  if(num > 5){ alert('Maximum 5 team members allowed.'); return; }
+  const div = document.createElement('div');
+  div.className = 'af-member-row';
+  div.style.cssText = 'background:white;border:1px solid #E2E8F0;border-radius:12px;padding:1.25rem;position:relative;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:#0A1C3E;text-transform:uppercase;letter-spacing:.3px;">Member ${num}</div>
+      <button onclick="this.closest('.af-member-row').remove()" style="background:none;border:none;color:#94A3B8;cursor:pointer;font-size:16px;padding:2px 6px;">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label class="flbl">Full name *</label><input class="finput af-m-name" placeholder="Full name" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
+      <div><label class="flbl">Email *</label><input class="finput af-m-email" type="email" placeholder="email@example.com" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
+      <div><label class="flbl">Date of birth *</label><input class="finput af-m-dob" type="date" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
+      <div><label class="flbl">Phone</label><input class="finput af-m-phone" placeholder="+961 xx xxx xxx" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
+      <div><label class="flbl">Gender</label><select class="finput af-m-gender" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Male</option><option>Female</option><option>Prefer not to say</option></select></div>
+      <div><label class="flbl">Nationality</label><select class="finput af-m-nationality" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Lebanese</option><option>Syrian</option><option>Palestinian (PRL)</option><option>Palestinian (PRS)</option><option>Other</option></select></div>
+      <div><label class="flbl">Governorate</label><select class="finput af-m-gov" onchange="afUpdateDistrict(this.value,'af-m-dist-${num}')" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Beirut</option><option>Mount Lebanon</option><option>North Lebanon</option><option>South Lebanon</option><option>Bekaa</option><option>Nabatieh</option><option>Akkar</option><option>Baalbek-Hermel</option></select></div>
+      <div><label class="flbl">District</label><select class="finput af-m-district" id="af-m-dist-${num}" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select governorate first</option></select></div>
+      <div><label class="flbl">Education</label><select class="finput af-m-education" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>High school or below</option><option>Vocational / Technical</option><option>Bachelor's (in progress)</option><option>Bachelor's (completed)</option><option>Master's or above</option></select></div>
+      <div><label class="flbl">Employment</label><select class="finput af-m-employment" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Student</option><option>Employed full-time</option><option>Employed part-time</option><option>Self-employed</option><option>Unemployed seeking work</option><option>Not seeking employment</option></select></div>
+      <div style="grid-column:1/-1"><label class="flbl">Facebook / Instagram / LinkedIn <span style="font-weight:400;color:#94A3B8">(optional, any)</span></label><input class="finput af-m-social" placeholder="e.g. @username or profile URL" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
+    </div>`;
+  list.appendChild(div);
+}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -336,6 +364,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 
 </div>
 <!-- APPLY FORM -->
+<!-- ══ PUBLIC APPLICATION FORM ══ -->
 <div id="apply-form" style="display:none;min-height:100vh;background:#F8FAFC;">
   <div style="background:#0A1C3E;padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;">
     <div style="display:flex;align-items:center;gap:10px;">
@@ -346,80 +375,105 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
   </div>
   <div style="background:#E2E8F0;height:4px;"><div id="af-progress" style="height:4px;background:#1A56DB;transition:width .4s;width:25%"></div></div>
   <div style="max-width:720px;margin:0 auto;padding:2rem 1.5rem;">
-
-    <!-- Step 1 -->
     <div id="af-step-1">
-      <div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 1 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">About you</h2></div>
-      <div style="background:white;border-radius:12px;padding:1.5rem;border:1px solid #E2E8F0;margin-bottom:1rem;">
-        <div style="display:flex;gap:10px;margin-bottom:1rem;">
-          <label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-type" value="new" checked style="accent-color:#1A56DB"> New Applicant</label>
-          <label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-type" value="alumni" style="accent-color:#1A56DB"> Pre-GIL Alumni</label>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div><label class="flbl">Full name *</label><input class="finput" id="af-name" placeholder="As on ID" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
-          <div><label class="flbl">Email *</label><input class="finput" id="af-email" type="email" placeholder="your@email.com" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
-          <div><label class="flbl">Password * (min 8)</label><input class="finput" id="af-pw" type="password" placeholder="••••••••" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
-          <div><label class="flbl">Phone</label><input class="finput" id="af-phone" placeholder="+961 xx xxx xxx" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
-          <div><label class="flbl">Date of birth * (18–28)</label><input class="finput" id="af-dob" type="date" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
-          <div><label class="flbl">Gender *</label><select class="finput" id="af-gender" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Male</option><option>Female</option><option>Prefer not to say</option></select></div>
-          <div><label class="flbl">Nationality *</label><select class="finput" id="af-nationality" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Lebanese</option><option>Syrian</option><option>Palestinian (PRL)</option><option>Palestinian (PRS)</option><option>Other</option></select></div>
-          <div><label class="flbl">Governorate *</label><select class="finput" id="af-gov" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Beirut</option><option>Mount Lebanon</option><option>North Lebanon</option><option>South Lebanon</option><option>Bekaa</option><option>Nabatieh</option><option>Akkar</option><option>Baalbek-Hermel</option></select></div>
-          <div><label class="flbl">Education *</label><select class="finput" id="af-education" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>High school or below</option><option>Vocational/Technical</option><option>Bachelor's (in progress)</option><option>Bachelor's (completed)</option><option>Master's or above</option></select></div>
-          <div><label class="flbl">Employment *</label><select class="finput" id="af-employment" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Student</option><option>Employed full-time</option><option>Employed part-time</option><option>Self-employed</option><option>Unemployed seeking work</option><option>Not seeking employment</option></select></div>
-          <div><label class="flbl">Disability</label><select class="finput" id="af-disability" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="none">None</option><option value="physical">Physical</option><option value="visual">Visual</option><option value="hearing">Hearing</option><option value="cognitive">Cognitive</option><option value="other">Other</option></select></div>
-          <div><label class="flbl">Partner organisation *</label><select class="finput" id="af-partner" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="LU">LU — Lebanese University</option><option value="UNRWA">UNRWA</option><option value="AND">AND</option><option value="Midan">Midan</option><option value="Lost">Lost</option><option value="MDF">MDF</option></select></div>
-        </div>
-      </div>
-      <div id="af-err-1" class="aerr" style="margin-bottom:12px;display:none"></div>
-      <button class="abtn" onclick="afNext(1)" style="width:100%">Continue →</button>
-    </div>
+<div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 1 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">About you</h2><p style='font-size:13px;color:#64748B;margin-top:4px;'>Lead applicant — this is your account on the platform</p></div>
+<div style="display:flex;gap:10px;margin-bottom:1rem;">
+  <label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-type" value="new" checked style="accent-color:#1A56DB"> New Applicant</label>
+  <label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-type" value="alumni" style="accent-color:#1A56DB"> Pre-GIL Alumni</label>
+</div>
 
-    <!-- Step 2 -->
+<div style="background:white;border-radius:12px;padding:1.5rem;border:1px solid #E2E8F0;margin-bottom:1rem;" ><div style="font-size:12px;font-weight:700;color:#0A1C3E;margin-bottom:14px;text-transform:uppercase;letter-spacing:.3px;">Account</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label class="flbl">Full name *</label><input class="finput" id="af-name" type="text" placeholder="As on ID" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div><label class="flbl">Email address *</label><input class="finput" id="af-email" type="email" placeholder="your@email.com" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div><label class="flbl">Password *<span style="font-weight:400;color:#94A3B8"> (min 8 chars)</span></label><input class="finput" id="af-pw" type="password" placeholder="Min 8 characters" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div><label class="flbl">Phone number</label><input class="finput" id="af-phone" type="tel" placeholder="+961 xx xxx xxx" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div></div></div>
+
+<div style="background:white;border-radius:12px;padding:1.5rem;border:1px solid #E2E8F0;margin-bottom:1rem;" ><div style="font-size:12px;font-weight:700;color:#0A1C3E;margin-bottom:14px;text-transform:uppercase;letter-spacing:.3px;">Personal information</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label class="flbl">Date of birth *<span style="font-weight:400;color:#94A3B8"> (18–28)</span></label><input class="finput" id="af-dob" type="date" placeholder="" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div><label class="flbl">Gender *</label><select class="finput" id="af-gender" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="Male">Male</option>
+<option value="Female">Female</option>
+<option value="Prefer not to say">Prefer not to say</option></select></div><div><label class="flbl">Nationality *</label><select class="finput" id="af-nationality" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="Lebanese">Lebanese</option>
+<option value="Syrian">Syrian</option>
+<option value="Palestinian (PRL)">Palestinian (PRL)</option>
+<option value="Palestinian (PRS)">Palestinian (PRS)</option>
+<option value="Other">Other</option></select></div><div><label class="flbl">Governorate *</label><select class="finput" id="af-gov" onchange="afUpdateDistrict(this.value)" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="Beirut">Beirut</option>
+<option value="Mount Lebanon">Mount Lebanon</option>
+<option value="North Lebanon">North Lebanon</option>
+<option value="South Lebanon">South Lebanon</option>
+<option value="Bekaa">Bekaa</option>
+<option value="Nabatieh">Nabatieh</option>
+<option value="Akkar">Akkar</option>
+<option value="Baalbek-Hermel">Baalbek-Hermel</option></select></div><div><label class="flbl">District</label><select class="finput" id="af-district" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option></select></div><div><label class="flbl">Education level *</label><select class="finput" id="af-education" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="High school or below">High school or below</option>
+<option value="Vocational / Technical">Vocational / Technical</option>
+<option value="Bachelor's (in progress)">Bachelor's (in progress)</option>
+<option value="Bachelor's (completed)">Bachelor's (completed)</option>
+<option value="Master's or above">Master's or above</option></select></div><div><label class="flbl">Employment status *</label><select class="finput" id="af-employment" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="Student">Student</option>
+<option value="Employed full-time">Employed full-time</option>
+<option value="Employed part-time">Employed part-time</option>
+<option value="Self-employed">Self-employed</option>
+<option value="Unemployed seeking work">Unemployed seeking work</option>
+<option value="Not seeking employment">Not seeking employment</option></select></div><div style="grid-column:1/-1"><label class="flbl">Disability <span style="font-weight:400;color:#94A3B8">(optional)</span></label><select class="finput" id="af-disability" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="none">None</option><option value="physical">Physical</option><option value="visual">Visual</option><option value="hearing">Hearing</option><option value="cognitive">Cognitive</option><option value="other">Other</option></select></div></div></div>
+
+<div style="background:white;border-radius:12px;padding:1.5rem;border:1px solid #E2E8F0;margin-bottom:1rem;" ><div style="font-size:12px;font-weight:700;color:#0A1C3E;margin-bottom:14px;text-transform:uppercase;letter-spacing:.3px;">Partner & social media</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label class="flbl">Partner organisation *</label><select class="finput" id="af-partner" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="LU">LU — Lebanese University</option>
+<option value="UNRWA">UNRWA</option>
+<option value="AND">AND</option>
+<option value="Midan">Midan</option>
+<option value="Lost">Lost</option>
+<option value="MDF">MDF</option></select></div><div><label class="flbl">Facebook profile URL</label><input class="finput" id="af-fb" type="url" placeholder="https://facebook.com/..." style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div><label class="flbl">Instagram handle</label><input class="finput" id="af-ig" type="text" placeholder="@yourhandle" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div><label class="flbl">LinkedIn profile URL</label><input class="finput" id="af-linkedin" type="url" placeholder="https://linkedin.com/in/..." style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div></div></div>
+
+<div id="af-err-1" class="aerr" style="margin-bottom:12px;display:none"></div>
+<button class="abtn" onclick="afNext(1)" style="width:100%">Continue →</button>
+</div>
     <div id="af-step-2" style="display:none;">
-      <div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 2 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">Your team members</h2><p style="font-size:13px;color:#64748B;margin-top:4px;">Add all co-founders. Min 2 members, each aged 18–28.</p></div>
-      <div id="af-members-list" style="display:flex;flex-direction:column;gap:12px;"></div>
-      <button onclick="afAddMember()" style="margin-top:12px;width:100%;padding:10px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:8px;font-size:13px;color:#64748B;cursor:pointer;font-family:inherit;">+ Add another member</button>
-      <div id="af-err-2" class="aerr" style="margin:12px 0;display:none"></div>
-      <div style="display:flex;gap:10px;margin-top:12px;"><button class="btn" onclick="afBack(2)" style="flex:1">← Back</button><button class="abtn" onclick="afNext(2)" style="flex:2">Continue →</button></div>
-    </div>
-
-    <!-- Step 3 -->
+<div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 2 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">Your team members</h2><p style='font-size:13px;color:#64748B;margin-top:4px;'>Add all co-founders. Min 2 members total (including you), max 5. Each must be 18–28.</p></div>
+<div id="af-members-list" style="display:flex;flex-direction:column;gap:16px;"></div>
+<button onclick="afAddMember()" style="margin-top:12px;width:100%;padding:10px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:8px;font-size:13px;color:#64748B;cursor:pointer;font-family:inherit;" onmouseover="this.style.borderColor='#1A56DB';this.style.color='#1A56DB'" onmouseout="this.style.borderColor='#CBD5E1';this.style.color='#64748B'">
+  + Add another member
+</button>
+<div id="af-err-2" class="aerr" style="margin-bottom:12px;display:none"></div>
+<div style="display:flex;gap:10px;margin-top:12px;">
+  <button class="btn" onclick="afBack(2)" style="flex:1">← Back</button>
+  <button class="abtn" onclick="afNext(2)" style="flex:2">Continue →</button>
+</div>
+</div>
     <div id="af-step-3" style="display:none;">
-      <div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 3 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">Your business idea</h2></div>
-      <div style="background:white;border-radius:12px;padding:1.5rem;border:1px solid #E2E8F0;margin-bottom:1rem;display:flex;flex-direction:column;gap:14px;">
-        <div><label class="flbl">Idea title *</label><input class="finput" id="af-idea-title" placeholder="e.g. EcoTrack — sustainable packaging" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
-        <div><label class="flbl">Problem you are solving *</label><textarea id="af-problem" rows="3" placeholder="What problem exists? Who is affected?" style="width:100%;padding:10px 13px;border-radius:8px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0A1C3E;font-family:inherit;font-size:14px;resize:vertical;outline:none;"></textarea></div>
-        <div><label class="flbl">Your solution *</label><textarea id="af-solution" rows="3" placeholder="How does your product/service solve it?" style="width:100%;padding:10px 13px;border-radius:8px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0A1C3E;font-family:inherit;font-size:14px;resize:vertical;outline:none;"></textarea></div>
-        <div><label class="flbl">Target customers</label><input class="finput" id="af-customers" placeholder="Who will buy/use your product?" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
-        <div><label class="flbl">Industry / sector</label><select class="finput" id="af-sector" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select sector...</option><option>Agriculture &amp; Food</option><option>Education &amp; Training</option><option>Energy &amp; Environment</option><option>Fashion &amp; Retail</option><option>Finance &amp; Fintech</option><option>Health &amp; Wellness</option><option>Manufacturing</option><option>Social Enterprise</option><option>Technology &amp; Software</option><option>Tourism &amp; Hospitality</option><option>Other</option></select></div>
-        <div><label class="flbl">Do you have a Business Model Canvas?</label>
-          <div style="display:flex;gap:10px;margin-top:6px;">
-            <label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-bmc" value="yes" style="accent-color:#1A56DB"> Yes</label>
-            <label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-bmc" value="no" checked style="accent-color:#1A56DB"> Not yet</label>
-          </div>
-        </div>
-      </div>
-      <div id="af-err-3" class="aerr" style="margin-bottom:12px;display:none"></div>
-      <div style="display:flex;gap:10px;"><button class="btn" onclick="afBack(3)" style="flex:1">← Back</button><button class="abtn" onclick="afNext(3)" style="flex:2">Continue →</button></div>
-    </div>
+<div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 3 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">Your business idea</h2><p style='font-size:13px;color:#64748B;margin-top:4px;'>Tell us about the problem you want to solve and how.</p></div>
 
-    <!-- Step 4 -->
+<div style="background:white;border-radius:12px;padding:1.5rem;border:1px solid #E2E8F0;margin-bottom:1rem;" ><div style="font-size:12px;font-weight:700;color:#0A1C3E;margin-bottom:14px;text-transform:uppercase;letter-spacing:.3px;">Idea overview</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div style="grid-column:1/-1"><label class="flbl">Business idea title *</label><input class="finput" id="af-idea-title" placeholder="e.g. EcoTrack — sustainable packaging solutions" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div><label class="flbl">Industry / sector</label><select class="finput" id="af-sector" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="Agriculture & Food">Agriculture & Food</option>
+<option value="Education & Training">Education & Training</option>
+<option value="Energy & Environment">Energy & Environment</option>
+<option value="Fashion & Retail">Fashion & Retail</option>
+<option value="Finance & Fintech">Finance & Fintech</option>
+<option value="Health & Wellness">Health & Wellness</option>
+<option value="Manufacturing">Manufacturing</option>
+<option value="Social Enterprise">Social Enterprise</option>
+<option value="Technology & Software">Technology & Software</option>
+<option value="Tourism & Hospitality">Tourism & Hospitality</option>
+<option value="Transport & Logistics">Transport & Logistics</option>
+<option value="Other">Other</option></select></div><div style="grid-column:1/-1"><label class="flbl">What problem are you solving? * <span style="font-weight:400;color:#94A3B8">(min 30 chars)</span></label><textarea id="af-problem" rows="3" placeholder="Describe the problem clearly — who is affected and how?" style="width:100%;padding:10px 13px;border-radius:8px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0A1C3E;font-family:inherit;font-size:14px;resize:vertical;outline:none;box-sizing:border-box;"></textarea></div><div style="grid-column:1/-1"><label class="flbl">What is your solution? * <span style="font-weight:400;color:#94A3B8">(min 30 chars)</span></label><textarea id="af-solution" rows="3" placeholder="How does your product or service solve this problem?" style="width:100%;padding:10px 13px;border-radius:8px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0A1C3E;font-family:inherit;font-size:14px;resize:vertical;outline:none;box-sizing:border-box;"></textarea></div><div style="grid-column:1/-1"><label class="flbl">Who are your target customers?</label><input class="finput" id="af-customers" placeholder="e.g. University students aged 18–25 in Beirut" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div><div style="grid-column:1/-1"><label class="flbl">What is your revenue model? <span style="font-weight:400;color:#94A3B8">(how will you make money?)</span></label><textarea id="af-revenue" rows="2" placeholder="e.g. Subscription fees, product sales, service fees, advertising..." style="width:100%;padding:10px 13px;border-radius:8px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0A1C3E;font-family:inherit;font-size:14px;resize:vertical;outline:none;box-sizing:border-box;"></textarea></div></div></div>
+
+<div style="background:white;border-radius:12px;padding:1.5rem;border:1px solid #E2E8F0;margin-bottom:1rem;" ><div style="font-size:12px;font-weight:700;color:#0A1C3E;margin-bottom:14px;text-transform:uppercase;letter-spacing:.3px;">Business stage & readiness</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div style="grid-column:1/-1"><label class="flbl">Current stage of your idea *</label><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-stage" value="idea" style="accent-color:#1A56DB"checked> Idea stage — we have a concept</label><label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-stage" value="validated" style="accent-color:#1A56DB"> Validated — we talked to potential customers</label><label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-stage" value="prototype" style="accent-color:#1A56DB"> Prototype — we built something</label><label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-stage" value="revenue" style="accent-color:#1A56DB"> Generating revenue</label></div></div><div style="grid-column:1/-1"><label class="flbl">Do you already have a Business Model Canvas?</label><div style="display:flex;gap:10px;margin-top:6px;"><label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-bmc" value="yes" style="accent-color:#1A56DB"> Yes, we have a BMC</label><label style="flex:1;border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;"><input type="radio" name="af-bmc" value="no" checked style="accent-color:#1A56DB"> Not yet</label></div></div><div style="grid-column:1/-1"><label class="flbl">What are your main challenges? <span style="font-weight:400;color:#94A3B8">(select all that apply)</span></label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;" id="af-challenges-group"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="access_finance" style="accent-color:#1A56DB"> Access to finance</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="market_entry" style="accent-color:#1A56DB"> Market entry</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="lack_skills" style="accent-color:#1A56DB"> Lack of business skills</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="network" style="accent-color:#1A56DB"> Limited network</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="competition" style="accent-color:#1A56DB"> Strong competition</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="regulations" style="accent-color:#1A56DB"> Regulatory barriers</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="technology" style="accent-color:#1A56DB"> Technology access</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-challenges" value="other" style="accent-color:#1A56DB"> Other</label></div></div><div style="grid-column:1/-1"><label class="flbl">Which UN Sustainable Development Goals does your idea address? <span style="font-weight:400;color:#94A3B8">(optional)</span></label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;" id="af-sdg-group"><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="no_poverty" style="accent-color:#1A56DB"> No Poverty</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="zero_hunger" style="accent-color:#1A56DB"> Zero Hunger</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="good_health" style="accent-color:#1A56DB"> Good Health & Wellbeing</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="quality_edu" style="accent-color:#1A56DB"> Quality Education</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="gender_eq" style="accent-color:#1A56DB"> Gender Equality</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="clean_water" style="accent-color:#1A56DB"> Clean Water</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="affordable_energy" style="accent-color:#1A56DB"> Affordable Energy</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="decent_work" style="accent-color:#1A56DB"> Decent Work & Economic Growth</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="industry" style="accent-color:#1A56DB"> Industry & Innovation</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="reduced_inequality" style="accent-color:#1A56DB"> Reduced Inequalities</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="sustainable_cities" style="accent-color:#1A56DB"> Sustainable Cities</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="responsible" style="accent-color:#1A56DB"> Responsible Consumption</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="climate" style="accent-color:#1A56DB"> Climate Action</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="life_below" style="accent-color:#1A56DB"> Life Below Water</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="life_on_land" style="accent-color:#1A56DB"> Life on Land</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="peace" style="accent-color:#1A56DB"> Peace & Justice</label><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;background:#F8FAFC;"><input type="checkbox" name="af-sdg" value="partnerships" style="accent-color:#1A56DB"> Partnerships for Goals</label></div></div><div style="grid-column:1/-1"><label class="flbl">What do you expect to achieve by the end of the GIL program?</label><textarea id="af-expectations" rows="2" placeholder="e.g. Launch a prototype, secure first customers, build a full business plan..." style="width:100%;padding:10px 13px;border-radius:8px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0A1C3E;font-family:inherit;font-size:14px;resize:vertical;outline:none;box-sizing:border-box;"></textarea></div></div></div>
+
+<div id="af-err-3" class="aerr" style="margin-bottom:12px;display:none"></div>
+<div style="display:flex;gap:10px;">
+  <button class="btn" onclick="afBack(3)" style="flex:1">← Back</button>
+  <button class="abtn" onclick="afNext(3)" style="flex:2">Continue →</button>
+</div>
+</div>
     <div id="af-step-4" style="display:none;">
-      <div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 4 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">Review &amp; submit</h2></div>
-      <div style="background:#EFF6FF;border:1px solid #DBEAFE;border-radius:10px;padding:14px;margin-bottom:1rem;font-size:13px;color:#1E40AF;line-height:1.6;">By submitting you confirm all information is accurate and all members consent to participate in INJAZ Lebanon GIL 2026.</div>
-      <div id="af-err-4" class="aerr" style="margin-bottom:12px;display:none"></div>
-      <div style="display:flex;gap:10px;"><button class="btn" onclick="afBack(4)" style="flex:1">← Back</button>
-        <button class="abtn" id="af-submit-btn" onclick="afSubmit()" style="flex:2"><span id="af-submit-label">Submit application</span><div class="spin" id="af-submit-spin" style="display:none;width:16px;height:16px;border-width:2px"></div></button>
-      </div>
-    </div>
-
-    <!-- Success -->
+<div style="margin-bottom:1.5rem;"><div style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Step 4 of 4</div><h2 style="font-size:1.35rem;font-weight:800;color:#0A1C3E;">Review & submit</h2></div>
+<div style="background:#EFF6FF;border:1px solid #DBEAFE;border-radius:10px;padding:14px;margin-bottom:1rem;font-size:13px;color:#1E40AF;line-height:1.6;">
+  By submitting this application you confirm all information is accurate and that all team members consent to participate in INJAZ Lebanon GIL 2026.
+</div>
+<div id="af-err-4" class="aerr" style="margin-bottom:12px;display:none"></div>
+<div style="display:flex;gap:10px;">
+  <button class="btn" onclick="afBack(4)" style="flex:1">← Back</button>
+  <button class="abtn" id="af-submit-btn" onclick="afSubmit()" style="flex:2">
+    <span id="af-submit-label">Submit application</span>
+    <div class="spin" id="af-submit-spin" style="display:none;width:16px;height:16px;border-width:2px"></div>
+  </button>
+</div>
+</div>
     <div id="af-step-success" style="display:none;text-align:center;padding:3rem 0;">
-      <div style="font-size:3rem;margin-bottom:1rem;">🎉</div>
-      <h2 style="font-size:1.4rem;font-weight:800;color:#0A1C3E;margin-bottom:8px;">Application submitted!</h2>
-      <p style="font-size:14px;color:#64748B;line-height:1.7;margin-bottom:2rem;">Your application has been received. INJAZ Lebanon will review it and contact you at <strong id="af-success-email"></strong>.</p>
-      <button class="abtn" onclick="hideApplyForm()" style="width:auto;padding:12px 32px;">Sign in to your account</button>
-    </div>
+  <div style="font-size:3rem;margin-bottom:1rem;">🎉</div>
+  <h2 style="font-size:1.4rem;font-weight:800;color:#0A1C3E;margin-bottom:8px;">Application submitted!</h2>
+  <p style="font-size:14px;color:#64748B;line-height:1.7;margin-bottom:2rem;">Your application has been received. INJAZ Lebanon will review it and contact you at <strong id="af-success-email"></strong>.</p>
+  <button class="abtn" onclick="hideApplyForm()" style="width:auto;padding:12px 32px;">Sign in to your account</button>
+</div>
   </div>
 </div>
 
@@ -989,6 +1043,26 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 // ════════════════════════════════════════
 //  SUPABASE CONFIG — replace these two lines
 // ════════════════════════════════════════
+const DISTRICTS = {
+  'Beirut': ['Beirut'],
+  'Mount Lebanon': ['Baabda','Aley','Chouf','Jbeil','Kesrouane','Metn'],
+  'North Lebanon': ['Akkar','Batroun','Bcharre','Koura','Miniyeh-Danniyeh','Tripoli','Zgharta'],
+  'South Lebanon': ['Jezzine','Saida','Sour','Zahrani'],
+  'Bekaa': ['Rashaya','West Bekaa','Zahle'],
+  'Nabatieh': ['Bint Jbeil','Hasbaya','Marjeyoun','Nabatieh'],
+  'Akkar': ['Akkar'],
+  'Baalbek-Hermel': ['Baalbek','Hermel'],
+};
+
+function afUpdateDistrict(gov, selId) {
+  const id = selId || 'af-district';
+  const sel = document.getElementById(id);
+  if(!sel) return;
+  const dists = DISTRICTS[gov] || [];
+  sel.innerHTML = '<option value="">Select district...</option>' +
+    dists.map(d => `<option value="${d}">${d}</option>`).join('');
+}
+
 const SUPA_URL = 'https://gjgycqhxfwvtjpkboxsy.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqZ3ljcWh4Znd2dGpwa2JveHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTEzOTMsImV4cCI6MjA4OTc2NzM5M30.8Ka4iq-Dmgcx9HOaagxOS6SRTXNhKwVfiyYWmc3YBP8';
 
@@ -2081,7 +2155,17 @@ async function loadJourney(){
         <td style="color:var(--t3)">${d.created_at?new Date(d.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</td>
         <td>${d.status==='approved'?'<span class="tag tok">Approved</span>':d.status==='submitted'?'<span class="tag twarn">Submitted</span>':'<span class="tag tpend">Draft</span>'}</td>
       </tr>`).join('')}</tbody></table>`
-      :`<div class="clbl mb8">My documents</div>${emptyState('📄','No documents yet','Upload your BMC and business plan here')}`;
+      :`<div class="clbl mb8">My documents</div>
+      <div style="text-align:center;padding:2rem 1rem;border:1.5px dashed var(--bdr);border-radius:var(--r);margin-top:8px">
+        <div style="font-size:2rem;margin-bottom:8px">📄</div>
+        <p style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:4px">No documents yet</p>
+        <p style="font-size:12px;color:var(--t3);margin-bottom:1rem">Upload your BMC, business plan or any required document</p>
+        <label style="cursor:pointer;display:inline-block">
+          <input type="file" id="doc-upload-input" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.png" style="display:none" onchange="uploadDocument(this)">
+          <span class="btn-p" style="padding:8px 20px;border-radius:8px;font-size:13px;display:inline-block">+ Upload document</span>
+        </label>
+        <p id="doc-upload-status" style="font-size:12px;color:var(--t3);margin-top:8px"></p>
+      </div>`;
 
 
   } catch(e){ toast('Error loading journey',e.message,'error'); }
@@ -2467,6 +2551,52 @@ async function doEnrollInClass() {
   }
 }
 
+async function uploadDocument(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('doc-upload-status');
+  if(statusEl) statusEl.textContent = 'Uploading ' + file.name + '...';
+  try {
+    const tmRows = await sb.get('team_members','user_id=eq.'+PROFILE.id+'&select=team_id&limit=1');
+    if(!tmRows.length) throw new Error('No team found');
+    const teamId = tmRows[0].team_id;
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const fileName = teamId + '/' + Date.now() + '_' + safeName;
+    const uploadRes = await fetch(SUPA_URL+'/storage/v1/object/documents/'+fileName, {
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+sb._token,
+        'Content-Type':file.type||'application/octet-stream','x-upsert':'true'},
+      body: file,
+    });
+    if(!uploadRes.ok) {
+      const err = await uploadRes.json().catch(()=>({}));
+      throw new Error(err.message||err.error||'Upload failed ('+uploadRes.status+')');
+    }
+    const uploadData = await uploadRes.json();
+    await sb.post('documents',{
+      team_id:teamId, title:file.name,
+      doc_type:file.name.split('.').pop().toUpperCase(),
+      file_path:uploadData.Key||fileName,
+      file_size:file.size,
+      status:'submitted', uploaded_by:PROFILE.id,
+    });
+    toast('Document uploaded',file.name+' submitted for review');
+    if(statusEl) statusEl.textContent = '';
+    input.value = '';
+    loadJourney();
+  } catch(e) {
+    const msg = e.message||'Upload failed';
+    if(statusEl) statusEl.textContent = 'Error: '+msg;
+    if(msg.includes('ucket')||msg.includes('404')){
+      toast('Storage not set up','Create a "documents" bucket in Supabase Storage first','error');
+    } else {
+      toast('Upload failed',msg,'error');
+    }
+    input.value = '';
+  }
+}
+
+
 async function loadParticipantNotifications(){
   const el = document.getElementById('p-notif-list');
   if(!el) return;
@@ -2565,14 +2695,32 @@ async function decideApp(decision){
       const enrolledUserIds = [];
       for(const m of members) {
         if(!m.name) continue;
+        // Find existing user by email
         let userRows = [];
         if(m.email) userRows = await sb.get('users', 'email=eq.'+encodeURIComponent(m.email)+'&limit=1');
         let user = userRows[0];
-        if(user) {
-          await sb.patch('users', 'id=eq.'+user.id, {partner_id: partner?.id || null}).catch(()=>{});
-          await sb.post('team_members', {
-            team_id: team.id, user_id: user.id,
-            role_in_team: m.role === 'lead' ? 'lead' : 'member'
+        // If no user row exists yet, create one (they'll link auth when they sign up)
+        if(!user && m.email) {
+          try {
+            const res = await fetch(SUPA_URL+'/rest/v1/users', {
+              method:'POST',
+              headers:{'Content-Type':'application/json','apikey':SUPA_KEY,
+                'Authorization':'Bearer '+sb._token,'Prefer':'return=representation'},
+              body:JSON.stringify({
+                email:m.email, full_name:m.name, role:'participant',
+                date_of_birth:m.dob||null, gender:m.gender||null,
+                nationality:m.nationality||null, governorate:m.governorate||null,
+              })
+            });
+            const created = await res.json();
+            user = Array.isArray(created) ? created[0] : created;
+          } catch(e){ console.warn('Could not create user for',m.email,e); }
+        }
+        if(user?.id) {
+          await sb.patch('users','id=eq.'+user.id,{partner_id:partner?.id||null}).catch(()=>{});
+          await sb.post('team_members',{
+            team_id:team.id, user_id:user.id,
+            role_in_team: m.role==='lead' ? 'lead' : 'member'
           }).catch(()=>{});
           enrolledUserIds.push(user.id);
         }
@@ -2679,8 +2827,12 @@ function afNext(step){
     if(!v('af-gender'))return afShowErr(1,'Please select gender.');
     if(!v('af-nationality'))return afShowErr(1,'Please select nationality.');
     if(!v('af-gov'))return afShowErr(1,'Please select governorate.');
-    if(!v('af-partner'))return afShowErr(1,'Please select partner.');
+    if(!v('af-partner'))return afShowErr(1,'Please select partner organisation.');
     afGoStep(2);
+    // Populate first member slot
+    if(!document.getElementById('af-members-list').querySelector('.af-member-row')){
+      afAddMember();
+    }
   }else if(step===2){
     for(const row of document.querySelectorAll('.af-member-row')){
       if(!row.querySelector('.af-m-name')?.value.trim())return afShowErr(2,'Enter name for all members.');
@@ -2691,8 +2843,8 @@ function afNext(step){
     afGoStep(3);
   }else if(step===3){
     if(!document.getElementById('af-idea-title').value.trim())return afShowErr(3,'Idea title required.');
-    if(document.getElementById('af-problem').value.trim().length<20)return afShowErr(3,'Describe the problem (min 20 chars).');
-    if(document.getElementById('af-solution').value.trim().length<20)return afShowErr(3,'Describe your solution (min 20 chars).');
+    if(document.getElementById('af-problem').value.trim().length<30)return afShowErr(3,'Please describe the problem in more detail (min 30 chars).');
+    if(document.getElementById('af-solution').value.trim().length<30)return afShowErr(3,'Please describe your solution in more detail (min 30 chars).');
     afGoStep(4);
   }
 }
@@ -2705,29 +2857,89 @@ async function afSubmit(){
   const v=(id)=>document.getElementById(id)?.value.trim()||'';
   try{
     const email=v('af-email');const pw=document.getElementById('af-pw').value;
-    const members=[{name:v('af-name'),email,dob:v('af-dob'),gender:v('af-gender'),nationality:v('af-nationality'),education:v('af-education'),employment:v('af-employment'),phone:v('af-phone'),role:'lead'}];
+    const challenges=Array.from(document.querySelectorAll('input[name="af-challenges"]:checked')).map(c=>c.value);
+    const sdgs=Array.from(document.querySelectorAll('input[name="af-sdg"]:checked')).map(c=>c.value);
+    const members=[{
+      name:v('af-name'),email,dob:v('af-dob'),phone:v('af-phone'),
+      gender:v('af-gender'),nationality:v('af-nationality'),
+      governorate:v('af-gov'),district:v('af-district'),
+      education:v('af-education'),employment:v('af-employment'),
+      facebook:v('af-fb'),instagram:v('af-ig'),linkedin:v('af-linkedin'),
+      role:'lead'
+    }];
     document.querySelectorAll('.af-member-row').forEach(row=>{
       const n=row.querySelector('.af-m-name')?.value.trim();
-      if(n)members.push({name:n,email:row.querySelector('.af-m-email')?.value.trim(),dob:row.querySelector('.af-m-dob')?.value,gender:row.querySelector('.af-m-gender')?.value,nationality:row.querySelector('.af-m-nationality')?.value,education:row.querySelector('.af-m-education')?.value,employment:row.querySelector('.af-m-employment')?.value,phone:row.querySelector('.af-m-phone')?.value.trim(),role:'member'});
+      if(n)members.push({
+        name:n,
+        email:row.querySelector('.af-m-email')?.value.trim(),
+        dob:row.querySelector('.af-m-dob')?.value,
+        phone:row.querySelector('.af-m-phone')?.value.trim(),
+        gender:row.querySelector('.af-m-gender')?.value,
+        nationality:row.querySelector('.af-m-nationality')?.value,
+        governorate:row.querySelector('.af-m-gov')?.value,
+        district:row.querySelector('.af-m-district')?.value,
+        education:row.querySelector('.af-m-education')?.value,
+        employment:row.querySelector('.af-m-employment')?.value,
+        social:row.querySelector('.af-m-social')?.value.trim(),
+        role:'member'
+      });
     });
     const authRes=await fetch(SUPA_URL+'/auth/v1/signup',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({email,password:pw})});
     const authData=await authRes.json();
     if(authData.error||!authData.user)return afShowErr(4,authData.error?.message||authData.msg||'Sign up failed.');
     const tok=authData.session?.access_token||authData.access_token||SUPA_KEY;
     const h={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+tok,'Prefer':'return=minimal'};
-    await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({lead_auth_id:authData.user.id,lead_name:v('af-name'),lead_email:email,lead_dob:v('af-dob'),phone:v('af-phone'),governorate:v('af-gov'),partner:v('af-partner'),applicant_type:document.querySelector('input[name="af-type"]:checked')?.value||'new',team_name:v('af-idea-title').split(' ').slice(0,4).join(' '),idea_title:v('af-idea-title'),idea_description:v('af-problem'),problem_statement:v('af-problem'),solution_description:v('af-solution'),target_customers:v('af-customers'),sector:v('af-sector'),has_bmc:document.querySelector('input[name="af-bmc"]:checked')?.value==='yes',member_count:members.length,members,status:'pending'})});
-    // Update profile with full details (trigger already created the basic row)
+    await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({
+        lead_auth_id:authData.user.id,
+        lead_name:v('af-name'),lead_email:email,lead_dob:v('af-dob'),
+        phone:v('af-phone'),governorate:v('af-gov'),district:v('af-district'),
+        facebook:v('af-fb'),instagram:v('af-ig'),linkedin:v('af-linkedin'),
+        partner:v('af-partner'),
+        applicant_type:document.querySelector('input[name="af-type"]:checked')?.value||'new',
+        team_name:v('af-idea-title').split(' ').slice(0,4).join(' '),
+        idea_title:v('af-idea-title'),
+        idea_description:v('af-problem'),
+        problem_statement:v('af-problem'),
+        solution_description:v('af-solution'),
+        target_customers:v('af-customers'),
+        revenue_model:v('af-revenue'),
+        sector:v('af-sector'),
+        idea_stage:document.querySelector('input[name="af-stage"]:checked')?.value||'idea',
+        has_bmc:document.querySelector('input[name="af-bmc"]:checked')?.value==='yes',
+        challenges,sdgs,
+        expectations:v('af-expectations'),
+        member_count:members.length,members,status:'pending'
+      })});
+    // Update lead profile with full details
     await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
       method:'PATCH',
       headers:h,
       body:JSON.stringify({
         full_name:v('af-name'), date_of_birth:v('af-dob'),
         gender:v('af-gender'), nationality:v('af-nationality'),
-        governorate:v('af-gov'),
+        governorate:v('af-gov'),district:v('af-district'),
         has_disability:v('af-disability')!=='none',
         disability_type:v('af-disability')!=='none'?v('af-disability'):null
       })
     });
+    // Create pending user rows for co-founders (no auth yet)
+    // They will be linked when they sign up using the same email
+    for(const m of members.filter(m=>m.role!=='lead' && m.email && m.name)){
+      // Check if user already exists
+      const existing = await sb.get('users','email=eq.'+encodeURIComponent(m.email)+'&limit=1').catch(()=>[]);
+      if(!existing.length){
+        await fetch(SUPA_URL+'/rest/v1/users',{
+          method:'POST',
+          headers:h,
+          body:JSON.stringify({
+            email:m.email, full_name:m.name, role:'participant',
+            date_of_birth:m.dob||null, gender:m.gender||null,
+            nationality:m.nationality||null, governorate:m.governorate||null,
+            // auth_id is null until they sign up — trigger will link them
+          })
+        }).catch(()=>{});
+      }
+    }
     document.getElementById('af-success-email').textContent=email;
     afGoStep('success');
   }catch(e){afShowErr(4,e.message||'Something went wrong.');}
