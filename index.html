@@ -1413,6 +1413,34 @@ async function afterLogin(){
   PROFILE=profiles[0];
   ROLE=PROFILE.role==='admin'?'admin':'participant';
   try { PARTNERS=await sb.get('partners','order=label'); } catch(e){ PARTNERS=[]; }
+
+  // If participant: check if they have a team_members row
+  // If not, try to find one by email (co-founder whose row was pre-created)
+  if(ROLE === 'participant') {
+    try {
+      const myTeams = await sb.get('team_members','user_id=eq.'+PROFILE.id+'&limit=1');
+      if(!myTeams.length) {
+        // No team found — check if there's a DIFFERENT users row with same email
+        // (happens when co-founder signed up and got a new row instead of linking)
+        const emailRows = await sb.get('users','email=eq.'+encodeURIComponent(PROFILE.email)+'&order=created_at');
+        if(emailRows.length > 1) {
+          // Find which row has a team
+          for(const row of emailRows) {
+            if(row.id === PROFILE.id) continue;
+            const t = await sb.get('team_members','user_id=eq.'+row.id+'&limit=1');
+            if(t.length) {
+              // Merge: update the team_members to point to current auth user
+              await sb.patch('team_members','user_id=eq.'+row.id,{user_id:PROFILE.id}).catch(()=>{});
+              // Update class_enrollments too
+              await sb.patch('class_enrollments','user_id=eq.'+row.id,{user_id:PROFILE.id}).catch(()=>{});
+              break;
+            }
+          }
+        }
+      }
+    } catch(e) { console.warn('Team link check failed:', e.message); }
+  }
+
   showApp();
 }
 async function tryRestoreSession(){
@@ -2659,7 +2687,7 @@ async function loadApplications(){
   if(!listEl)return;
   document.getElementById('app-detail').style.display='none';
   listEl.style.display='flex';
-  const filter=document.getElementById('app-filter')?.value||'pending';
+  const filter=document.getElementById('app-filter')?.value||'all';
   try{
     const all=await sb.get('applications','select=id,status,team_name,idea_title,applicant_type,member_count,created_at,lead_name&order=created_at.desc');
     const pending=all.filter(r=>r.status==='pending').length;
