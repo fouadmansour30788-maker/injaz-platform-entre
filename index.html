@@ -971,8 +971,8 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <div class="fctr g8">
           <span class="tag twarn" id="app-pending-badge" style="font-size:11px;padding:4px 10px">0 pending</span>
           <select class="sel" id="app-filter" onchange="loadApplications()" style="font-size:12px">
-            <option value="pending">Pending</option><option value="approved_dt">→ DT</option>
-            <option value="approved_fb1">→ FB1</option><option value="ineligible">Ineligible</option><option value="all">All</option>
+            <option value="all" selected>All</option><option value="pending">Pending</option><option value="approved_dt">→ DT</option>
+            <option value="approved_fb1">→ FB1</option><option value="ineligible">Ineligible</option>
           </select>
         </div>
       </div>
@@ -3273,7 +3273,7 @@ async function afSubmit(){
       sb._uid   = authData.user?.id;
     }
     const h={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+tok,'Prefer':'return=minimal'};
-    await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({
+    const appRes = await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({
         lead_auth_id:authData.user.id,
         lead_name:v('af-name'),lead_email:email,lead_dob:v('af-dob'),
         phone:v('af-phone'),governorate:v('af-gov'),district:v('af-district'),
@@ -3294,6 +3294,10 @@ async function afSubmit(){
         expectations:v('af-expectations'),
         member_count:members.length,members,status:'pending'
       })});
+    if(!appRes.ok){
+      const appErr=await appRes.json().catch(()=>({}));
+      throw new Error('Application save failed: '+(appErr.message||appErr.error||appRes.status));
+    }
     // Update lead profile with full details (best-effort, non-critical)
     if(authData.user?.id) {
       await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
