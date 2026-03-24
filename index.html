@@ -3265,9 +3265,13 @@ async function afSubmit(){
     const authData=await authRes.json();
     if(authData.error||!authData.user)return afShowErr(4,authData.error?.message||authData.msg||'Sign up failed.');
     // Use session token if available, otherwise anon key
-    // (email confirmation may delay session creation)
     const tok = authData.session?.access_token || authData.access_token || SUPA_KEY;
     const emailConfirmRequired = !authData.session && authData.user && !authData.user.confirmed_at;
+    // Set sb token so all subsequent sb.get/post calls use the right auth
+    if(authData.session?.access_token) {
+      sb._token = authData.session.access_token;
+      sb._uid   = authData.user?.id;
+    }
     const h={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+tok,'Prefer':'return=minimal'};
     await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({
         lead_auth_id:authData.user.id,
@@ -3290,18 +3294,20 @@ async function afSubmit(){
         expectations:v('af-expectations'),
         member_count:members.length,members,status:'pending'
       })});
-    // Update lead profile with full details
-    await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
-      method:'PATCH',
-      headers:h,
-      body:JSON.stringify({
-        full_name:v('af-name'), date_of_birth:v('af-dob'),
-        gender:v('af-gender'), nationality:v('af-nationality'),
-        governorate:v('af-gov'),district:v('af-district'),
-        has_disability:v('af-disability')!=='none',
-        disability_type:v('af-disability')!=='none'?v('af-disability'):null
-      })
-    });
+    // Update lead profile with full details (best-effort, non-critical)
+    if(authData.user?.id) {
+      await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
+        method:'PATCH',
+        headers:h,
+        body:JSON.stringify({
+          full_name:v('af-name'), date_of_birth:v('af-dob'),
+          gender:v('af-gender'), nationality:v('af-nationality'),
+          governorate:v('af-gov'),district:v('af-district'),
+          has_disability:v('af-disability')!=='none',
+          disability_type:v('af-disability')!=='none'?v('af-disability'):null
+        })
+      }).catch(e=>console.warn('Profile update skipped:',e));
+    }
     // Create pending user rows for co-founders (no auth yet)
     // They will be linked when they sign up using the same email
     for(const m of members.filter(m=>m.role!=='lead' && m.email && m.name)){
