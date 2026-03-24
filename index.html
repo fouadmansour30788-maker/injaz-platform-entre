@@ -1426,6 +1426,7 @@ async function afterLogin(){
       if(!myTeams.length) {
         // No team found — check if there's another users row with same email
         // that already has a team (co-founder pre-created before they signed up)
+        if(!PROFILE.email) return;
         const emailRows = await sb.get('users',
           'email=eq.'+encodeURIComponent(PROFILE.email)+'&select=id&order=created_at'
         );
@@ -3333,6 +3334,7 @@ async function afSubmit(){
 // ── JOURNEY: application status for unassigned participants ──
 async function checkApplicationStatus(){
   try{
+    if(!PROFILE.auth_id) return emptyState('📋','No application yet','You have not submitted an application yet.');
     const apps=await sb.get('applications','lead_auth_id=eq.'+PROFILE.auth_id+'&order=created_at.desc&limit=1');
     if(!apps.length)return emptyState('📋','No application yet','You have not submitted an application yet.');
     const app=apps[0];
@@ -3348,21 +3350,7 @@ async function checkApplicationStatus(){
 }
 
 
-async function checkApplicationStatus(){
-  try{
-    const apps=await sb.get('applications','lead_auth_id=eq.'+PROFILE.auth_id+'&order=created_at.desc&limit=1');
-    if(!apps.length)return emptyState('📋','No application yet','You have not submitted an application yet.');
-    const app=apps[0];
-    const s={pending:{icon:'⏳',title:'Application under review',color:'var(--warn)',bg:'var(--warn-bg)',msg:'The INJAZ Lebanon team is reviewing your application and will contact you soon.'},approved_dt:{icon:'✅',title:'Approved — Design Thinking',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to the Design Thinking phase. A coordinator will contact you.'},approved_fb1:{icon:'✅',title:'Approved — FB Stage 1',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to Financial Bootcamp Stage 1.'},ineligible:{icon:'❌',title:'Application not approved',color:'var(--fail)',bg:'var(--fail-bg)',msg:'Unfortunately your application did not meet eligibility criteria. Contact your coordinator.'}}[app.status]||{icon:'⏳',title:'Application submitted',color:'var(--warn)',bg:'var(--warn-bg)',msg:'Your application is being processed.'};
-    return `<div style="border-radius:var(--rl);padding:1.5rem;background:${s.bg};border:1px solid ${s.color};margin-bottom:1rem"><div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><span style="font-size:1.5rem">${s.icon}</span><p style="font-size:15px;font-weight:600;color:${s.color}">${s.title}</p></div><p style="font-size:13px;color:${s.color};line-height:1.6">${s.msg}</p></div>
-      <div class="card"><div class="clbl mb12">Your application</div><div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
-        <div class="fbet"><span style="color:var(--t3)">Idea</span><strong>${app.idea_title||'—'}</strong></div>
-        <div class="fbet"><span style="color:var(--t3)">Team members</span><span>${app.member_count||1}</span></div>
-        <div class="fbet"><span style="color:var(--t3)">Partner</span><span>${app.partner||'—'}</span></div>
-        <div class="fbet"><span style="color:var(--t3)">Submitted</span><span>${app.created_at?new Date(app.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):''}</span></div>
-      </div></div>`;
-  }catch(e){return emptyState('🏁','No team yet','You have not been assigned to a team yet. Contact your INJAZ coordinator.');}
-}
+
 
 
 </script>
