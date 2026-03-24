@@ -329,6 +329,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid #F1F5F9;text-align:center;">
         <p style="font-size:13px;color:#64748B;margin-bottom:10px">First time? Apply to GIL 2026</p>
         <button onclick="showApplyForm()" style="width:100%;padding:11px;background:transparent;border:1.5px solid #1A56DB;border-radius:10px;color:#1A56DB;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Apply to INJAZ Lebanon →</button>
+        <button onclick="showMemberSignup()" style="width:100%;margin-top:8px;padding:10px;background:transparent;border:1.5px solid #E2E8F0;border-radius:10px;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit;">I'm a team member — create my account</button>
       </div>
       <div class="auth-footer-r">INJAZ Lebanon · Program Platform</div>
     </div>
@@ -2882,6 +2883,69 @@ async function uploadDocument(input) {
 }
 
 
+// ── MEMBER SIGNUP ──
+function showMemberSignup() {
+  document.getElementById('member-signup-modal').style.display = 'flex';
+  document.getElementById('ms-email').focus();
+  document.getElementById('ms-err').style.display = 'none';
+}
+function hideMemberSignup() {
+  document.getElementById('member-signup-modal').style.display = 'none';
+}
+
+async function doMemberSignup() {
+  const email  = document.getElementById('ms-email').value.trim();
+  const pw     = document.getElementById('ms-pw').value;
+  const pw2    = document.getElementById('ms-pw2').value;
+  const errEl  = document.getElementById('ms-err');
+  const btn    = document.getElementById('ms-btn');
+  const label  = document.getElementById('ms-label');
+  const spin   = document.getElementById('ms-spin');
+
+  errEl.style.display = 'none';
+
+  if(!email || !email.includes('@')) { errEl.textContent = 'Enter a valid email address.'; errEl.style.display='block'; return; }
+  if(pw.length < 8)  { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display='block'; return; }
+  if(pw !== pw2)     { errEl.textContent = 'Passwords do not match.'; errEl.style.display='block'; return; }
+
+  btn.disabled = true; label.textContent = 'Creating account...'; spin.style.display = 'block';
+
+  try {
+    // Sign up with Supabase Auth
+    const res = await fetch(SUPA_URL+'/auth/v1/signup', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':SUPA_KEY},
+      body: JSON.stringify({email, password:pw})
+    });
+    const data = await res.json();
+
+    if(data.error) throw new Error(data.error.message || data.msg || 'Sign up failed');
+    if(!data.user)  throw new Error('Account could not be created. Try again.');
+
+    // The trigger will link their auth_id to the existing users row by email
+    // Give it a moment then sign them in
+    await new Promise(r => setTimeout(r, 800));
+
+    hideMemberSignup();
+    // Pre-fill sign-in form
+    document.getElementById('auth-email').value = email;
+    document.getElementById('auth-pw').value = pw;
+    toast('Account created!', 'Signing you in...', 'success');
+    await doLogin();
+
+  } catch(e) {
+    const msg = e.message || 'Something went wrong';
+    if(msg.includes('already registered') || msg.includes('already exists')) {
+      errEl.textContent = 'This email already has an account. Use the sign-in form above.';
+    } else {
+      errEl.textContent = msg;
+    }
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; label.textContent = 'Create account & join my team'; spin.style.display = 'none';
+  }
+}
+
 async function loadParticipantNotifications(){
   const el = document.getElementById('p-notif-list');
   if(!el) return;
@@ -3103,6 +3167,7 @@ function afAddMember(){
       <div><label class="flbl">District</label><select class="finput af-m-district" id="af-m-dist-${num}" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select governorate first</option></select></div>
       <div><label class="flbl">Education</label><select class="finput af-m-education" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>High school or below</option><option>Vocational / Technical</option><option>Bachelor's (in progress)</option><option>Bachelor's (completed)</option><option>Master's or above</option></select></div>
       <div><label class="flbl">Employment</label><select class="finput af-m-employment" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Student</option><option>Employed full-time</option><option>Employed part-time</option><option>Self-employed</option><option>Unemployed seeking work</option><option>Not seeking employment</option></select></div>
+      <div><label class="flbl">Disability</label><select class="finput af-m-disability" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="none">None</option><option value="physical">Physical</option><option value="visual">Visual</option><option value="hearing">Hearing</option><option value="cognitive">Cognitive</option><option value="other">Other</option></select></div>
       <div style="grid-column:1/-1"><label class="flbl">Facebook / Instagram / LinkedIn <span style="font-weight:400;color:#94A3B8">(optional, any)</span></label><input class="finput af-m-social" placeholder="e.g. @username or profile URL" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
     </div>`;
   list.appendChild(div);
@@ -3175,6 +3240,7 @@ async function afSubmit(){
         education:row.querySelector('.af-m-education')?.value,
         employment:row.querySelector('.af-m-employment')?.value,
         social:row.querySelector('.af-m-social')?.value.trim(),
+        disability:row.querySelector('.af-m-disability')?.value||'none',
         role:'member'
       });
     });
@@ -3295,6 +3361,50 @@ async function checkApplicationStatus(){
       <button class="btn" onclick="hideEnrollModal()">Cancel</button>
       <button class="btn-p" onclick="doEnrollInClass()" id="enroll-confirm-btn">Enroll all members</button>
     </div>
+  </div>
+</div>
+
+<!-- MEMBER SIGNUP MODAL -->
+<div id="member-signup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:2rem;width:420px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,0.3);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <div>
+        <h3 style="font-size:17px;font-weight:700;color:#0A1C3E;margin-bottom:3px">Create your account</h3>
+        <p style="font-size:12px;color:#64748B">For team members already enrolled by INJAZ Lebanon</p>
+      </div>
+      <button onclick="hideMemberSignup()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94A3B8;padding:2px 6px;">×</button>
+    </div>
+
+    <div style="background:#EFF6FF;border:1px solid #DBEAFE;border-radius:8px;padding:10px 14px;margin-bottom:1.25rem;font-size:12px;color:#1E40AF;line-height:1.6;">
+      📋 Your team leader submitted an application with your email. Use that <strong>same email</strong> here to link your account to your team.
+    </div>
+
+    <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Your email address</label>
+    <input id="ms-email" type="email" placeholder="same email used in the application"
+      style="width:100%;padding:10px 13px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:14px;color:#0A1C3E;background:#F8FAFC;outline:none;box-sizing:border-box;margin-bottom:12px"
+      onfocus="this.style.borderColor='#1A56DB'" onblur="this.style.borderColor='#E2E8F0'">
+
+    <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Choose a password</label>
+    <input id="ms-pw" type="password" placeholder="Min 8 characters"
+      style="width:100%;padding:10px 13px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:14px;color:#0A1C3E;background:#F8FAFC;outline:none;box-sizing:border-box;margin-bottom:12px"
+      onfocus="this.style.borderColor='#1A56DB'" onblur="this.style.borderColor='#E2E8F0'">
+
+    <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Confirm password</label>
+    <input id="ms-pw2" type="password" placeholder="Repeat password"
+      style="width:100%;padding:10px 13px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:14px;color:#0A1C3E;background:#F8FAFC;outline:none;box-sizing:border-box;margin-bottom:16px"
+      onfocus="this.style.borderColor='#1A56DB'" onblur="this.style.borderColor='#E2E8F0'">
+
+    <div id="ms-err" style="display:none;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;font-size:13px;color:#DC2626;margin-bottom:12px"></div>
+
+    <button onclick="doMemberSignup()" id="ms-btn"
+      style="width:100%;padding:12px;background:#1A56DB;border:none;border-radius:10px;color:white;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
+      <span id="ms-label">Create account & join my team</span>
+      <div class="spin" id="ms-spin" style="display:none;width:16px;height:16px;border-width:2px;border-color:rgba(255,255,255,0.3);border-top-color:white"></div>
+    </button>
+
+    <p style="font-size:12px;color:#94A3B8;text-align:center;margin-top:12px">
+      Already have an account? <button onclick="hideMemberSignup()" style="background:none;border:none;color:#1A56DB;cursor:pointer;font-size:12px;padding:0;font-family:inherit;">Sign in above</button>
+    </p>
   </div>
 </div>
 
