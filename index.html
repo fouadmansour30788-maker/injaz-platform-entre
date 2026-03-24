@@ -1421,21 +1421,34 @@ async function afterLogin(){
     try {
       const myTeams = await sb.get('team_members','user_id=eq.'+PROFILE.id+'&limit=1');
       if(!myTeams.length) {
-        // No team found — check if there's a DIFFERENT users row with same email
-        // (happens when co-founder signed up and got a new row instead of linking)
-        const emailRows = await sb.get('users','email=eq.'+encodeURIComponent(PROFILE.email)+'&order=created_at');
-        if(emailRows.length > 1) {
-          // Find which row has a team
-          for(const row of emailRows) {
-            if(row.id === PROFILE.id) continue;
-            const t = await sb.get('team_members','user_id=eq.'+row.id+'&limit=1');
-            if(t.length) {
-              // Merge: update the team_members to point to current auth user
-              await sb.patch('team_members','user_id=eq.'+row.id,{user_id:PROFILE.id}).catch(()=>{});
-              // Update class_enrollments too
-              await sb.patch('class_enrollments','user_id=eq.'+row.id,{user_id:PROFILE.id}).catch(()=>{});
-              break;
+        // No team found — check if there's another users row with same email
+        // that already has a team (co-founder pre-created before they signed up)
+        const emailRows = await sb.get('users',
+          'email=eq.'+encodeURIComponent(PROFILE.email)+'&select=id&order=created_at'
+        );
+        for(const row of emailRows) {
+          if(!row.id || row.id === PROFILE.id) continue;
+          const t = await sb.get('team_members',
+            'user_id=eq.'+row.id+'&select=team_id,role_in_team&limit=1'
+          );
+          if(t.length) {
+            const {team_id, role_in_team} = t[0];
+            if(!team_id) continue;
+            // Create new team_members row for current user
+            await sb.post('team_members',{
+              team_id, user_id: PROFILE.id, role_in_team: role_in_team||'member'
+            }).catch(()=>{});
+            // Create class_enrollments for current user
+            const ce = await sb.get('class_enrollments',
+              'user_id=eq.'+row.id+'&select=class_id'
+            );
+            for(const c of ce) {
+              if(!c.class_id) continue;
+              await sb.post('class_enrollments',{
+                class_id: c.class_id, user_id: PROFILE.id
+              }).catch(()=>{});
             }
+            break;
           }
         }
       }
