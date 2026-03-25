@@ -953,6 +953,14 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <p style="color:var(--t3);font-size:13px">Loading...</p>
       </div>
     </div>
+
+    <!-- ════ PARTICIPANT: SUBMIT PHASE WORK ════ -->
+    <div class="page" id="pg-submit-work">
+      <button class="back-btn" onclick="nav('pg-journey')">← Back to my journey</button>
+      <div id="submit-work-content">
+        <div class="empty"><div class="spin" style="margin:0 auto"></div></div>
+      </div>
+    </div>
     <!-- ════ PARTICIPANT: MY JOURNEY ════ -->
     <div class="page" id="pg-journey">
       <div class="sh"><h2>My journey</h2><p id="journey-team-name">Loading...</p></div>
@@ -960,7 +968,15 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       <div id="journey-result"></div>
       <div class="g2 mb15">
         <div class="card" id="journey-phase-info"></div>
-        <div class="card" id="journey-checklist"></div>
+        <div class="card" id="journey-checklist">
+          <div class="clbl mb12">Phase submission</div>
+          <div id="journey-submission-status">
+            <p style="color:var(--t3);font-size:13px">Loading...</p>
+          </div>
+          <button class="btn-p" style="margin-top:12px;width:100%" onclick="nav('pg-submit-work')">
+            📤 Submit my phase work
+          </button>
+        </div>
       </div>
       <div class="card" id="journey-docs"></div>
 
@@ -1419,8 +1435,8 @@ const ADMIN_TABS=[
   {l:'Notifications',p:'pg-notifications'},{l:'Register team',p:'pg-register'},
 ];
 const PARTICIPANT_TABS=[
-  {l:'My journey',p:'pg-journey'},{l:'My team',p:'pg-my-team'},
-  {l:'My attendance',p:'pg-p-attendance'},{l:'Notifications',p:'pg-p-notifications'},
+  {l:'My journey',p:'pg-journey'},{l:'Submit work',p:'pg-submit-work'},
+  {l:'My team',p:'pg-my-team'},{l:'My attendance',p:'pg-p-attendance'},{l:'Notifications',p:'pg-p-notifications'},
 ];
 function buildNav(){
   const tabs=ROLE==='admin'?ADMIN_TABS:PARTICIPANT_TABS;
@@ -1448,6 +1464,7 @@ function nav(id){
   if(id==='pg-applications') loadApplications();
   if(id==='pg-notifications') loadNotifications();
   if(id==='pg-p-notifications') loadParticipantNotifications();
+  if(id==='pg-submit-work') loadSubmitWork();
 }
 
 // ── AUTH ──
@@ -2000,8 +2017,8 @@ async function loadAssessQueue(){
         <td style="color:var(--t2)">${t.idea_title||'—'}</td>
         <td>${t.partner_code||'—'}</td>
         <td>${e?phaseTag(e.phase_code):'—'}</td>
-        <td><span style="color:var(--t3);font-size:12px">Pending check</span></td>
-        <td><button class="btn btn-sm">Score</button></td>
+        <td id="sub-status-${t.id}"><span style="color:var(--t3);font-size:12px">Checking...</span></td>
+        <td><button class="btn btn-sm" onclick="openAssessSheet(${JSON.stringify(t).replace(/"/g,'&quot;')})">Score →</button></td>
       </tr>`;
     }).join(''):`<tr><td colspan="6">${emptyState('✅','Queue is empty','')}</td></tr>`;
   } catch(e){ toast('Error loading queue',e.message,'error'); }
@@ -2224,6 +2241,41 @@ async function openAssessSheet(team){
   document.getElementById('oc-advance-desc').textContent = 'Score ≥ 60 & attendance ≥ 60%';
   document.getElementById('oc-exit-label').textContent = next==='SIYB'?'Not ready for SIYB':'Exit program';
 
+  // Load submission if exists
+  try {
+    const subs = await sb.get('phase_submissions',
+      'team_id=eq.'+team.id+'&phase_code=eq.'+phase+'&order=created_at.desc&limit=1'
+    ).catch(()=>[]);
+    const sub = subs[0];
+    const banner = document.getElementById('phase-gate-banner');
+    if(sub && sub.status !== 'draft') {
+      const def = PHASE_SUBMISSION_DEF[phase];
+      let subHtml = `<div style="margin-top:12px;padding-top:12px;border-top:0.5px solid var(--bdr)">
+        <div class="fbet mb10"><span style="font-size:12px;font-weight:600">Team submission</span>
+        <span class="tag ${sub.status==='submitted'?'tok':sub.status==='assessed'?'twarn':'tfb1'}">${sub.status}</span></div>`;
+      if(sub.answers && def) {
+        def.questions.forEach(q=>{
+          const ans = sub.answers[q.key];
+          if(ans) subHtml+=`<div style="margin-bottom:10px">
+            <p style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:3px">${q.label}</p>
+            <p style="font-size:13px;color:var(--t);line-height:1.6">${ans}</p>
+          </div>`;
+        });
+      }
+      if(sub.files?.length){
+        subHtml+=`<div style="margin-top:8px"><p style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:6px">Files</p>`;
+        sub.files.forEach(f=>subHtml+=`<a href="${f.url}" target="_blank" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--fb1);margin-bottom:4px;text-decoration:none">📄 ${f.name} ↗</a>`);
+        subHtml+='</div>';
+      }
+      subHtml+='</div>';
+      banner.insertAdjacentHTML('beforeend', subHtml);
+      // Mark as under review
+      if(sub.status==='submitted'){
+        await sb.patch('phase_submissions','id=eq.'+sub.id,{status:'under_review'}).catch(()=>{});
+      }
+    }
+  } catch(e){ console.warn('Submission load failed:',e.message); }
+
   nav('pg-assess-sheet');
 }
 function recalc(){
@@ -2295,6 +2347,11 @@ async function doSubmitAssessment(){
           toast('Referred to SIYB (ILO)','Team is market-ready and referred to ILO SIYB programme');
         }
       }
+      // Mark submission as assessed
+      await sb.patch('phase_submissions',
+        'team_id=eq.'+currentTeam.id+'&phase_code=eq.'+(currentTeam.current_phase||'DT'),
+        {status:'assessed',assessment_id:null}
+      ).catch(()=>{});
       toast('Assessment submitted','Team notified of outcome');
       nav('pg-assess-queue');
       loadAssessQueue();
@@ -2841,11 +2898,35 @@ async function loadJourney(){
     }
 
     // Current phase info
+    const phaseNames={DT:'Design Thinking',FB1:'FB Stage 1',FB2:'FB Stage 2',INC:'Incubation'};
+    const phaseDays={DT:'7-day program',FB1:'3-day bootcamp',FB2:'5-day bootcamp',INC:'Ongoing incubation'};
     document.getElementById('journey-phase-info').innerHTML=`
       <div class="clbl mb8">Current phase</div>
-      <p style="font-size:14px;font-weight:500;margin-bottom:4px">${team.current_phase==='DT'?'Design Thinking':team.current_phase==='FB1'?'FB Stage 1':team.current_phase==='FB2'?'FB Stage 2':'Incubation'}</p>
-      <p style="font-size:12px;color:var(--t2);margin-bottom:10px">${team.current_phase==='DT'?'7-day program':team.current_phase==='FB1'?'3-day bootcamp':team.current_phase==='FB2'?'5-day bootcamp':'Ongoing incubation'}</p>
-      <div style="font-size:12px;color:var(--t3);padding:10px;background:var(--bg);border-radius:var(--r)">Phase gate locked until INJAZ team submits your assessment. You will be notified immediately.</div>`;
+      <p style="font-size:14px;font-weight:500;margin-bottom:4px">${phaseNames[team.current_phase]||team.current_phase}</p>
+      <p style="font-size:12px;color:var(--t2);margin-bottom:10px">${phaseDays[team.current_phase]||''}</p>
+      <div style="font-size:12px;color:var(--t3);padding:10px;background:var(--bg);border-radius:var(--r)">
+        Attend all sessions, submit your work, then INJAZ will assess and notify you of the outcome.
+      </div>`;
+
+    // Submission status in checklist
+    try {
+      const subs = await sb.get('phase_submissions',
+        'team_id=eq.'+teamId+'&phase_code=eq.'+team.current_phase+'&order=created_at.desc&limit=1'
+      ).catch(()=>[]);
+      const sub = subs[0];
+      const subStatusBadge = !sub ? '<span class="tag tpend">Not submitted</span>' :
+        sub.status==='submitted'||sub.status==='under_review' ? '<span class="tag tok">Submitted ✓</span>' :
+        sub.status==='assessed' ? '<span class="tag twarn">Assessed</span>' :
+        '<span class="tag tpend">Draft saved</span>';
+      const subStatusMsg = !sub ? 'You have not submitted your phase work yet.' :
+        sub.status==='submitted' ? 'Your work is submitted and under review.' :
+        sub.status==='under_review' ? 'INJAZ is reviewing your submission.' :
+        sub.status==='assessed' ? 'Your submission has been assessed.' :
+        'Draft saved — complete and submit when ready.';
+      document.getElementById('journey-submission-status').innerHTML=`
+        <div class="fbet mb8"><span style="font-size:13px;font-weight:500">Phase submission</span>${subStatusBadge}</div>
+        <p style="font-size:12px;color:var(--t3)">${subStatusMsg}</p>`;
+    } catch(e){}
 
     // Documents
     const docs=await sb.get('documents','team_id=eq.'+teamId+'&order=created_at.desc');
@@ -3464,6 +3545,273 @@ async function doMemberSignup() {
     btn.disabled = false; label.textContent = 'Create account & join my team'; spin.style.display = 'none';
   }
 }
+
+// ── PHASE SUBMISSION DEFINITIONS ──
+const PHASE_SUBMISSION_DEF = {
+  DT: {
+    label:'Design Thinking', icon:'💡',
+    deliverable:'Business Model Canvas (BMC)',
+    description:'You have completed the Design Thinking phase. Submit your BMC and answer the questions below so INJAZ can assess your readiness for FB Stage 1.',
+    questions:[
+      {label:'What problem are you solving and for whom?',key:'problem'},
+      {label:'Describe your proposed solution and how it works',key:'solution'},
+      {label:'Who are your target customers and what is the market size?',key:'customers'},
+      {label:'What is your revenue model?',key:'revenue_model'},
+      {label:'What are your key competitive advantages?',key:'competitive_advantage'},
+      {label:'What did you learn during DT that shaped your idea?',key:'dt_learnings'},
+    ],
+    fileLabel:'Upload your Business Model Canvas (PDF or image)',
+    fileHint:'Required: BMC. Optional: customer interview notes, market research.',
+  },
+  FB1: {
+    label:'FB Stage 1', icon:'📊',
+    deliverable:'Comprehensive Business Plan',
+    description:'Submit your full Business Plan for INJAZ review before your FB Stage 2 assessment.',
+    questions:[
+      {label:'Executive summary of your business plan',key:'exec_summary'},
+      {label:'Target market and competitive landscape',key:'market_analysis'},
+      {label:'Go-to-market strategy',key:'gtm_strategy'},
+      {label:'Revenue streams and pricing model',key:'revenue_streams'},
+      {label:'Key milestones for the next 12 months',key:'milestones'},
+      {label:'Biggest risks and how you will mitigate them',key:'risks'},
+    ],
+    fileLabel:'Upload your Business Plan',
+    fileHint:'Required: Business plan. Optional: market research, financial model draft.',
+  },
+  FB2: {
+    label:'FB Stage 2', icon:'💰',
+    deliverable:'Financial Projections & Detailed Costing',
+    description:'Submit your detailed financial model and costing analysis for incubation assessment.',
+    questions:[
+      {label:'Detailed cost structure (fixed and variable costs)',key:'cost_structure'},
+      {label:'Revenue projections for Years 1, 2, and 3',key:'revenue_projections'},
+      {label:'Break-even point with calculations',key:'break_even'},
+      {label:'Funding needed and how you will use it',key:'funding_needs'},
+      {label:'Revenue or customers already generated',key:'traction'},
+      {label:'5-year vision for the business',key:'vision'},
+    ],
+    fileLabel:'Upload your Financial Projections',
+    fileHint:'Required: Financial model (Excel or PDF). Optional: investor deck.',
+  },
+  INC: {
+    label:'Incubation', icon:'🚀',
+    deliverable:'Market-ready Startup with Brand Identity',
+    description:'Submit your final startup package for SIYB (ILO) referral assessment.',
+    questions:[
+      {label:'Current state of your product/service — is it launched?',key:'launch_status'},
+      {label:'Evidence of customers or revenue (numbers, contracts)',key:'customer_evidence'},
+      {label:'Brand identity (name, logo, tagline, positioning)',key:'brand_identity'},
+      {label:'Operational systems you have put in place',key:'operations'},
+      {label:'Legal registration and compliance status',key:'legal_status'},
+      {label:'Why you are ready for the SIYB (ILO) programme',key:'siyb_readiness'},
+    ],
+    fileLabel:'Upload your startup portfolio',
+    fileHint:'Required: Brand kit and product overview. Optional: revenue proof, legal docs.',
+  },
+};
+
+let _submitTeamId = null;
+let _submitPhase  = null;
+let _existingSubId = null;
+
+async function loadSubmitWork() {
+  const el = document.getElementById('submit-work-content');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>';
+
+  try {
+    // Get team
+    const tmRows = await sb.get('team_members','user_id=eq.'+PROFILE.id+'&select=team_id&limit=1');
+    if(!tmRows.length){
+      el.innerHTML = '<div class="card">'+emptyState('👥','No team yet','You have not been assigned to a team yet.')+'</div>';
+      return;
+    }
+    _submitTeamId = tmRows[0].team_id;
+    const [team] = await sb.get('teams','id=eq.'+_submitTeamId+'&select=name,current_phase,idea_title');
+    _submitPhase = team.current_phase;
+    const def = PHASE_SUBMISSION_DEF[_submitPhase];
+    if(!def){
+      el.innerHTML = '<div class="card">'+emptyState('📋','No submission required','No submission is required for this phase.')+'</div>';
+      return;
+    }
+
+    // Check for existing submission
+    const subs = await sb.get('phase_submissions',
+      'team_id=eq.'+_submitTeamId+'&phase_code=eq.'+_submitPhase+'&order=created_at.desc&limit=1'
+    ).catch(()=>[]);
+    const existing = subs[0] || null;
+    _existingSubId = existing?.id || null;
+    const answers = existing?.answers || {};
+    const files   = existing?.files  || [];
+    const status  = existing?.status || 'draft';
+
+    const statusBadge = {
+      draft:        '<span class="tag tpend">Draft</span>',
+      submitted:    '<span class="tag tok">Submitted ✓</span>',
+      under_review: '<span class="tag tfb1">Under review</span>',
+      assessed:     '<span class="tag twarn">Assessed</span>',
+    }[status] || '';
+
+    const isSubmitted = status === 'submitted' || status === 'under_review' || status === 'assessed';
+
+    // Build the form
+    const questionsHtml = def.questions.map((q,i) => `
+      <div style="margin-bottom:1.25rem">
+        <label class="flbl">${i+1}. ${q.label} ${isSubmitted?'':'<span style="color:var(--fail)">*</span>'}</label>
+        ${isSubmitted
+          ? `<div style="background:var(--bg);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--t2);line-height:1.6;border:0.5px solid var(--bdr)">${answers[q.key]||'<span style="color:var(--t3)">Not answered</span>'}</div>`
+          : `<textarea id="sub-q-${q.key}" rows="3" class="txa" placeholder="Your answer..." style="resize:vertical">${answers[q.key]||''}</textarea>`
+        }
+      </div>`
+    ).join('');
+
+    const filesHtml = files.length ? `
+      <div style="margin-bottom:1rem">
+        <div class="clbl mb8">Uploaded files</div>
+        ${files.map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:13px">
+          <span>📄</span><span style="flex:1">${f.name}</span>
+          <a href="${f.url}" target="_blank" style="color:var(--fb1);font-size:12px">View</a>
+        </div>`).join('')}
+      </div>` : '';
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
+        <span style="font-size:2rem">${def.icon}</span>
+        <div>
+          <h2 style="font-size:18px;font-weight:700">${def.label} — Phase Submission</h2>
+          <p style="font-size:12px;color:var(--t3)">${team.name} · ${def.deliverable}</p>
+        </div>
+        <div style="margin-left:auto">${statusBadge}</div>
+      </div>
+
+      ${isSubmitted ? `
+        <div style="background:var(--pass-bg);border:1px solid #9FE1CB;border-radius:10px;padding:12px 16px;margin-bottom:1.5rem;font-size:13px;color:var(--pass-t)">
+          ✅ <strong>Work submitted.</strong> INJAZ Lebanon is reviewing your submission. You will be notified of the outcome.
+          ${status==='assessed'?'<br><strong>Your work has been assessed — check your journey page for results.</strong>':''}
+        </div>` : `
+        <div style="background:#EFF6FF;border:1px solid #DBEAFE;border-radius:10px;padding:12px 16px;margin-bottom:1.5rem;font-size:13px;color:#1E40AF;line-height:1.6">
+          📋 ${def.description}
+        </div>`}
+
+      <div class="card mb15">
+        <div class="clbl mb15">Questions</div>
+        ${questionsHtml}
+      </div>
+
+      <div class="card mb15">
+        <div class="clbl mb12">${def.fileLabel}</div>
+        <p style="font-size:12px;color:var(--t3);margin-bottom:12px">${def.fileHint}</p>
+        ${filesHtml}
+        ${!isSubmitted ? `
+        <label style="cursor:pointer;display:block;border:1.5px dashed var(--bdr);border-radius:8px;padding:1.5rem;text-align:center">
+          <input type="file" id="sub-file-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+            style="display:none" onchange="uploadSubmissionFile(this)">
+          <div style="font-size:1.5rem;margin-bottom:6px">📁</div>
+          <p style="font-size:13px;font-weight:500">Click to upload files</p>
+          <p style="font-size:11px;color:var(--t3)">PDF, Word, Excel, PowerPoint, images</p>
+        </label>
+        <div id="sub-upload-status" style="font-size:12px;color:var(--t3);margin-top:8px"></div>` : ''}
+      </div>
+
+      ${!isSubmitted ? `
+      <div id="sub-err" style="display:none;background:var(--fail-bg);border:1px solid #F09595;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--fail-t);margin-bottom:12px"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1" onclick="saveSubmission('draft')">💾 Save draft</button>
+        <button class="btn-p" style="flex:2" onclick="saveSubmission('submitted')">📤 Submit for assessment</button>
+      </div>
+      <p style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Once submitted, you cannot edit. Make sure your answers are complete.</p>` : ''}
+    `;
+  } catch(e) {
+    el.innerHTML = '<div class="card">'+emptyState('❌','Error','Could not load submission form: '+e.message)+'</div>';
+  }
+}
+
+async function uploadSubmissionFile(input) {
+  const files = Array.from(input.files);
+  if(!files.length || !_submitTeamId) return;
+  const statusEl = document.getElementById('sub-upload-status');
+  if(statusEl) statusEl.textContent = 'Uploading '+files.length+' file(s)...';
+  const uploaded = [];
+  for(const file of files){
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const path = _submitTeamId+'/'+_submitPhase+'/'+Date.now()+'_'+safeName;
+      const res = await fetch(SUPA_URL+'/storage/v1/object/documents/'+path,{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+sb._token,
+          'Content-Type':file.type||'application/octet-stream','x-upsert':'true'},
+        body: file,
+      });
+      if(!res.ok) throw new Error('Upload failed: '+res.status);
+      const pub = SUPA_URL+'/storage/v1/object/public/documents/'+path;
+      uploaded.push({name:file.name, url:pub, path});
+    } catch(e){ toast('Upload failed',file.name+': '+e.message,'error'); }
+  }
+  if(uploaded.length){
+    // Save files to existing draft or create one
+    const existingFiles = [];
+    if(_existingSubId){
+      const s = await sb.get('phase_submissions','id=eq.'+_existingSubId+'&select=files').catch(()=>[]);
+      if(s[0]?.files) existingFiles.push(...s[0].files);
+    }
+    const allFiles = [...existingFiles, ...uploaded];
+    if(_existingSubId){
+      await sb.patch('phase_submissions','id=eq.'+_existingSubId,{files:allFiles, updated_at:new Date().toISOString()});
+    } else {
+      const created = await sb.post('phase_submissions',{
+        team_id:_submitTeamId, phase_code:_submitPhase,
+        submitted_by:PROFILE.id, status:'draft', files:allFiles, answers:{}
+      });
+      _existingSubId = Array.isArray(created)?created[0]?.id:created?.id;
+    }
+    if(statusEl) statusEl.textContent = uploaded.length+' file(s) uploaded ✓';
+    loadSubmitWork();
+  }
+  input.value='';
+}
+
+async function saveSubmission(status) {
+  const errEl = document.getElementById('sub-err');
+  if(errEl) errEl.style.display='none';
+  const def = PHASE_SUBMISSION_DEF[_submitPhase];
+  if(!def) return;
+
+  // Collect answers
+  const answers = {};
+  let allAnswered = true;
+  def.questions.forEach(q=>{
+    const val = document.getElementById('sub-q-'+q.key)?.value.trim()||'';
+    answers[q.key] = val;
+    if(status==='submitted' && !val) allAnswered = false;
+  });
+
+  if(status==='submitted' && !allAnswered){
+    if(errEl){ errEl.textContent='Please answer all questions before submitting.'; errEl.style.display='block'; }
+    return;
+  }
+
+  try {
+    const payload = {
+      team_id:_submitTeamId, phase_code:_submitPhase,
+      submitted_by:PROFILE.id, status, answers,
+      updated_at:new Date().toISOString(),
+      ...(status==='submitted'?{submitted_at:new Date().toISOString()}:{}),
+    };
+    if(_existingSubId){
+      await sb.patch('phase_submissions','id=eq.'+_existingSubId, payload);
+    } else {
+      const created = await sb.post('phase_submissions', payload);
+      _existingSubId = Array.isArray(created)?created[0]?.id:created?.id;
+    }
+    toast(
+      status==='submitted'?'Work submitted!':'Draft saved',
+      status==='submitted'?'INJAZ Lebanon will review your submission':'You can continue editing'
+    );
+    loadSubmitWork();
+    if(status==='submitted') loadJourney();
+  } catch(e){ toast('Save failed',e.message,'error'); }
+}
+
 
 async function loadParticipantNotifications(){
   const el = document.getElementById('p-notif-list');
