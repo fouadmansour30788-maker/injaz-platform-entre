@@ -3206,7 +3206,7 @@ async function loadMap(){
     const [allUsers, allTeams, allTm] = await Promise.all([
       sb.get('users','select=id,governorate,gender,nationality&role=eq.participant'),
       sb.get('teams','select=id,current_phase,partner_id'),
-      sb.get('team_members','select=user_id,team_id'),
+      sb.get('team_members','select=user_id,team_id&limit=10000'),
     ]);
 
     // Build user→team map
@@ -3251,24 +3251,13 @@ async function loadMap(){
     const seenEmails = new Set();
     const counts = {};
 
-    // Primary: from filtered users
+    // Count by governorate — from filtered users only (no fallback that ignores filters)
     users.forEach(u=>{
       const gov = normalizeGov(u.governorate);
       if(gov) counts[gov]=(counts[gov]||0)+1;
     });
 
-    // Also pull from applications for any participants not in users table
-    appRows.forEach(r=>{
-      const gov = normalizeGov(r.governorate);
-      if(!gov) return;
-      // Only add if not already counted (avoid double counting)
-      // Applications are a backup source
-      if(Object.values(counts).reduce((s,v)=>s+v,0) === 0){
-        counts[gov]=(counts[gov]||0)+1;
-      }
-    });
-
-    const total = Object.values(counts).reduce((s,v)=>s+v,0)||users.length;
+    const total = users.length;
     const female = users.filter(u=>u.gender==='Female'||u.gender==='female').length;
     const femalePct = total?Math.round((female/total)*100):0;
     const govsCovered = Object.values(counts).filter(n=>n>0).length;
@@ -3280,9 +3269,7 @@ async function loadMap(){
     document.getElementById('map-top-gov').textContent = topGov?topGov[0]:'—';
     document.getElementById('map-female').textContent = female||'—';
     document.getElementById('map-female-pct').textContent = total?femalePct+'% of total':'';
-    const mapDataSource = Object.values(counts).reduce((s,v)=>s+v,0) > 0 
-      ? 'from enrolled participants'
-      : 'from applications';
+
     document.getElementById('map-gov-total-label').textContent = total+' total · '+mapDataSource;
 
     // Lebanese regions with SVG paths
