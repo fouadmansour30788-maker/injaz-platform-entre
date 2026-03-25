@@ -477,20 +477,58 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 
     <!-- ════ ADMIN: DASHBOARD ════ -->
     <div class="page" id="pg-dashboard">
-      <div class="fbet mb15">
-        <div class="sh" style="margin:0"><h2>Dashboard</h2><p id="dash-subtitle">Program overview</p></div>
-        <div class="fctr g8">
+      <!-- ── Filters ── -->
+      <div class="fbet mb15" style="flex-wrap:wrap;gap:8px">
+        <div class="sh" style="margin:0"><h2>Dashboard</h2><p id="dash-subtitle">Program overview · GIL 2026</p></div>
+        <div class="fctr g8" style="flex-wrap:wrap">
           <select class="sel" id="dash-partner-filter" onchange="loadDashboard()" style="font-size:12px;padding:5px 9px">
             <option value="all">All partners</option>
           </select>
+          <select class="sel" id="dash-phase-filter" onchange="loadDashboard()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All phases</option>
+            <option value="DT">Design Thinking</option>
+            <option value="FB1">FB Stage 1</option>
+            <option value="FB2">FB Stage 2</option>
+            <option value="INC">Incubation</option>
+          </select>
+          <select class="sel" id="dash-gender-filter" onchange="loadDashboard()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <select class="sel" id="dash-nat-filter" onchange="loadDashboard()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All nationalities</option>
+            <option value="Lebanese">Lebanese</option>
+            <option value="Syrian">Syrian</option>
+            <option value="Palestinian (PRL)">Palestinian PRL</option>
+            <option value="Palestinian (PRS)">Palestinian PRS</option>
+          </select>
         </div>
       </div>
-      <div class="g4 mb15" id="dash-kpis">
-        <div class="stat"><div class="slbl">Total participants</div><div class="sval" id="kpi-participants">—</div></div>
-        <div class="stat"><div class="slbl">Active teams</div><div class="sval" id="kpi-teams">—</div></div>
-        <div class="stat"><div class="slbl">Partners on track</div><div class="sval" id="kpi-partners">—</div></div>
-        <div class="stat"><div class="slbl">Incubation</div><div class="sval" id="kpi-inc">—</div></div>
+
+      <!-- ── KPI Row 1: Teams & Participants ── -->
+      <div class="g4 mb15">
+        <div class="stat"><div class="slbl">Total participants</div><div class="sval" id="kpi-participants" style="color:var(--or)">—</div></div>
+        <div class="stat"><div class="slbl">Total teams</div><div class="sval" id="kpi-teams" style="color:var(--fb1)">—</div></div>
+        <div class="stat"><div class="slbl">Partners on track</div><div class="sval" id="kpi-partners" style="color:var(--pass)">—</div></div>
+        <div class="stat"><div class="slbl">In incubation</div><div class="sval" id="kpi-inc" style="color:var(--inc)">—</div></div>
       </div>
+
+      <!-- ── KPI Row 2: Application status ── -->
+      <div class="g4 mb15">
+        <div class="stat"><div class="slbl">Applications received</div><div class="sval" id="kpi-apps-total" style="color:var(--t)">—</div></div>
+        <div class="stat"><div class="slbl">Pending review</div><div class="sval" id="kpi-apps-pending" style="color:var(--warn)">—</div></div>
+        <div class="stat"><div class="slbl">Enrolled (DT+FB1)</div><div class="sval" id="kpi-apps-enrolled" style="color:var(--pass)">—</div></div>
+        <div class="stat"><div class="slbl">Ineligible</div><div class="sval" id="kpi-apps-ineligible" style="color:var(--fail)">—</div></div>
+      </div>
+
+      <!-- ── Phase pipeline ── -->
+      <div class="card mb15">
+        <div class="clbl mb12">Phase pipeline — teams per phase</div>
+        <div id="dash-phase-pipeline" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- ── Target vs Actual + Partner achievement ── -->
       <div class="g2 mb15">
         <div class="card">
           <div class="clbl mb12">Target vs actual — by phase</div>
@@ -505,6 +543,19 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           </div>
         </div>
       </div>
+
+      <!-- ── Attendance chart ── -->
+      <div class="card mb15">
+        <div class="fbet mb12">
+          <div class="clbl" style="margin:0">Attendance overview</div>
+          <span style="font-size:11px;color:var(--t3)">Present rate by class</span>
+        </div>
+        <div id="dash-attendance-chart" style="display:flex;flex-direction:column;gap:10px">
+          <p style="color:var(--t3);font-size:13px">Loading attendance data...</p>
+        </div>
+      </div>
+
+      <!-- ── Demographics ── -->
       <div class="g3">
         <div class="card">
           <div class="clbl mb12">Gender split</div>
@@ -1527,88 +1578,115 @@ function emptyState(icon,h,p){ return`<div class="empty"><div class="empty-icon"
 
 // ── DASHBOARD ──
 async function loadDashboard(){
-  const partner=document.getElementById('dash-partner-filter')?.value||'all';
-  // Auto-sync partner actuals: count participants (team members) per partner+phase
+  const partner   = document.getElementById('dash-partner-filter')?.value||'all';
+  const phaseF    = document.getElementById('dash-phase-filter')?.value||'all';
+  const genderF   = document.getElementById('dash-gender-filter')?.value||'all';
+  const natF      = document.getElementById('dash-nat-filter')?.value||'all';
+
+  // Auto-sync partner actuals from team members
   try {
-    const tmRows=await sb.get('team_members',
-      'select=user_id,teams(partner_id,current_phase)'
-    );
+    const tmRows=await sb.get('team_members','select=user_id,teams(partner_id,current_phase)');
     const counts={};
     tmRows.forEach(r=>{
-      const pid=r.teams?.partner_id;
-      const ph=r.teams?.current_phase;
+      const pid=r.teams?.partner_id, ph=r.teams?.current_phase;
       if(!pid||!ph) return;
-      const k=pid+'|'+ph;
-      counts[k]=(counts[k]||0)+1;
+      const k=pid+'|'+ph; counts[k]=(counts[k]||0)+1;
     });
     await Promise.all(Object.entries(counts).map(([k,v])=>{
       const [pid,ph]=k.split('|');
       return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:v},'partner_id,phase_code').catch(()=>{});
     }));
   } catch(e){}
-  try {
-    // Load partner achievement
-    const qs=partner==='all'?'order=partner_code,phase_code':'partner_code=eq.'+partner+'&order=phase_code';
-    const rows=await sb.get('partner_achievement',qs);
-    // Load demographics
-    const dq=partner==='all'?'':'partner_code=eq.'+partner;
-    const demRows=await sb.get('demographics_summary',dq);
-    // Load teams count
-    const tq=partner==='all'?'select=id':'partner_id=in.('+PARTNERS.filter(p=>partner==='all'||p.code===partner).map(p=>`"${p.id}"`).join(',')+')&select=id';
-    const teams=await sb.get('teams','select=id,current_phase,partner_id');
 
-    // Compute KPIs
+  try {
+    // ── Load all data ──
+    const [paRows, demRows, allTeams, allUsers, appRows, attRows] = await Promise.all([
+      sb.get('partner_achievement', partner==='all'?'order=partner_code,phase_code':'partner_code=eq.'+partner+'&order=phase_code'),
+      sb.get('demographics_summary', partner==='all'?'':'partner_code=eq.'+partner),
+      sb.get('teams','select=id,current_phase,partner_id'),
+      sb.get('users','select=id,gender,nationality,governorate,date_of_birth&role=eq.participant'),
+      sb.get('applications','select=status').catch(()=>[]),
+      sb.get('attendance','select=class_id,status,classes(name,phase_code)').catch(()=>[]),
+    ]);
+
+    // ── Apply filters to teams ──
+    let filtTeams = allTeams;
+    if(partner!=='all') filtTeams=filtTeams.filter(t=>PARTNERS.find(p=>p.code===partner&&p.id===t.partner_id));
+    if(phaseF!=='all')  filtTeams=filtTeams.filter(t=>t.current_phase===phaseF);
+
+    // ── Apply filters to users via team_members ──
+    let filtUsers = allUsers;
+    if(genderF!=='all') filtUsers=filtUsers.filter(u=>u.gender===genderF);
+    if(natF!=='all')    filtUsers=filtUsers.filter(u=>u.nationality===natF);
+
+    // ── KPI Row 1 ──
     const dem=demRows.reduce((a,r)=>({
-      total:a.total+r.total,female:a.female+r.female,male:a.male+r.male,
+      total:a.total+r.total, female:a.female+r.female, male:a.male+r.male,
       with_disability:a.with_disability+r.with_disability,
-      lebanese:a.lebanese+r.lebanese,syrian:a.syrian+r.syrian,
-      prl:a.prl+r.prl,prs:a.prs+r.prs,other_nat:a.other_nat+r.other_nat,
+      lebanese:a.lebanese+r.lebanese, syrian:a.syrian+r.syrian,
+      prl:a.prl+r.prl, prs:a.prs+r.prs, other_nat:a.other_nat+r.other_nat,
     }),{total:0,female:0,male:0,with_disability:0,lebanese:0,syrian:0,prl:0,prs:0,other_nat:0});
 
-    const filteredTeams=partner==='all'?teams:teams.filter(t=>PARTNERS.find(p=>p.code===partner&&p.id===t.partner_id));
-    const incTeams=filteredTeams.filter(t=>t.current_phase==='INC').length;
-
-    // Compute partner totals
+    const incTeams = filtTeams.filter(t=>t.current_phase==='INC').length;
     const partnerTotals={};
-    rows.forEach(r=>{
+    paRows.forEach(r=>{
       if(!partnerTotals[r.partner_code]) partnerTotals[r.partner_code]={t:0,a:0};
       partnerTotals[r.partner_code].t+=r.target||0;
       partnerTotals[r.partner_code].a+=r.actual||0;
     });
     const onTrack=Object.values(partnerTotals).filter(v=>v.t>0&&Math.round((v.a/v.t)*100)>=80).length;
 
-    document.getElementById('kpi-participants').textContent=dem.total||'—';
-    document.getElementById('kpi-participants').style.color='var(--or)';
-    document.getElementById('kpi-teams').textContent=filteredTeams.length||'—';
-    document.getElementById('kpi-teams').style.color='var(--fb1)';
-    document.getElementById('kpi-partners').textContent=onTrack+' / '+Object.keys(partnerTotals).length;
-    document.getElementById('kpi-partners').style.color='var(--pass)';
-    document.getElementById('kpi-inc').textContent=incTeams||'—';
-    document.getElementById('kpi-inc').style.color='var(--inc)';
+    document.getElementById('kpi-participants').textContent = filtUsers.length||dem.total||'—';
+    document.getElementById('kpi-teams').textContent        = filtTeams.length||'—';
+    document.getElementById('kpi-partners').textContent     = onTrack+' / '+Object.keys(partnerTotals).length;
+    document.getElementById('kpi-inc').textContent          = incTeams||'—';
 
-    // Phase rows
-    const PHASES=['IE','DT','FB1','FB2','INC'];
+    // ── KPI Row 2: Applications ──
+    const appsTotal     = appRows.length;
+    const appsPending   = appRows.filter(r=>r.status==='pending').length;
+    const appsEnrolled  = appRows.filter(r=>r.status==='approved_dt'||r.status==='approved_fb1').length;
+    const appsIneligible= appRows.filter(r=>r.status==='ineligible').length;
+    document.getElementById('kpi-apps-total').textContent      = appsTotal||'—';
+    document.getElementById('kpi-apps-pending').textContent    = appsPending||'0';
+    document.getElementById('kpi-apps-enrolled').textContent   = appsEnrolled||'0';
+    document.getElementById('kpi-apps-ineligible').textContent = appsIneligible||'0';
+
+    // ── Phase pipeline ──
+    const PHASES=['DT','FB1','FB2','INC'];
+    const phaseCounts={DT:0,FB1:0,FB2:0,INC:0};
+    allTeams.forEach(t=>{if(phaseCounts[t.current_phase]!==undefined) phaseCounts[t.current_phase]++;});
+    const totalTeams=allTeams.length||1;
+    document.getElementById('dash-phase-pipeline').innerHTML = PHASES.map(ph=>{
+      const n=phaseCounts[ph]||0;
+      const pct=Math.round((n/totalTeams)*100);
+      const label={DT:'Design Thinking',FB1:'FB Stage 1',FB2:'FB Stage 2',INC:'Incubation'}[ph];
+      return `<div style="flex:1;min-width:120px;background:var(--bg);border-radius:10px;padding:12px;border:0.5px solid var(--bdr);text-align:center">
+        ${phaseTag(ph)}
+        <div style="font-size:28px;font-weight:700;color:${PHASE_COLORS[ph]};margin:6px 0">${n}</div>
+        <div style="font-size:11px;color:var(--t3)">${label}</div>
+        <div style="height:4px;background:var(--bdr);border-radius:2px;margin-top:8px;overflow:hidden">
+          <div style="width:${pct}%;height:4px;background:${PHASE_COLORS[ph]};border-radius:2px"></div>
+        </div>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px">${pct}% of teams</div>
+      </div>`;
+    }).join('');
+
+    // ── Phase target rows ──
     const phaseData={};
-    rows.forEach(r=>{
-      if(!phaseData[r.phase_code]) phaseData[r.phase_code]={t:0,a:0};
-      phaseData[r.phase_code].t+=r.target||0;
-      phaseData[r.phase_code].a+=r.actual||0;
-    });
-    document.getElementById('dash-phase-rows').innerHTML=PHASES.map(ph=>{
-      const d=phaseData[ph];
-      if(!d||!d.t) return '';
-      const pct=Math.round((d.a/d.t)*100);
-      const col=pctColor(pct);
+    paRows.forEach(r=>{ if(!phaseData[r.phase_code]) phaseData[r.phase_code]={t:0,a:0}; phaseData[r.phase_code].t+=r.target||0; phaseData[r.phase_code].a+=r.actual||0; });
+    document.getElementById('dash-phase-rows').innerHTML=['IE','DT','FB1','FB2','INC'].map(ph=>{
+      const d=phaseData[ph]; if(!d||!d.t) return '';
+      const pct=Math.round((d.a/d.t)*100); const col=pctColor(pct);
       return `<div>
         <div class="fbet" style="margin-bottom:4px">
-          <div class="fctr g8">${phaseTag(ph)}<span style="font-size:12px;font-weight:500">${ph==='IE'?'Intro to Entrepreneurship':ph==='DT'?'Design Thinking':ph==='FB1'?'FB Stage 1':ph==='FB2'?'FB Stage 2':'Incubation'}</span></div>
+          <div class="fctr g8">${phaseTag(ph)}<span style="font-size:12px;font-weight:500">${ph==='IE'?'Intro':ph==='DT'?'Design Thinking':ph==='FB1'?'FB Stage 1':ph==='FB2'?'FB Stage 2':'Incubation'}</span></div>
           <div class="fctr g8"><span style="font-size:12px;color:var(--t2)">${d.a}/${d.t}</span><span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:${pct>=80?'var(--pass-bg)':pct>=50?'var(--warn-bg)':'var(--fail-bg)'};color:${col}">${pct}%</span></div>
         </div>
         <div class="pb-lg"><div class="pf-lg" style="width:${Math.min(pct,100)}%;background:${col}"></div></div>
       </div>`;
     }).join('');
 
-    // Partner rows
+    // ── Partner rows ──
     document.getElementById('dash-partner-rows').innerHTML=Object.entries(partnerTotals).map(([code,{t,a}])=>{
       const p=PARTNERS.find(x=>x.code===code)||{color:'var(--or)'};
       const pct=t>0?Math.round((a/t)*100):0;
@@ -1621,7 +1699,40 @@ async function loadDashboard(){
       </div>`;
     }).join('');
 
-    // Demographics
+    // ── Attendance chart ──
+    const attByClass={};
+    attRows.forEach(r=>{
+      const key=(r.classes?.name||r.class_id)+'||'+(r.classes?.phase_code||'');
+      if(!attByClass[key]) attByClass[key]={name:r.classes?.name||'Class',phase:r.classes?.phase_code||'',P:0,A:0,E:0,total:0};
+      attByClass[key][r.status]=(attByClass[key][r.status]||0)+1;
+      attByClass[key].total++;
+    });
+    const attEl=document.getElementById('dash-attendance-chart');
+    const attEntries=Object.values(attByClass);
+    if(!attEntries.length){
+      attEl.innerHTML='<p style="color:var(--t3);font-size:13px">No attendance data yet.</p>';
+    } else {
+      attEl.innerHTML=attEntries.map(c=>{
+        const rate=c.total?Math.round((c.P/c.total)*100):0;
+        const col=pctColor(rate);
+        return `<div>
+          <div class="fbet mb4" style="font-size:12px">
+            <div class="fctr g8">${phaseTag(c.phase||'DT')}<span style="font-weight:500">${c.name}</span></div>
+            <div class="fctr g8">
+              <span style="color:var(--pass-t);font-size:11px">P:${c.P}</span>
+              <span style="color:var(--fail-t);font-size:11px">A:${c.A||0}</span>
+              <span style="color:var(--warn-t);font-size:11px">E:${c.E||0}</span>
+              <span style="font-weight:600;color:${col}">${rate}%</span>
+            </div>
+          </div>
+          <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;display:flex">
+            <div style="width:${rate}%;background:${col};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Demographics ──
     const femPct=dem.total?Math.round((dem.female/dem.total)*100):0;
     const disPct=dem.total?Math.round((dem.with_disability/dem.total)*100):0;
     document.getElementById('dash-gender').innerHTML=dem.total?`
@@ -1637,10 +1748,9 @@ async function loadDashboard(){
       return `<div><div class="fbet" style="font-size:11px;margin-bottom:2px"><div class="fctr g8"><div style="width:7px;height:7px;border-radius:50%;background:${c}"></div><span>${n}</span></div><span style="font-weight:500">${v} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${c}"></div></div></div>`;
     }).join(''): emptyState('🌍','No data yet','');
 
-    // Governorate — from users table
-    const govRows=await sb.get('users','role=eq.participant&select=governorate'+( partner==='all'?'':'&partner_id=in.('+PARTNERS.filter(p=>p.code===partner).map(p=>`"${p.id}"`)+')'));
+    const govRows=filtUsers.filter(u=>u.governorate);
     const govCounts={};
-    govRows.forEach(r=>{ if(r.governorate){ govCounts[r.governorate]=(govCounts[r.governorate]||0)+1; } });
+    govRows.forEach(r=>{govCounts[r.governorate]=(govCounts[r.governorate]||0)+1;});
     const govSorted=Object.entries(govCounts).sort((a,b)=>b[1]-a[1]);
     const govMax=govSorted[0]?.[1]||1;
     document.getElementById('dash-gov').innerHTML=govSorted.length?govSorted.map(([g,v])=>{
@@ -1648,13 +1758,10 @@ async function loadDashboard(){
       return `<div><div class="fbet" style="font-size:11px;margin-bottom:2px"><span style="color:var(--t2)">${g}</span><span style="font-weight:500">${v}</span></div><div class="pb"><div class="pf" style="width:${w}%;background:var(--or);opacity:${0.4+w*0.006}"></div></div></div>`;
     }).join(''):emptyState('🗺️','No location data','Assign governorates during registration');
 
-  } catch(e){
-    console.error('Dashboard error:', e.message);
-    toast('Dashboard error', e.message, 'error');
-  }
+  } catch(e){ console.error('Dashboard error:', e.message); toast('Dashboard error',e.message,'error'); }
 }
 
-// ── COHORT ──
+
 async function loadCohort(){
   try {
     const rows=await sb.get('team_summary','order=name');
