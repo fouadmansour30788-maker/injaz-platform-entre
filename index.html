@@ -3230,15 +3230,43 @@ async function loadMap(){
     });
 
     // Also include from applications as fallback if users have no gov
-    const appRows = await sb.get('applications','select=governorate,partner,members&governorate=not.is.null').catch(()=>[]);
+    const appRows = await sb.get('applications','select=governorate,partner,members,lead_email&governorate=not.is.null').catch(()=>[]);
 
-    // Count by governorate
-    const counts = {};
-    users.forEach(u=>{if(u.governorate) counts[u.governorate]=(counts[u.governorate]||0)+1;});
-    // Fallback: if total from users is 0 use applications
-    if(Object.values(counts).reduce((s,v)=>s+v,0)===0){
-      appRows.forEach(r=>{if(r.governorate)counts[r.governorate]=(counts[r.governorate]||0)+1;});
+    // Normalize governorate name to match SVG map
+    const GOV_NORMALIZE = {
+      'north': 'North Lebanon', 'north lebanon': 'North Lebanon',
+      'south': 'South Lebanon', 'south lebanon': 'South Lebanon',
+      'mount lebanon': 'Mount Lebanon', 'mount': 'Mount Lebanon',
+      'beirut': 'Beirut', 'bekaa': 'Bekaa', "beka'a": 'Bekaa',
+      'nabatieh': 'Nabatieh', 'akkar': 'Akkar',
+      'baalbek': 'Baalbek-Hermel', 'baalbek-hermel': 'Baalbek-Hermel',
+      'hermel': 'Baalbek-Hermel',
+    };
+    function normalizeGov(g) {
+      if(!g) return null;
+      return GOV_NORMALIZE[g.toLowerCase().trim()] || g;
     }
+
+    // Count by governorate — merge users + applications (use email to deduplicate)
+    const seenEmails = new Set();
+    const counts = {};
+
+    // Primary: from filtered users
+    users.forEach(u=>{
+      const gov = normalizeGov(u.governorate);
+      if(gov) counts[gov]=(counts[gov]||0)+1;
+    });
+
+    // Also pull from applications for any participants not in users table
+    appRows.forEach(r=>{
+      const gov = normalizeGov(r.governorate);
+      if(!gov) return;
+      // Only add if not already counted (avoid double counting)
+      // Applications are a backup source
+      if(Object.values(counts).reduce((s,v)=>s+v,0) === 0){
+        counts[gov]=(counts[gov]||0)+1;
+      }
+    });
 
     const total = Object.values(counts).reduce((s,v)=>s+v,0)||users.length;
     const female = users.filter(u=>u.gender==='Female'||u.gender==='female').length;
@@ -3252,7 +3280,10 @@ async function loadMap(){
     document.getElementById('map-top-gov').textContent = topGov?topGov[0]:'—';
     document.getElementById('map-female').textContent = female||'—';
     document.getElementById('map-female-pct').textContent = total?femalePct+'% of total':'';
-    document.getElementById('map-gov-total-label').textContent = total+' participants';
+    const mapDataSource = Object.values(counts).reduce((s,v)=>s+v,0) > 0 
+      ? 'from enrolled participants'
+      : 'from applications';
+    document.getElementById('map-gov-total-label').textContent = total+' total · '+mapDataSource;
 
     // Lebanese regions with SVG paths
     const govs = [
