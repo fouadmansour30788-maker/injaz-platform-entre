@@ -1528,11 +1528,19 @@ function emptyState(icon,h,p){ return`<div class="empty"><div class="empty-icon"
 // ── DASHBOARD ──
 async function loadDashboard(){
   const partner=document.getElementById('dash-partner-filter')?.value||'all';
-  // Auto-sync partner actuals from real team data
+  // Auto-sync partner actuals: count participants (team members) per partner+phase
   try {
-    const teams=await sb.get('teams','select=partner_id,current_phase');
+    const tmRows=await sb.get('team_members',
+      'select=user_id,teams(partner_id,current_phase)'
+    );
     const counts={};
-    teams.forEach(t=>{if(!t.partner_id)return;const k=t.partner_id+'|'+t.current_phase;counts[k]=(counts[k]||0)+1;});
+    tmRows.forEach(r=>{
+      const pid=r.teams?.partner_id;
+      const ph=r.teams?.current_phase;
+      if(!pid||!ph) return;
+      const k=pid+'|'+ph;
+      counts[k]=(counts[k]||0)+1;
+    });
     await Promise.all(Object.entries(counts).map(([k,v])=>{
       const [pid,ph]=k.split('|');
       return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:v},'partner_id,phase_code').catch(()=>{});
@@ -2133,13 +2141,17 @@ function ptUpdate(inp){
   partnerActuals[code][ph]=val;
 }
 async function syncActualsFromTeams(){
-  // Auto-compute actuals from real team data and save
+  // Count participants (team members) per partner+phase
   try {
-    const teams = await sb.get('teams','select=partner_id,current_phase');
+    const tmRows = await sb.get('team_members',
+      'select=user_id,teams(partner_id,current_phase)'
+    );
     const counts = {};
-    teams.forEach(t=>{
-      if(!t.partner_id) return;
-      const key = t.partner_id+'|'+t.current_phase;
+    tmRows.forEach(r=>{
+      const pid = r.teams?.partner_id;
+      const ph  = r.teams?.current_phase;
+      if(!pid||!ph) return;
+      const key = pid+'|'+ph;
       counts[key] = (counts[key]||0)+1;
     });
     const saves = Object.entries(counts).map(([key,val])=>{
@@ -2147,7 +2159,7 @@ async function syncActualsFromTeams(){
       return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:val},'partner_id,phase_code');
     });
     await Promise.all(saves);
-    toast('Actuals synced','Partner figures updated from team data');
+    toast('Actuals synced','Participant counts updated per partner & phase');
     loadPartnerPage();
     loadDashboard();
   } catch(e){ toast('Sync failed',e.message,'error'); }
