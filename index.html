@@ -2599,19 +2599,19 @@ document.addEventListener('DOMContentLoaded', function(){
 // ── MAP ──
 async function loadMap(){
   try{
-    // Get governorates from all enrolled team members
-    const rows=await sb.get('users',
-      'select=governorate&role=eq.participant&governorate=not.is.null'
-    );
-    // Also get from applications (may have newer data)
-    const appRows=await sb.get('applications',
-      'select=governorate&governorate=not.is.null&status=not.is.null'
-    ).catch(()=>[]);
+    // Get governorates from users table
+    const rows=await sb.get('users','select=governorate&role=eq.participant');
+    // Also get from applications as fallback
+    const appRows=await sb.get('applications','select=governorate&governorate=not.is.null').catch(()=>[]);
     const counts={};
-    rows.forEach(r=>{if(r.governorate)counts[r.governorate]=(counts[r.governorate]||0)+1;});
-    appRows.forEach(r=>{if(r.governorate && !rows.find(u=>u.governorate===r.governorate))
-      counts[r.governorate]=(counts[r.governorate]||0)+0;}); // just ensure key exists
-    const total=rows.length||appRows.length;
+    // Count from users (enrolled participants)
+    rows.forEach(r=>{if(r.governorate) counts[r.governorate]=(counts[r.governorate]||0)+1;});
+    // If no governorates from users, fall back to applications data
+    const userTotal=rows.filter(r=>r.governorate).length;
+    if(userTotal===0){
+      appRows.forEach(r=>{if(r.governorate) counts[r.governorate]=(counts[r.governorate]||0)+1;});
+    }
+    const total=Object.values(counts).reduce((a,b)=>a+b,0)||rows.length;
     document.getElementById('map-total').textContent=total;
     document.getElementById('map-govs').textContent=Object.values(counts).filter(n=>n>0).length;
     const govs=[
@@ -2645,10 +2645,11 @@ async function loadMap(){
 // ── ANALYTICS ──
 async function loadAnalytics(){
   try{
-    // Count all participants via team_members (most accurate)
     const tmCount=await sb.get('team_members','select=user_id').catch(()=>[]);
     const uniqueUserIds=[...new Set(tmCount.map(r=>r.user_id))];
-    const users=await sb.get('users','select=gender,nationality,date_of_birth&role=eq.participant');
+    const users=await sb.get('users','select=id,gender,nationality,date_of_birth,governorate&role=eq.participant');
+    // Also load applications for richer data
+    const apps=await sb.get('applications','select=governorate,lead_name&status=not.is.null').catch(()=>[]);
     const total=users.length;
     document.getElementById('analytics-kpis').innerHTML=`
       <div class="stat"><div class="slbl">Participants</div><div class="sval" style="color:var(--or)">${uniqueUserIds.length||total}</div></div>
