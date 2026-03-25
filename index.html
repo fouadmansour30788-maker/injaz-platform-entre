@@ -3372,20 +3372,37 @@ async function afSubmit(){
       const appErr=await appRes.json().catch(()=>({}));
       throw new Error('Application save failed: '+(appErr.message||appErr.error||appRes.status));
     }
-    // Update lead profile with full details (best-effort, non-critical)
+    // Update lead profile — try by auth_id first, then by email
+    const profileData = {
+      full_name:      v('af-name'),
+      date_of_birth:  v('af-dob')||null,
+      gender:         v('af-gender')||null,
+      nationality:    v('af-nationality')||null,
+      governorate:    v('af-gov')||null,
+      district:       v('af-district')||null,
+      has_disability: v('af-disability')!=='none',
+      disability_type:v('af-disability')!=='none'?v('af-disability'):null,
+      partner_id:     (PARTNERS.find(p=>p.code===v('af-partner'))?.id)||null,
+    };
+    // Try PATCH by auth_id
     if(authData.user?.id) {
-      await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
-        method:'PATCH',
-        headers:h,
-        body:JSON.stringify({
-          full_name:v('af-name'), date_of_birth:v('af-dob'),
-          gender:v('af-gender'), nationality:v('af-nationality'),
-          governorate:v('af-gov'),district:v('af-district'),
-          has_disability:v('af-disability')!=='none',
-          disability_type:v('af-disability')!=='none'?v('af-disability'):null
-        })
-      }).catch(e=>console.warn('Profile update skipped:',e));
+      const pr = await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
+        method:'PATCH', headers:h, body:JSON.stringify(profileData)
+      }).catch(()=>null);
+      // If no rows updated, try by email
+      if(pr) {
+        const ct = pr.headers?.get('content-range')||'';
+        if(ct==='*\/0' || ct==='*/0') {
+          await fetch(SUPA_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{
+            method:'PATCH', headers:h, body:JSON.stringify(profileData)
+          }).catch(()=>{});
+        }
+      }
     }
+    // Always also try by email (catches cases where auth_id not yet linked)
+    await fetch(SUPA_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{
+      method:'PATCH', headers:h, body:JSON.stringify(profileData)
+    }).catch(()=>{});
     // Auto-create auth accounts for co-founders
     // They will receive a password-reset email to set their own password
     for(const m of members.filter(m=>m.role!=='lead' && m.email && m.name)){
