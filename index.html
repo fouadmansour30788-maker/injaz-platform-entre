@@ -1001,20 +1001,82 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 
     <!-- MAP -->
     <div class="page" id="pg-map">
-      <div class="sh fbet mb15"><div><h2>Lebanon map</h2><p>Participants by governorate</p></div>
-        <select class="sel" id="map-partner-filter" onchange="loadMap()" style="font-size:12px">
-          <option value="all">All partners</option>
-          <option value="LU">LU</option><option value="UNRWA">UNRWA</option>
-          <option value="AND">AND</option><option value="Midan">Midan</option>
-          <option value="Lost">Lost</option><option value="MDF">MDF</option>
-        </select>
-      </div>
-      <div class="g2" style="align-items:start">
-        <div class="card"><svg id="map-svg" viewBox="0 0 420 340" style="width:100%;height:auto"></svg></div>
-        <div>
-          <div class="card mb1"><div class="clbl mb12">By governorate</div><div id="map-gov-list" style="display:flex;flex-direction:column;gap:8px"></div></div>
-          <div class="g2"><div class="stat"><div class="slbl">Total</div><div class="sval" id="map-total">—</div></div><div class="stat"><div class="slbl">Governorates</div><div class="sval" id="map-govs">—</div></div></div>
+      <!-- Header & Filters -->
+      <div class="fbet mb15" style="flex-wrap:wrap;gap:8px">
+        <div><h2 style="font-size:18px;font-weight:700">Lebanon Map</h2><p style="font-size:12px;color:var(--t3)">Geographic distribution of participants</p></div>
+        <div class="fctr g8" style="flex-wrap:wrap">
+          <select class="sel" id="map-partner-filter" onchange="loadMap()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All partners</option>
+          </select>
+          <select class="sel" id="map-phase-filter" onchange="loadMap()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All phases</option>
+            <option value="DT">Design Thinking</option>
+            <option value="FB1">FB Stage 1</option>
+            <option value="FB2">FB Stage 2</option>
+            <option value="INC">Incubation</option>
+          </select>
+          <select class="sel" id="map-gender-filter" onchange="loadMap()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <select class="sel" id="map-nat-filter" onchange="loadMap()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All nationalities</option>
+            <option value="Lebanese">Lebanese</option>
+            <option value="Syrian">Syrian</option>
+            <option value="Palestinian (PRL)">Palestinian PRL</option>
+            <option value="Palestinian (PRS)">Palestinian PRS</option>
+          </select>
         </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="g4 mb15">
+        <div class="stat"><div class="slbl">Total participants</div><div class="sval" id="map-total" style="color:var(--or)">—</div></div>
+        <div class="stat"><div class="slbl">Governorates covered</div><div class="sval" id="map-govs" style="color:var(--fb1)">—</div></div>
+        <div class="stat"><div class="slbl">Top governorate</div><div class="sval" id="map-top-gov" style="font-size:15px">—</div></div>
+        <div class="stat"><div class="slbl">Female participants</div><div class="sval" id="map-female" style="color:#EC4899">—</div><div class="ssub" id="map-female-pct"></div></div>
+      </div>
+
+      <!-- Main layout: map + sidebar -->
+      <div class="g2 mb15" style="align-items:start">
+        <!-- SVG Map -->
+        <div class="card" style="padding:1rem">
+          <svg id="map-svg" viewBox="0 0 420 340" style="width:100%;height:auto"></svg>
+          <div style="display:flex;gap:16px;justify-content:center;margin-top:8px;font-size:11px;color:var(--t3)">
+            <div class="fctr g4"><div style="width:12px;height:12px;border-radius:2px;background:#E2E8F0"></div>No participants</div>
+            <div class="fctr g4"><div style="width:12px;height:12px;border-radius:2px;background:rgba(26,86,219,0.2)"></div>Few</div>
+            <div class="fctr g4"><div style="width:12px;height:12px;border-radius:2px;background:rgba(26,86,219,0.6)"></div>Moderate</div>
+            <div class="fctr g4"><div style="width:12px;height:12px;border-radius:2px;background:rgba(26,86,219,0.95)"></div>High</div>
+          </div>
+        </div>
+
+        <!-- Sidebar stats -->
+        <div>
+          <!-- By governorate -->
+          <div class="card mb1">
+            <div class="fbet mb12"><div class="clbl" style="margin:0">By governorate</div><span id="map-gov-total-label" style="font-size:11px;color:var(--t3)"></span></div>
+            <div id="map-gov-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+
+          <!-- Nationality breakdown -->
+          <div class="card mb1">
+            <div class="clbl mb12">Nationality</div>
+            <div id="map-nat-list" style="display:flex;flex-direction:column;gap:7px"></div>
+          </div>
+
+          <!-- Phase breakdown -->
+          <div class="card">
+            <div class="clbl mb12">Phase distribution</div>
+            <div id="map-phase-list" style="display:flex;flex-direction:column;gap:7px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Partner breakdown table -->
+      <div class="card">
+        <div class="clbl mb12">Partner coverage by governorate</div>
+        <div id="map-partner-table" style="overflow-x:auto"></div>
       </div>
     </div>
 
@@ -1591,7 +1653,7 @@ function showApp(){
   document.getElementById('tb-sub').textContent=ROLE==='admin'?'Program Manager':'Participant';
   // Populate partner dropdowns
   const pOpts=PARTNERS.map(p=>`<option value="${p.code}">${p.label}</option>`).join('');
-  ['dash-partner-filter','pt-partner-filter','cls-partner-f','partner-filter-cohort'].forEach(id=>{
+  ['dash-partner-filter','pt-partner-filter','cls-partner-f','partner-filter-cohort','map-partner-filter'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){
       const allOpt=el.options[0]; el.innerHTML='';
@@ -3134,49 +3196,184 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 // ── MAP ──
 async function loadMap(){
-  try{
-    // Get governorates from users table
-    const rows=await sb.get('users','select=governorate&role=eq.participant');
-    // Also get from applications as fallback
-    const appRows=await sb.get('applications','select=governorate&governorate=not.is.null').catch(()=>[]);
-    const counts={};
-    // Count from users (enrolled participants)
-    rows.forEach(r=>{if(r.governorate) counts[r.governorate]=(counts[r.governorate]||0)+1;});
-    // If no governorates from users, fall back to applications data
-    const userTotal=rows.filter(r=>r.governorate).length;
-    if(userTotal===0){
-      appRows.forEach(r=>{if(r.governorate) counts[r.governorate]=(counts[r.governorate]||0)+1;});
+  const partnerF = document.getElementById('map-partner-filter')?.value||'all';
+  const phaseF   = document.getElementById('map-phase-filter')?.value||'all';
+  const genderF  = document.getElementById('map-gender-filter')?.value||'all';
+  const natF     = document.getElementById('map-nat-filter')?.value||'all';
+
+  try {
+    // Load all data in parallel
+    const [allUsers, allTeams, allTm] = await Promise.all([
+      sb.get('users','select=id,governorate,gender,nationality&role=eq.participant'),
+      sb.get('teams','select=id,current_phase,partner_id'),
+      sb.get('team_members','select=user_id,team_id'),
+    ]);
+
+    // Build user→team map
+    const userTeam = {};
+    allTm.forEach(r=>{ userTeam[r.user_id]=r.team_id; });
+
+    // Build team→partner and team→phase map
+    const teamData = {};
+    allTeams.forEach(t=>{ teamData[t.id]={phase:t.current_phase,partner_id:t.partner_id}; });
+
+    // Filter users based on selected filters
+    let users = allUsers.filter(u => {
+      const tid = userTeam[u.id];
+      const td  = teamData[tid]||{};
+      const p   = PARTNERS.find(x=>x.id===td.partner_id);
+      if(partnerF!=='all' && p?.code!==partnerF) return false;
+      if(phaseF!=='all'   && td.phase!==phaseF)   return false;
+      if(genderF!=='all'  && u.gender!==genderF)   return false;
+      if(natF!=='all'     && u.nationality!==natF)  return false;
+      return true;
+    });
+
+    // Also include from applications as fallback if users have no gov
+    const appRows = await sb.get('applications','select=governorate,partner,members&governorate=not.is.null').catch(()=>[]);
+
+    // Count by governorate
+    const counts = {};
+    users.forEach(u=>{if(u.governorate) counts[u.governorate]=(counts[u.governorate]||0)+1;});
+    // Fallback: if total from users is 0 use applications
+    if(Object.values(counts).reduce((s,v)=>s+v,0)===0){
+      appRows.forEach(r=>{if(r.governorate)counts[r.governorate]=(counts[r.governorate]||0)+1;});
     }
-    const total=Object.values(counts).reduce((a,b)=>a+b,0)||rows.length;
-    document.getElementById('map-total').textContent=total;
-    document.getElementById('map-govs').textContent=Object.values(counts).filter(n=>n>0).length;
-    const govs=[
-      {name:'Beirut',path:'M185 165L205 155L215 175L195 185Z',cx:200,cy:168},
-      {name:'Mount Lebanon',path:'M165 130L220 110L235 165L215 175L205 155L185 165L170 150Z',cx:200,cy:145},
-      {name:'North Lebanon',path:'M155 55L245 40L255 110L220 110L165 130L145 100Z',cx:200,cy:85},
-      {name:'Bekaa',path:'M235 55L310 65L315 195L255 200L235 165L255 110L245 40Z',cx:278,cy:125},
-      {name:'South Lebanon',path:'M140 185L215 175L255 200L245 255L155 265Z',cx:195,cy:220},
-      {name:'Nabatieh',path:'M215 175L235 165L315 195L280 250L245 255Z',cx:265,cy:215},
-      {name:'Akkar',path:'M155 55L235 55L245 40L200 20L145 35Z',cx:190,cy:42},
-      {name:'Baalbek-Hermel',path:'M245 40L310 35L340 80L310 65L235 55Z',cx:285,cy:55},
+
+    const total = Object.values(counts).reduce((s,v)=>s+v,0)||users.length;
+    const female = users.filter(u=>u.gender==='Female'||u.gender==='female').length;
+    const femalePct = total?Math.round((female/total)*100):0;
+    const govsCovered = Object.values(counts).filter(n=>n>0).length;
+    const topGov = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+
+    // KPIs
+    document.getElementById('map-total').textContent = total||'—';
+    document.getElementById('map-govs').textContent  = govsCovered||'—';
+    document.getElementById('map-top-gov').textContent = topGov?topGov[0]:'—';
+    document.getElementById('map-female').textContent = female||'—';
+    document.getElementById('map-female-pct').textContent = total?femalePct+'% of total':'';
+    document.getElementById('map-gov-total-label').textContent = total+' participants';
+
+    // Lebanese regions with SVG paths
+    const govs = [
+      {name:'Beirut',         path:'M185 165L205 155L215 175L195 185Z',              cx:200,cy:168},
+      {name:'Mount Lebanon',  path:'M165 130L220 110L235 165L215 175L205 155L185 165L170 150Z', cx:200,cy:145},
+      {name:'North Lebanon',  path:'M155 55L245 40L255 110L220 110L165 130L145 100Z', cx:200,cy:85},
+      {name:'Bekaa',          path:'M235 55L310 65L315 195L255 200L235 165L255 110L245 40Z', cx:278,cy:125},
+      {name:'South Lebanon',  path:'M140 185L215 175L255 200L245 255L155 265Z',      cx:195,cy:220},
+      {name:'Nabatieh',       path:'M215 175L235 165L315 195L280 250L245 255Z',      cx:265,cy:215},
+      {name:'Akkar',          path:'M155 55L235 55L245 40L200 20L145 35Z',           cx:190,cy:42},
+      {name:'Baalbek-Hermel', path:'M245 40L310 35L340 80L310 65L235 55Z',           cx:285,cy:55},
     ];
-    const maxVal=Math.max(...Object.values(counts),1);
-    document.getElementById('map-svg').innerHTML=govs.map(g=>{
-      const n=counts[g.name]||0;
-      const fill=n===0?'#E2E8F0':`rgba(26,86,219,${0.15+n/maxVal*0.75})`;
-      return `<g><path d="${g.path}" fill="${fill}" stroke="white" stroke-width="1.5"/>
-        <text x="${g.cx}" y="${g.cy}" text-anchor="middle" font-size="9" fill="${n>0?'#fff':'#94A3B8'}" font-weight="${n>0?'700':'400'}" font-family="sans-serif">${g.name.split(' ')[0]}</text>
-        <text x="${g.cx}" y="${g.cy+10}" text-anchor="middle" font-size="9" fill="${n>0?'rgba(255,255,255,.85)':''}" font-family="sans-serif">${n>0?n:''}</text></g>`;
+
+    const maxVal = Math.max(...Object.values(counts),1);
+    document.getElementById('map-svg').innerHTML = govs.map(g=>{
+      const n = counts[g.name]||0;
+      const intensity = n===0?0:(0.15+n/maxVal*0.8);
+      const fill = n===0?'#E2E8F0':`rgba(26,86,219,${intensity})`;
+      const textColor = intensity>0.5?'#fff':n>0?'#1A56DB':'#94A3B8';
+      return `<g style="cursor:pointer" title="${g.name}: ${n}">
+        <path d="${g.path}" fill="${fill}" stroke="white" stroke-width="1.5"/>
+        <text x="${g.cx}" y="${g.cy-2}" text-anchor="middle" font-size="9" fill="${textColor}" font-weight="${n>0?'700':'400'}" font-family="sans-serif">${g.name.split(' ')[0]}</text>
+        ${n>0?`<text x="${g.cx}" y="${g.cy+9}" text-anchor="middle" font-size="10" fill="${textColor}" font-weight="700" font-family="sans-serif">${n}</text>`:''}
+      </g>`;
     }).join('');
-    const sorted=govs.map(g=>({name:g.name,n:counts[g.name]||0})).sort((a,b)=>b.n-a.n);
-    document.getElementById('map-gov-list').innerHTML=sorted.map(g=>{
-      const pct=total?Math.round(g.n/total*100):0;
-      return `<div><div class="fbet mb4" style="font-size:12px"><span>${g.name}</span><span style="font-weight:600">${g.n}</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:var(--or)"></div></div></div>`;
+
+    // Governorate list with bars
+    const govSorted = govs.map(g=>({name:g.name,n:counts[g.name]||0})).sort((a,b)=>b.n-a.n);
+    const govMax = govSorted[0]?.n||1;
+    document.getElementById('map-gov-list').innerHTML = govSorted.map(g=>{
+      const pct = total?Math.round((g.n/total)*100):0;
+      const w   = Math.round((g.n/govMax)*100);
+      return `<div>
+        <div class="fbet mb4" style="font-size:12px">
+          <span style="color:var(--t2)">${g.name}</span>
+          <div class="fctr g8">
+            <span style="font-weight:600">${g.n}</span>
+            <span style="font-size:10px;color:var(--t3)">${pct?pct+'%':''}</span>
+          </div>
+        </div>
+        <div class="pb"><div class="pf" style="width:${w}%;background:rgba(26,86,219,${0.3+w*0.007})"></div></div>
+      </div>`;
     }).join('');
-  }catch(e){
-    document.getElementById('map-svg').innerHTML='<text x="210" y="170" text-anchor="middle" font-size="13" fill="#94A3B8" font-family="sans-serif">No data yet</text>';
+
+    // Nationality breakdown
+    const natCounts = {};
+    users.forEach(u=>{if(u.nationality)natCounts[u.nationality]=(natCounts[u.nationality]||0)+1;});
+    const natColors = {'Lebanese':'#0EA5E9','Syrian':'#7C3AED','Palestinian (PRL)':'#10B981','Palestinian (PRS)':'#F59E0B'};
+    const natTotal = Object.values(natCounts).reduce((s,v)=>s+v,0)||1;
+    document.getElementById('map-nat-list').innerHTML = Object.entries(natCounts)
+      .sort((a,b)=>b[1]-a[1]).map(([n,v])=>{
+        const pct=Math.round((v/natTotal)*100), col=natColors[n]||'#9E9B94';
+        return `<div>
+          <div class="fbet mb4" style="font-size:12px">
+            <div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:${col}"></div><span>${n}</span></div>
+            <span style="font-weight:600">${v} (${pct}%)</span>
+          </div>
+          <div class="pb"><div class="pf" style="width:${pct}%;background:${col}"></div></div>
+        </div>`;
+      }).join('')||'<p style="color:var(--t3);font-size:13px">No nationality data</p>';
+
+    // Phase distribution
+    const phaseCounts = {};
+    users.forEach(u=>{
+      const tid=userTeam[u.id], td=teamData[tid]||{};
+      if(td.phase)phaseCounts[td.phase]=(phaseCounts[td.phase]||0)+1;
+    });
+    const phaseTotal=Object.values(phaseCounts).reduce((s,v)=>s+v,0)||1;
+    document.getElementById('map-phase-list').innerHTML = ['DT','FB1','FB2','INC']
+      .filter(ph=>phaseCounts[ph]).map(ph=>{
+        const n=phaseCounts[ph]||0, pct=Math.round((n/phaseTotal)*100);
+        return `<div>
+          <div class="fbet mb4" style="font-size:12px">
+            <div class="fctr g6">${phaseTag(ph)}<span>${{DT:'Design Thinking',FB1:'FB Stage 1',FB2:'FB Stage 2',INC:'Incubation'}[ph]}</span></div>
+            <span style="font-weight:600">${n} (${pct}%)</span>
+          </div>
+          <div class="pb"><div class="pf" style="width:${pct}%;background:${PHASE_COLORS[ph]}"></div></div>
+        </div>`;
+      }).join('')||'<p style="color:var(--t3);font-size:13px">No phase data</p>';
+
+    // Partner × governorate table
+    const partnerGovCounts = {};
+    users.forEach(u=>{
+      if(!u.governorate) return;
+      const tid=userTeam[u.id], td=teamData[tid]||{};
+      const p=PARTNERS.find(x=>x.id===td.partner_id);
+      if(!p) return;
+      if(!partnerGovCounts[p.code]) partnerGovCounts[p.code]={};
+      partnerGovCounts[p.code][u.governorate]=(partnerGovCounts[p.code][u.governorate]||0)+1;
+    });
+    const activePartners=Object.keys(partnerGovCounts);
+    const activeGovs=govSorted.filter(g=>g.n>0).map(g=>g.name);
+    if(activePartners.length && activeGovs.length){
+      let tbl=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr><th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--bdr)">Partner</th>`;
+      activeGovs.forEach(g=>tbl+=`<th style="text-align:center;padding:7px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:600;color:var(--t3)">${g.split(' ')[0]}</th>`);
+      tbl+=`<th style="text-align:center;padding:7px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Total</th></tr></thead><tbody>`;
+      activePartners.forEach(code=>{
+        const p=PARTNERS.find(x=>x.code===code)||{color:'var(--or)'};
+        const rowTotal=Object.values(partnerGovCounts[code]).reduce((s,v)=>s+v,0);
+        tbl+=`<tr><td style="padding:7px 10px;border-bottom:0.5px solid var(--bdr)"><div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:${p.color||'var(--or)'}"></div><span style="font-weight:600">${code}</span></div></td>`;
+        activeGovs.forEach(g=>{
+          const n=partnerGovCounts[code][g]||0;
+          tbl+=`<td style="text-align:center;padding:7px 6px;border-bottom:0.5px solid var(--bdr)">
+            ${n>0?`<span style="font-weight:600;color:var(--fb1)">${n}</span>`:'<span style="color:var(--bdr)">—</span>'}
+          </td>`;
+        });
+        tbl+=`<td style="text-align:center;padding:7px 10px;border-bottom:0.5px solid var(--bdr);font-weight:700;color:var(--or)">${rowTotal}</td></tr>`;
+      });
+      tbl+='</tbody></table>';
+      document.getElementById('map-partner-table').innerHTML=tbl;
+    } else {
+      document.getElementById('map-partner-table').innerHTML='<p style="color:var(--t3);font-size:13px;padding:.5rem 0">No data to display. Add participants with governorate information.</p>';
+    }
+
+  } catch(e){
+    document.getElementById('map-svg').innerHTML='<text x="210" y="170" text-anchor="middle" font-size="13" fill="#94A3B8" font-family="sans-serif">Error loading map data</text>';
+    console.error('Map error:',e);
   }
 }
+
 
 // ── ANALYTICS ──
 async function loadAnalytics(){
