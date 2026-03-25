@@ -659,72 +659,89 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
     <!-- ════ ADMIN: SCORING SHEET ════ -->
     <div class="page" id="pg-assess-sheet">
       <button class="back-btn" onclick="nav('pg-assess-queue')">← Back to queue</button>
+
+      <!-- Phase gate info banner -->
+      <div id="phase-gate-banner" style="border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;border:1px solid var(--bdr);background:var(--bg)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span id="gate-icon" style="font-size:1.5rem">📋</span>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span id="gate-phase-tag"></span>
+              <span id="gate-title" style="font-size:13px;font-weight:600;color:var(--t)"></span>
+            </div>
+            <p id="gate-deliverable" style="font-size:12px;color:var(--t3)"></p>
+          </div>
+          <div id="gate-att-block" style="text-align:center;padding:8px 16px;border-radius:8px;min-width:100px">
+            <div style="font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;margin-bottom:2px">Attendance</div>
+            <div id="gate-att-rate" style="font-size:22px;font-weight:700">—</div>
+            <div id="gate-att-status" style="font-size:10px;font-weight:600;margin-top:2px"></div>
+          </div>
+        </div>
+        <!-- Attendance gate warning -->
+        <div id="gate-att-warning" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--fail-bg);border:1px solid #F09595;font-size:12px;color:var(--fail-t)">
+          ⚠️ <strong>Attendance below 60% gate.</strong> This team is <strong>ineligible to advance</strong> to the next phase regardless of assessment score. You may still score for records but the outcome will be locked to Exit.
+        </div>
+      </div>
+
       <div class="fbet mb15">
         <div class="sh" style="margin:0">
           <h2 id="sheet-title">Assessment</h2>
-          <p>Score each criterion. Weighted total auto-calculates.</p>
+          <p id="sheet-phase-desc" style="font-size:12px;color:var(--t3)"></p>
         </div>
         <div class="stat" style="padding:7px 12px;text-align:center">
           <div class="slbl">Assessor</div>
           <div style="font-size:13px;font-weight:500" id="sheet-assessor">—</div>
         </div>
       </div>
+
       <div class="total-bar" id="total-bar">
         <div>
-          <div style="font-size:11px;color:var(--t2);margin-bottom:2px">Weighted total</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:2px">Total score</div>
           <div class="fctr g8"><span class="total-num" id="total-score">—</span><span style="font-size:13px;color:var(--t3);margin-top:6px">/100</span></div>
         </div>
         <div style="text-align:right">
           <div style="font-size:13px;font-weight:500" id="total-verdict">Fill in criteria below</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px" id="total-sub">Pass threshold: 70/100</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px" id="total-sub">Pass threshold: 60/100</div>
         </div>
       </div>
-      <!-- Criteria sections -->
-      <div class="score-section mb1">
-        <div class="score-sec-head"><p>A — Business plan quality</p><span>35 pts</span></div>
-        <div class="score-row"><div style="font-size:13px">Problem definition & market need</div><div style="font-size:11px;color:var(--t3);text-align:center">×1.0 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="1.0"><span class="mx">/10</span></div><div class="score-wtd" id="w-A1">—</div></div>
-        <div class="score-row"><div style="font-size:13px">Value proposition</div><div style="font-size:11px;color:var(--t3);text-align:center">×1.0 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="1.0"><span class="mx">/10</span></div><div class="score-wtd" id="w-A2">—</div></div>
-        <div class="score-row"><div style="font-size:13px">Competitive landscape</div><div style="font-size:11px;color:var(--t3);text-align:center">×0.75 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="0.75"><span class="mx">/10</span></div><div class="score-wtd" id="w-A3">—</div></div>
-        <div class="score-row"><div style="font-size:13px">Go-to-market strategy</div><div style="font-size:11px;color:var(--t3);text-align:center">×0.5 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="0.5"><span class="mx">/10</span></div><div class="score-wtd" id="w-A4">—</div></div>
-      </div>
-      <div class="score-section mb1">
-        <div class="score-sec-head"><p>B — Financial projections</p><span>30 pts</span></div>
-        <div class="score-row"><div style="font-size:13px">Revenue model realism</div><div style="font-size:11px;color:var(--t3);text-align:center">×1.0 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="1.0"><span class="mx">/10</span></div><div class="score-wtd" id="w-B1">—</div></div>
-        <div class="score-row"><div style="font-size:13px">Cost structure & break-even</div><div style="font-size:11px;color:var(--t3);text-align:center">×1.0 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="1.0"><span class="mx">/10</span></div><div class="score-wtd" id="w-B2">—</div></div>
-        <div class="score-row"><div style="font-size:13px">3-year projections</div><div style="font-size:11px;color:var(--t3);text-align:center">×0.75 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="0.75"><span class="mx">/10</span></div><div class="score-wtd" id="w-B3">—</div></div>
-      </div>
-      <div class="score-section mb1">
-        <div class="score-sec-head"><p>C — Team & execution</p><span>20 pts</span></div>
-        <div class="score-row"><div style="font-size:13px">Team complementarity</div><div style="font-size:11px;color:var(--t3);text-align:center">×1.0 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="1.0"><span class="mx">/10</span></div><div class="score-wtd" id="w-C1">—</div></div>
-        <div class="score-row"><div style="font-size:13px">Commitment & engagement</div><div style="font-size:11px;color:var(--t3);text-align:center">×1.0 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="1.0"><span class="mx">/10</span></div><div class="score-wtd" id="w-C2">—</div></div>
-      </div>
-      <div class="score-section mb15">
-        <div class="score-sec-head"><p>D — Presentation</p><span>15 pts</span></div>
-        <div class="score-row"><div style="font-size:13px">Clarity & structure</div><div style="font-size:11px;color:var(--t3);text-align:center">×0.75 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="0.75"><span class="mx">/10</span></div><div class="score-wtd" id="w-D1">—</div></div>
-        <div class="score-row"><div style="font-size:13px">Q&A handling</div><div style="font-size:11px;color:var(--t3);text-align:center">×0.75 · max 10</div><div class="score-inp fctr g8"><input type="number" min="0" max="10" placeholder="—" oninput="recalc()" class="si" data-max="10" data-w="0.75"><span class="mx">/10</span></div><div class="score-wtd" id="w-D2">—</div></div>
-      </div>
+
+      <!-- Dynamic criteria - injected by openAssessSheet() -->
+      <div id="assess-criteria-container"></div>
+
       <div class="card mb1">
         <div class="clbl mb12">Decision</div>
+        <div id="gate-locked-msg" style="display:none;padding:10px 14px;border-radius:8px;background:var(--fail-bg);border:1px solid #F09595;font-size:13px;color:var(--fail-t);margin-bottom:12px">
+          🔒 Attendance gate not met (&lt;60%). Only "Exit" is available.
+        </div>
         <div class="outcome-grid">
-          <div class="oc pass-c" id="oc-advance" onclick="selectOutcome('advance')"><p style="color:var(--pass-t)">Advance</p><span>Score ≥ threshold</span></div>
-          <div class="oc warn-c" id="oc-remediation" onclick="selectOutcome('remediation')"><p style="color:var(--warn-t)">Remediation</p><span>Gap plan required</span></div>
-          <div class="oc fail-c" id="oc-exit" onclick="selectOutcome('exit')"><p style="color:var(--fail-t)">Exit</p><span>Below minimum</span></div>
+          <div class="oc pass-c" id="oc-advance" onclick="selectOutcome('advance')">
+            <p style="color:var(--pass-t)" id="oc-advance-label">Advance to next phase</p>
+            <span id="oc-advance-desc">Score ≥ 60 &amp; attendance ≥ 60%</span>
+          </div>
+          <div class="oc warn-c" id="oc-remediation" onclick="selectOutcome('remediation')">
+            <p style="color:var(--warn-t)">Remediation</p>
+            <span>Gap plan required before re-assessment</span>
+          </div>
+          <div class="oc fail-c" id="oc-exit" onclick="selectOutcome('exit')">
+            <p style="color:var(--fail-t)" id="oc-exit-label">Exit program</p>
+            <span id="oc-exit-desc">Score &lt; 60 or attendance &lt; 60%</span>
+          </div>
         </div>
         <div id="rem-block" style="display:none;margin-bottom:12px">
           <label class="flbl">Remediation plan</label>
           <textarea class="txa mb8" rows="3" id="rem-plan" placeholder="Specific gaps to address and re-assessment date..."></textarea>
         </div>
-        <label class="flbl">Feedback for team</label>
-        <textarea class="txa mb12" rows="3" id="assess-feedback" placeholder="Structured feedback visible to participants..."></textarea>
+        <label class="flbl">Feedback for team (visible to participants)</label>
+        <textarea class="txa mb12" rows="3" id="assess-feedback" placeholder="Constructive feedback on strengths and areas to improve..."></textarea>
         <label class="flbl">Internal notes (INJAZ only)</label>
-        <textarea class="txa" rows="2" id="assess-notes" placeholder="Confidential observations..."></textarea>
+        <textarea class="txa" rows="2" id="assess-notes" placeholder="Confidential observations for internal records..."></textarea>
       </div>
+
       <div class="fbet">
         <button class="btn" onclick="nav('pg-assess-queue')">Cancel</button>
         <button class="btn-p" id="submit-btn" onclick="doSubmitAssessment()" disabled>Submit assessment</button>
       </div>
     </div>
-
     <!-- ════ ADMIN: ATTENDANCE ════ -->
     <div class="page" id="pg-attendance">
       <div class="sh fbet" style="margin-bottom:1rem">
@@ -1989,36 +2006,240 @@ async function loadAssessQueue(){
     }).join(''):`<tr><td colspan="6">${emptyState('✅','Queue is empty','')}</td></tr>`;
   } catch(e){ toast('Error loading queue',e.message,'error'); }
 }
-function openAssessSheet(team){
+// Phase-specific criteria definitions
+const PHASE_ASSESS = {
+  DT: {
+    title:'Design Thinking → FB Stage 1',
+    deliverable:'Solid Business Model Canvas (BMC)',
+    nextPhase:'FB1',
+    sections:[
+      {name:'Problem & Opportunity',max:25,criteria:[
+        {label:'Problem clarity & real-world relevance',max:10},
+        {label:'Market size & customer insight',max:10},
+        {label:'Innovation & differentiation',max:5},
+      ]},
+      {name:'Solution & BMC Quality',max:35,criteria:[
+        {label:'Solution feasibility & uniqueness',max:10},
+        {label:'BMC completeness & coherence',max:15},
+        {label:'Revenue model soundness',max:10},
+      ]},
+      {name:'Team Readiness',max:25,criteria:[
+        {label:'Team roles & complementarity',max:10},
+        {label:'Commitment shown during DT',max:10},
+        {label:'Social impact alignment',max:5},
+      ]},
+      {name:'Presentation',max:15,criteria:[
+        {label:'Clarity of pitch',max:8},
+        {label:'Q&A handling',max:7},
+      ]},
+    ]
+  },
+  FB1: {
+    title:'FB Stage 1 → FB Stage 2',
+    deliverable:'Comprehensive Business Plan',
+    nextPhase:'FB2',
+    sections:[
+      {name:'Business Plan Quality',max:35,criteria:[
+        {label:'Problem & solution depth',max:10},
+        {label:'Market research & competitive analysis',max:15},
+        {label:'Go-to-market strategy',max:10},
+      ]},
+      {name:'Financial Projections',max:35,criteria:[
+        {label:'Revenue model realism',max:10},
+        {label:'Cost structure & break-even',max:15},
+        {label:'3-year financial projections',max:10},
+      ]},
+      {name:'Team & Execution',max:20,criteria:[
+        {label:'Execution plan & milestones',max:10},
+        {label:'Team capability & track record',max:10},
+      ]},
+      {name:'Presentation',max:10,criteria:[
+        {label:'Clarity & delivery',max:5},
+        {label:'Q&A and investor readiness',max:5},
+      ]},
+    ]
+  },
+  FB2: {
+    title:'FB Stage 2 → Incubation',
+    deliverable:'Financial Projections & Detailed Costing',
+    nextPhase:'INC',
+    sections:[
+      {name:'Financial Rigour',max:40,criteria:[
+        {label:'Detailed cost structure & pricing',max:15},
+        {label:'Cash flow & break-even analysis',max:15},
+        {label:'5-year financial projections',max:10},
+      ]},
+      {name:'Business Viability',max:35,criteria:[
+        {label:'Market traction & customer validation',max:15},
+        {label:'Scalability potential',max:10},
+        {label:'Risk assessment & mitigation',max:10},
+      ]},
+      {name:'Team & Operations',max:15,criteria:[
+        {label:'Operational readiness',max:8},
+        {label:'Team structure & governance',max:7},
+      ]},
+      {name:'Pitch Quality',max:10,criteria:[
+        {label:'Investor-readiness of pitch',max:5},
+        {label:'Vision & long-term impact',max:5},
+      ]},
+    ]
+  },
+  INC: {
+    title:'Incubation → SIYB (ILO referral)',
+    deliverable:'Market-ready startup with professional brand identity',
+    nextPhase:'SIYB',
+    sections:[
+      {name:'Market Readiness',max:35,criteria:[
+        {label:'Product/service fully developed',max:15},
+        {label:'Brand identity & marketing materials',max:10},
+        {label:'Customer acquisition evidence',max:10},
+      ]},
+      {name:'Business Sustainability',max:35,criteria:[
+        {label:'Revenue generated or contracted',max:15},
+        {label:'Operational systems in place',max:10},
+        {label:'Legal & compliance status',max:10},
+      ]},
+      {name:'Growth Potential',max:20,criteria:[
+        {label:'Scalability & expansion plan',max:10},
+        {label:'Partnership & network development',max:10},
+      ]},
+      {name:'SIYB Readiness',max:10,criteria:[
+        {label:'ILO SIYB programme alignment',max:5},
+        {label:'Team commitment to SIYB',max:5},
+      ]},
+    ]
+  },
+};
+
+let _attGatePassed = true; // tracks if attendance ≥ 60%
+
+async function openAssessSheet(team){
   currentTeam=team;
-  document.getElementById('sheet-title').textContent=(team.name||'Team')+' — Assessment';
+  const phase = team.current_phase || 'DT';
+  const def = PHASE_ASSESS[phase] || PHASE_ASSESS['DT'];
+
+  // Set header
+  document.getElementById('sheet-title').textContent=(team.name||'Team')+' — '+phase+' Assessment';
+  document.getElementById('sheet-phase-desc').textContent=def.deliverable;
   document.getElementById('sheet-assessor').textContent=PROFILE.full_name||PROFILE.email;
-  document.querySelectorAll('.si').forEach(i=>i.value='');
-  ['w-A1','w-A2','w-A3','w-A4','w-B1','w-B2','w-B3','w-C1','w-C2','w-D1','w-D2'].forEach(id=>{const e=document.getElementById(id);if(e){e.textContent='—';e.style.color='';}});
+
+  // Set gate banner
+  document.getElementById('gate-phase-tag').innerHTML=phaseTag(phase);
+  document.getElementById('gate-title').textContent=def.title;
+  document.getElementById('gate-deliverable').textContent='📋 Required deliverable: '+def.deliverable;
+
+  // Build dynamic criteria inputs
+  let html=''; let inputIdx=0;
+  def.sections.forEach(sec=>{
+    html+=`<div class="score-section mb1">
+      <div class="score-sec-head"><p>${sec.name}</p><span>${sec.max} pts</span></div>`;
+    sec.criteria.forEach(c=>{
+      html+=`<div class="score-row">
+        <div style="font-size:13px">${c.label}</div>
+        <div style="font-size:11px;color:var(--t3);text-align:center">max ${c.max}</div>
+        <div class="score-inp fctr g8">
+          <input type="number" id="si-${inputIdx}" min="0" max="${c.max}" placeholder="—"
+            oninput="recalc()" class="si" data-max="${c.max}" data-w="1">
+          <span class="mx">/${c.max}</span>
+        </div>
+        <div class="score-wtd" id="w-si-${inputIdx}">—</div>
+      </div>`;
+      inputIdx++;
+    });
+    html+='</div>';
+  });
+  document.getElementById('assess-criteria-container').innerHTML=html;
+
+  // Load attendance for this team's current class
+  _attGatePassed = true;
+  try {
+    const cls = await sb.get('classes','phase_code=eq.'+phase+'&order=created_at.desc&limit=1').catch(()=>[]);
+    if(cls.length){
+      const att = await sb.get('attendance','class_id=eq.'+cls[0].id);
+      // Get team member user IDs
+      const tmRows = await sb.get('team_members','team_id=eq.'+team.id+'&select=user_id');
+      const uids = new Set(tmRows.map(r=>r.user_id));
+      const teamAtt = att.filter(a=>uids.has(a.user_id));
+      const total = teamAtt.length;
+      const present = teamAtt.filter(a=>a.status==='P').length;
+      const rate = total ? Math.round((present/total)*100) : null;
+      const attEl = document.getElementById('gate-att-rate');
+      const statusEl = document.getElementById('gate-att-status');
+      const blockEl = document.getElementById('gate-att-block');
+      if(rate !== null){
+        attEl.textContent = rate+'%';
+        _attGatePassed = rate >= 60;
+        if(_attGatePassed){
+          attEl.style.color='var(--pass)';
+          statusEl.textContent='✓ Gate met';
+          statusEl.style.color='var(--pass-t)';
+          blockEl.style.background='var(--pass-bg)';
+          blockEl.style.border='1px solid #9FE1CB';
+        } else {
+          attEl.style.color='var(--fail)';
+          statusEl.textContent='✗ Below 60%';
+          statusEl.style.color='var(--fail-t)';
+          blockEl.style.background='var(--fail-bg)';
+          blockEl.style.border='1px solid #F09595';
+          document.getElementById('gate-att-warning').style.display='block';
+          document.getElementById('gate-locked-msg').style.display='block';
+          // Lock advance & remediation
+          document.getElementById('oc-advance').style.opacity='0.4';
+          document.getElementById('oc-advance').style.pointerEvents='none';
+          document.getElementById('oc-remediation').style.opacity='0.4';
+          document.getElementById('oc-remediation').style.pointerEvents='none';
+          selectOutcome('exit');
+        }
+      } else {
+        attEl.textContent='N/A';
+        statusEl.textContent='No data';
+        blockEl.style.background='var(--bg)';
+      }
+    }
+  } catch(e){ console.warn('Attendance check failed:',e.message); }
+
+  // Reset other fields
   selectedOutcome=null;
-  document.querySelectorAll('.oc').forEach(c=>c.classList.remove('selected'));
+  if(_attGatePassed){
+    document.querySelectorAll('.oc').forEach(c=>c.classList.remove('selected'));
+    document.getElementById('oc-advance').style.opacity='';
+    document.getElementById('oc-advance').style.pointerEvents='';
+    document.getElementById('oc-remediation').style.opacity='';
+    document.getElementById('oc-remediation').style.pointerEvents='';
+    document.getElementById('gate-att-warning').style.display='none';
+    document.getElementById('gate-locked-msg').style.display='none';
+  }
   document.getElementById('rem-block').style.display='none';
   document.getElementById('assess-feedback').value='';
   document.getElementById('assess-notes').value='';
   document.getElementById('total-bar').className='total-bar';
   document.getElementById('total-score').textContent='—';
   document.getElementById('total-verdict').textContent='Fill in criteria below';
-  document.getElementById('submit-btn').disabled=true;
+  document.getElementById('total-sub').textContent='Pass threshold: 60/100 (attendance gate: ≥60%)';
+  document.getElementById('submit-btn').disabled=!_attGatePassed;
+
+  // Update outcome labels based on phase
+  const next = def.nextPhase;
+  document.getElementById('oc-advance-label').textContent = next==='SIYB'?'Refer to SIYB (ILO)':'Advance to '+next;
+  document.getElementById('oc-advance-desc').textContent = 'Score ≥ 60 & attendance ≥ 60%';
+  document.getElementById('oc-exit-label').textContent = next==='SIYB'?'Not ready for SIYB':'Exit program';
+
   nav('pg-assess-sheet');
 }
 function recalc(){
-  const ids=['w-A1','w-A2','w-A3','w-A4','w-B1','w-B2','w-B3','w-C1','w-C2','w-D1','w-D2'];
   const inputs=document.querySelectorAll('.si');
-  let tot=0,maxTot=0,idx=0;
+  let tot=0,maxTot=0;
   inputs.forEach(inp=>{
     const v=inp.value===''?null:Math.min(Math.max(parseFloat(inp.value),0),parseFloat(inp.dataset.max));
-    const w=parseFloat(inp.dataset.w),mx=parseFloat(inp.dataset.max);
-    const el=document.getElementById(ids[idx]);
-    if(el){
-      if(v!==null){const wtd=Math.round(v*w*10)/10;el.textContent=wtd.toFixed(1);el.style.color=v/mx>=0.7?'var(--pass)':v/mx>=0.5?'var(--warn)':'var(--fail)';tot+=wtd;maxTot+=mx*w;}
-      else{el.textContent='—';el.style.color='';}
+    const mx=parseFloat(inp.dataset.max);
+    const wEl=document.getElementById('w-'+inp.id);
+    if(wEl){
+      if(v!==null){
+        wEl.textContent=v.toFixed(0);
+        wEl.style.color=v/mx>=0.7?'var(--pass)':v/mx>=0.5?'var(--warn)':'var(--fail)';
+        tot+=v; maxTot+=mx;
+      } else { wEl.textContent='—'; wEl.style.color=''; }
     }
-    idx++;
   });
   if(maxTot>0){const s=Math.round((tot/maxTot)*100);updateTotalBar(s);autoSuggest(s);}
   else updateTotalBar(null);
@@ -2027,12 +2248,12 @@ function updateTotalBar(s){
   const bar=document.getElementById('total-bar'),num=document.getElementById('total-score'),verd=document.getElementById('total-verdict'),sub=document.getElementById('total-sub');
   if(s===null){bar.className='total-bar';num.textContent='—';verd.textContent='Fill in criteria below';verd.style.color='';return;}
   num.textContent=s;
-  if(s>=70){bar.className='total-bar pass';verd.textContent='Suggests: Advance';verd.style.color='var(--pass-t)';}
-  else if(s>=55){bar.className='total-bar warn';verd.textContent='Suggests: Remediation';verd.style.color='var(--warn-t)';}
+  if(s>=60){bar.className='total-bar pass';verd.textContent='Suggests: Advance';verd.style.color='var(--pass-t)';}
+  else if(s>=45){bar.className='total-bar warn';verd.textContent='Suggests: Remediation';verd.style.color='var(--warn-t)';}
   else{bar.className='total-bar fail';verd.textContent='Suggests: Exit';verd.style.color='var(--fail-t)';}
-  sub.textContent='Pass threshold: 70/100';
+  sub.textContent='Pass threshold: 60/100 · Attendance gate: ≥60%';
 }
-function autoSuggest(s){ selectOutcome(s>=70?'advance':s>=55?'remediation':'exit'); }
+function autoSuggest(s){ if(!_attGatePassed) return; selectOutcome(s>=60?'advance':s>=45?'remediation':'exit'); }
 function selectOutcome(o){
   selectedOutcome=o;
   document.querySelectorAll('.oc').forEach(c=>c.classList.remove('selected'));
@@ -2062,10 +2283,16 @@ async function doSubmitAssessment(){
         {score,status:statusMap[selectedOutcome]});
       // Advance phase if needed
       if(selectedOutcome==='advance'){
-        const next={DT:'FB1',FB1:'FB2',FB2:'INC'}[currentTeam.current_phase];
-        if(next){
+        const phDef = PHASE_ASSESS[currentTeam.current_phase];
+        const next = phDef?.nextPhase;
+        if(next && next !== 'SIYB'){
           await sb.patch('teams','id=eq.'+currentTeam.id,{current_phase:next});
           await sb.post('phase_enrollments',{team_id:currentTeam.id,phase_code:next,status:'active'});
+          toast('Team advanced to '+next,'Phase enrollment created');
+        } else if(next === 'SIYB'){
+          // Mark as SIYB-referred but keep in INC
+          await sb.patch('teams','id=eq.'+currentTeam.id,{siyb_track:'referred'}).catch(()=>{});
+          toast('Referred to SIYB (ILO)','Team is market-ready and referred to ILO SIYB programme');
         }
       }
       toast('Assessment submitted','Team notified of outcome');
