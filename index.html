@@ -1608,8 +1608,8 @@ async function loadDashboard(){
     const [paRows,allTeams,allUsers,appRows,attRows,tmRows] = await Promise.all([
       sb.get('partner_achievement','order=partner_code,phase_code'),
       sb.get('teams','select=id,current_phase,partner_id,sector'),
-      sb.get('users','select=id,gender,nationality,governorate,date_of_birth,education,employment&role=eq.participant'),
-      sb.get('applications','select=status,sector,idea_stage,challenges,sdgs,governorate,members').catch(()=>[]),
+      sb.get('users','select=id,gender,nationality,governorate,date_of_birth,has_disability&role=eq.participant'),
+      sb.get('applications','select=status,sector,idea_stage,challenges,sdgs,governorate,members,has_bmc').catch(()=>[]),
       sb.get('attendance','select=class_id,status,classes(name,phase_code)').catch(()=>[]),
       sb.get('team_members','select=user_id,team_id').catch(()=>[]),
     ]);
@@ -1626,7 +1626,7 @@ async function loadDashboard(){
 
     // ── KPI 1 ──
     const female=filtUsers.filter(u=>u.gender==='Female'||u.gender==='female').length;
-    const disabled=filtUsers.filter(u=>u.has_disability).length;
+    const disabled=filtUsers.filter(u=>u.has_disability===true).length;
     document.getElementById('kpi-participants').textContent=total||'—';
     document.getElementById('kpi-part-sub').textContent=total?`${female} female (${Math.round(female/total*100)}%)`:'';
     document.getElementById('kpi-teams').textContent=filtTeams.length||'—';
@@ -1802,11 +1802,11 @@ async function loadDashboard(){
       return `<div><div class="fbet mb4" style="font-size:12px"><span>${l} yrs</span><span style="font-weight:600;color:${ageColors[i]}">${v} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${ageColors[i]}"></div></div></div>`;
     }).join('');
 
-    // ── Education ──
+    // ── Education — from applications members array ──
     const eduMap={};
-    filtUsers.forEach(u=>{if(u.education){const k=u.education;eduMap[k]=(eduMap[k]||0)+1;}});
-    // Also from applications members
-    appRows.forEach(r=>{(r.members||[]).forEach(m=>{if(m.education){eduMap[m.education]=(eduMap[m.education]||0)+0;}});});
+    appRows.forEach(r=>{
+      (r.members||[]).forEach(m=>{if(m.education)eduMap[m.education]=(eduMap[m.education]||0)+1;});
+    });
     const eduTotal=Object.values(eduMap).reduce((s,v)=>s+v,0)||1;
     const eduColors=['#6366F1','#0EA5E9','#10B981','#F59E0B','#EC4899'];
     document.getElementById('dash-education').innerHTML=Object.entries(eduMap).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>{
@@ -1814,9 +1814,11 @@ async function loadDashboard(){
       return `<div><div class="fbet mb4" style="font-size:11px"><span style="color:var(--t2)">${l}</span><span style="font-weight:600">${v} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${eduColors[i%5]}"></div></div></div>`;
     }).join('')||emptyState('🎓','No education data','Fill in during registration');
 
-    // ── Employment ──
+    // ── Employment — from applications members array ──
     const empMap={};
-    filtUsers.forEach(u=>{if(u.employment){empMap[u.employment]=(empMap[u.employment]||0)+1;}});
+    appRows.forEach(r=>{
+      (r.members||[]).forEach(m=>{if(m.employment)empMap[m.employment]=(empMap[m.employment]||0)+1;});
+    });
     const empTotal=Object.values(empMap).reduce((s,v)=>s+v,0)||1;
     const empColors=['#0EA5E9','#10B981','#F59E0B','#EC4899','#6366F1','#9E9B94'];
     document.getElementById('dash-employment').innerHTML=Object.entries(empMap).sort((a,b)=>b[1]-a[1]).map(([l,v],i)=>{
