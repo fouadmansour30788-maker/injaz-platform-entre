@@ -3201,194 +3201,167 @@ async function loadMap(){
   const genderF  = document.getElementById('map-gender-filter')?.value||'all';
   const natF     = document.getElementById('map-nat-filter')?.value||'all';
 
+  const GOV_NORMALIZE = {
+    'north':'North Lebanon','north lebanon':'North Lebanon',
+    'south':'South Lebanon','south lebanon':'South Lebanon',
+    'mount lebanon':'Mount Lebanon','mount':'Mount Lebanon',
+    'beirut':'Beirut','bekaa':'Bekaa',"beka'a":'Bekaa',
+    'nabatieh':'Nabatieh','akkar':'Akkar',
+    'baalbek':'Baalbek-Hermel','baalbek-hermel':'Baalbek-Hermel','hermel':'Baalbek-Hermel',
+  };
+  function normGov(g){ return g?GOV_NORMALIZE[g.toLowerCase().trim()]||g:null; }
+
   try {
-    // Load all data in parallel
+    // Load data
     const [allUsers, allTeams, allTm] = await Promise.all([
       sb.get('users','select=id,governorate,gender,nationality&role=eq.participant'),
       sb.get('teams','select=id,current_phase,partner_id'),
-      sb.get('team_members','select=user_id,team_id&limit=10000'),
+      sb.get('team_members','select=user_id,team_id'),
     ]);
 
-    // Build user→team map
-    const userTeam = {};
+    // Build lookup maps
+    const userTeam={}, teamInfo={};
     allTm.forEach(r=>{ userTeam[r.user_id]=r.team_id; });
+    allTeams.forEach(t=>{ teamInfo[t.id]={phase:t.current_phase,partner_id:t.partner_id}; });
 
-    // Build team→partner and team→phase map
-    const teamData = {};
-    allTeams.forEach(t=>{ teamData[t.id]={phase:t.current_phase,partner_id:t.partner_id}; });
-
-    // Filter users based on selected filters
-    let users = allUsers.filter(u => {
-      const tid = userTeam[u.id];
-      const td  = teamData[tid]||{};
-      const p   = PARTNERS.find(x=>x.id===td.partner_id);
+    // Filter users
+    const users = allUsers.filter(u=>{
+      const td = teamInfo[userTeam[u.id]]||{};
+      const p  = PARTNERS.find(x=>x.id===td.partner_id);
       if(partnerF!=='all' && p?.code!==partnerF) return false;
-      if(phaseF!=='all'   && td.phase!==phaseF)   return false;
-      if(genderF!=='all'  && u.gender!==genderF)   return false;
-      if(natF!=='all'     && u.nationality!==natF)  return false;
+      if(phaseF!=='all'   && td.phase!==phaseF)  return false;
+      if(genderF!=='all'  && u.gender!==genderF)  return false;
+      if(natF!=='all'     && u.nationality!==natF) return false;
       return true;
     });
 
-    // Also include from applications as fallback if users have no gov
-    const appRows = await sb.get('applications','select=governorate,partner,members,lead_email&governorate=not.is.null').catch(()=>[]);
+    // Count by governorate
+    const counts={};
+    users.forEach(u=>{ const g=normGov(u.governorate); if(g) counts[g]=(counts[g]||0)+1; });
 
-    // Normalize governorate name to match SVG map
-    const GOV_NORMALIZE = {
-      'north': 'North Lebanon', 'north lebanon': 'North Lebanon',
-      'south': 'South Lebanon', 'south lebanon': 'South Lebanon',
-      'mount lebanon': 'Mount Lebanon', 'mount': 'Mount Lebanon',
-      'beirut': 'Beirut', 'bekaa': 'Bekaa', "beka'a": 'Bekaa',
-      'nabatieh': 'Nabatieh', 'akkar': 'Akkar',
-      'baalbek': 'Baalbek-Hermel', 'baalbek-hermel': 'Baalbek-Hermel',
-      'hermel': 'Baalbek-Hermel',
-    };
-    function normalizeGov(g) {
-      if(!g) return null;
-      return GOV_NORMALIZE[g.toLowerCase().trim()] || g;
-    }
-
-    // Count by governorate — merge users + applications (use email to deduplicate)
-    const seenEmails = new Set();
-    const counts = {};
-
-    // Count by governorate — from filtered users only (no fallback that ignores filters)
-    users.forEach(u=>{
-      const gov = normalizeGov(u.governorate);
-      if(gov) counts[gov]=(counts[gov]||0)+1;
-    });
-
-    const total = users.length;
+    const total  = users.length;
     const female = users.filter(u=>u.gender==='Female'||u.gender==='female').length;
-    const femalePct = total?Math.round((female/total)*100):0;
-    const govsCovered = Object.values(counts).filter(n=>n>0).length;
-    const topGov = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    const govsCovered = Object.keys(counts).filter(k=>counts[k]>0).length;
+    const topEntry= Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
 
     // KPIs
-    document.getElementById('map-total').textContent = total||'—';
-    document.getElementById('map-govs').textContent  = govsCovered||'—';
-    document.getElementById('map-top-gov').textContent = topGov?topGov[0]:'—';
-    document.getElementById('map-female').textContent = female||'—';
-    document.getElementById('map-female-pct').textContent = total?femalePct+'% of total':'';
+    document.getElementById('map-total').textContent    = total||'0';
+    document.getElementById('map-govs').textContent     = govsCovered||'0';
+    document.getElementById('map-top-gov').textContent  = topEntry?topEntry[0]:'—';
+    document.getElementById('map-female').textContent   = female||'0';
+    document.getElementById('map-female-pct').textContent = total?Math.round(female/total*100)+'% of total':'';
+    document.getElementById('map-gov-total-label').textContent = total+' participants';
 
-    document.getElementById('map-gov-total-label').textContent = total+' total · '+mapDataSource;
-
-    // Lebanese regions with SVG paths
-    const govs = [
-      {name:'Beirut',         path:'M185 165L205 155L215 175L195 185Z',              cx:200,cy:168},
-      {name:'Mount Lebanon',  path:'M165 130L220 110L235 165L215 175L205 155L185 165L170 150Z', cx:200,cy:145},
-      {name:'North Lebanon',  path:'M155 55L245 40L255 110L220 110L165 130L145 100Z', cx:200,cy:85},
-      {name:'Bekaa',          path:'M235 55L310 65L315 195L255 200L235 165L255 110L245 40Z', cx:278,cy:125},
-      {name:'South Lebanon',  path:'M140 185L215 175L255 200L245 255L155 265Z',      cx:195,cy:220},
-      {name:'Nabatieh',       path:'M215 175L235 165L315 195L280 250L245 255Z',      cx:265,cy:215},
-      {name:'Akkar',          path:'M155 55L235 55L245 40L200 20L145 35Z',           cx:190,cy:42},
-      {name:'Baalbek-Hermel', path:'M245 40L310 35L340 80L310 65L235 55Z',           cx:285,cy:55},
+    // SVG Map
+    const govDefs = [
+      {name:'Beirut',        path:'M185 165L205 155L215 175L195 185Z',                           cx:200,cy:168},
+      {name:'Mount Lebanon', path:'M165 130L220 110L235 165L215 175L205 155L185 165L170 150Z',   cx:200,cy:145},
+      {name:'North Lebanon', path:'M155 55L245 40L255 110L220 110L165 130L145 100Z',             cx:200,cy:85},
+      {name:'Bekaa',         path:'M235 55L310 65L315 195L255 200L235 165L255 110L245 40Z',      cx:278,cy:125},
+      {name:'South Lebanon', path:'M140 185L215 175L255 200L245 255L155 265Z',                   cx:195,cy:220},
+      {name:'Nabatieh',      path:'M215 175L235 165L315 195L280 250L245 255Z',                   cx:265,cy:215},
+      {name:'Akkar',         path:'M155 55L235 55L245 40L200 20L145 35Z',                        cx:190,cy:42},
+      {name:'Baalbek-Hermel',path:'M245 40L310 35L340 80L310 65L235 55Z',                        cx:285,cy:55},
     ];
+    const maxVal = Math.max(...Object.values(counts), 1);
 
-    const maxVal = Math.max(...Object.values(counts),1);
-    document.getElementById('map-svg').innerHTML = govs.map(g=>{
-      const n = counts[g.name]||0;
-      const intensity = n===0?0:(0.15+n/maxVal*0.8);
-      const fill = n===0?'#E2E8F0':`rgba(26,86,219,${intensity})`;
-      const textColor = intensity>0.5?'#fff':n>0?'#1A56DB':'#94A3B8';
-      return `<g style="cursor:pointer" title="${g.name}: ${n}">
-        <path d="${g.path}" fill="${fill}" stroke="white" stroke-width="1.5"/>
-        <text x="${g.cx}" y="${g.cy-2}" text-anchor="middle" font-size="9" fill="${textColor}" font-weight="${n>0?'700':'400'}" font-family="sans-serif">${g.name.split(' ')[0]}</text>
-        ${n>0?`<text x="${g.cx}" y="${g.cy+9}" text-anchor="middle" font-size="10" fill="${textColor}" font-weight="700" font-family="sans-serif">${n}</text>`:''}
-      </g>`;
+    document.getElementById('map-svg').innerHTML = govDefs.map(g=>{
+      const n   = counts[g.name]||0;
+      const pct = n/maxVal;
+      const fill= n===0?'#E2E8F0':'rgba(26,86,219,'+(0.15+pct*0.8)+')';
+      const tc  = pct>0.5?'#fff':n>0?'#1A56DB':'#94A3B8';
+      const label = g.name.split(' ')[0];
+      return '<g><path d="'+g.path+'" fill="'+fill+'" stroke="white" stroke-width="1.5"/>'
+        +'<text x="'+g.cx+'" y="'+(g.cy-2)+'" text-anchor="middle" font-size="9" fill="'+tc+'" font-weight="'+(n>0?'700':'400')+'" font-family="sans-serif">'+label+'</text>'
+        +(n>0?'<text x="'+g.cx+'" y="'+(g.cy+9)+'" text-anchor="middle" font-size="10" fill="'+tc+'" font-weight="700" font-family="sans-serif">'+n+'</text>':'')
+        +'</g>';
     }).join('');
 
-    // Governorate list with bars
-    const govSorted = govs.map(g=>({name:g.name,n:counts[g.name]||0})).sort((a,b)=>b.n-a.n);
+    // Governorate list
+    const govSorted = govDefs.map(g=>({name:g.name,n:counts[g.name]||0})).sort((a,b)=>b.n-a.n);
     const govMax = govSorted[0]?.n||1;
     document.getElementById('map-gov-list').innerHTML = govSorted.map(g=>{
-      const pct = total?Math.round((g.n/total)*100):0;
-      const w   = Math.round((g.n/govMax)*100);
-      return `<div>
-        <div class="fbet mb4" style="font-size:12px">
-          <span style="color:var(--t2)">${g.name}</span>
-          <div class="fctr g8">
-            <span style="font-weight:600">${g.n}</span>
-            <span style="font-size:10px;color:var(--t3)">${pct?pct+'%':''}</span>
-          </div>
-        </div>
-        <div class="pb"><div class="pf" style="width:${w}%;background:rgba(26,86,219,${0.3+w*0.007})"></div></div>
-      </div>`;
+      const pct=total?Math.round(g.n/total*100):0;
+      const w  =Math.round(g.n/govMax*100);
+      return '<div>'
+        +'<div class="fbet mb4" style="font-size:12px"><span style="color:var(--t2)">'+g.name+'</span>'
+        +'<div class="fctr g8"><span style="font-weight:600">'+g.n+'</span>'
+        +(pct?'<span style="font-size:10px;color:var(--t3)">'+pct+'%</span>':'')
+        +'</div></div>'
+        +'<div class="pb"><div class="pf" style="width:'+w+'%;background:rgba(26,86,219,'+(0.3+w*0.007)+')"></div></div>'
+        +'</div>';
     }).join('');
 
-    // Nationality breakdown
-    const natCounts = {};
-    users.forEach(u=>{if(u.nationality)natCounts[u.nationality]=(natCounts[u.nationality]||0)+1;});
-    const natColors = {'Lebanese':'#0EA5E9','Syrian':'#7C3AED','Palestinian (PRL)':'#10B981','Palestinian (PRS)':'#F59E0B'};
-    const natTotal = Object.values(natCounts).reduce((s,v)=>s+v,0)||1;
+    // Nationality
+    const natCounts={};
+    users.forEach(u=>{ if(u.nationality) natCounts[u.nationality]=(natCounts[u.nationality]||0)+1; });
+    const natColors={'Lebanese':'#0EA5E9','Syrian':'#7C3AED','Palestinian (PRL)':'#10B981','Palestinian (PRS)':'#F59E0B'};
+    const natTotal=Object.values(natCounts).reduce((s,v)=>s+v,0)||1;
     document.getElementById('map-nat-list').innerHTML = Object.entries(natCounts)
       .sort((a,b)=>b[1]-a[1]).map(([n,v])=>{
-        const pct=Math.round((v/natTotal)*100), col=natColors[n]||'#9E9B94';
-        return `<div>
-          <div class="fbet mb4" style="font-size:12px">
-            <div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:${col}"></div><span>${n}</span></div>
-            <span style="font-weight:600">${v} (${pct}%)</span>
-          </div>
-          <div class="pb"><div class="pf" style="width:${pct}%;background:${col}"></div></div>
-        </div>`;
+        const pct=Math.round(v/natTotal*100), col=natColors[n]||'#9E9B94';
+        return '<div><div class="fbet mb4" style="font-size:12px">'
+          +'<div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:'+col+'"></div><span>'+n+'</span></div>'
+          +'<span style="font-weight:600">'+v+' ('+pct+'%)</span></div>'
+          +'<div class="pb"><div class="pf" style="width:'+pct+'%;background:'+col+'"></div></div></div>';
       }).join('')||'<p style="color:var(--t3);font-size:13px">No nationality data</p>';
 
     // Phase distribution
-    const phaseCounts = {};
+    const phaseCounts={};
     users.forEach(u=>{
-      const tid=userTeam[u.id], td=teamData[tid]||{};
-      if(td.phase)phaseCounts[td.phase]=(phaseCounts[td.phase]||0)+1;
+      const ph=teamInfo[userTeam[u.id]]?.phase;
+      if(ph) phaseCounts[ph]=(phaseCounts[ph]||0)+1;
     });
     const phaseTotal=Object.values(phaseCounts).reduce((s,v)=>s+v,0)||1;
     document.getElementById('map-phase-list').innerHTML = ['DT','FB1','FB2','INC']
       .filter(ph=>phaseCounts[ph]).map(ph=>{
-        const n=phaseCounts[ph]||0, pct=Math.round((n/phaseTotal)*100);
-        return `<div>
-          <div class="fbet mb4" style="font-size:12px">
-            <div class="fctr g6">${phaseTag(ph)}<span>${{DT:'Design Thinking',FB1:'FB Stage 1',FB2:'FB Stage 2',INC:'Incubation'}[ph]}</span></div>
-            <span style="font-weight:600">${n} (${pct}%)</span>
-          </div>
-          <div class="pb"><div class="pf" style="width:${pct}%;background:${PHASE_COLORS[ph]}"></div></div>
-        </div>`;
+        const n=phaseCounts[ph], pct=Math.round(n/phaseTotal*100);
+        return '<div><div class="fbet mb4" style="font-size:12px">'
+          +'<div class="fctr g6">'+phaseTag(ph)+'<span>'+{DT:'Design Thinking',FB1:'FB Stage 1',FB2:'FB Stage 2',INC:'Incubation'}[ph]+'</span></div>'
+          +'<span style="font-weight:600">'+n+' ('+pct+'%)</span></div>'
+          +'<div class="pb"><div class="pf" style="width:'+pct+'%;background:'+PHASE_COLORS[ph]+'"></div></div></div>';
       }).join('')||'<p style="color:var(--t3);font-size:13px">No phase data</p>';
 
-    // Partner × governorate table
-    const partnerGovCounts = {};
+    // Partner × Governorate table
+    const pgCounts={};
     users.forEach(u=>{
-      if(!u.governorate) return;
-      const tid=userTeam[u.id], td=teamData[tid]||{};
-      const p=PARTNERS.find(x=>x.id===td.partner_id);
-      if(!p) return;
-      if(!partnerGovCounts[p.code]) partnerGovCounts[p.code]={};
-      partnerGovCounts[p.code][u.governorate]=(partnerGovCounts[p.code][u.governorate]||0)+1;
+      const g=normGov(u.governorate); if(!g) return;
+      const td=teamInfo[userTeam[u.id]]||{};
+      const p=PARTNERS.find(x=>x.id===td.partner_id); if(!p) return;
+      if(!pgCounts[p.code]) pgCounts[p.code]={};
+      pgCounts[p.code][g]=(pgCounts[p.code][g]||0)+1;
     });
-    const activePartners=Object.keys(partnerGovCounts);
-    const activeGovs=govSorted.filter(g=>g.n>0).map(g=>g.name);
-    if(activePartners.length && activeGovs.length){
-      let tbl=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr><th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--bdr)">Partner</th>`;
-      activeGovs.forEach(g=>tbl+=`<th style="text-align:center;padding:7px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:600;color:var(--t3)">${g.split(' ')[0]}</th>`);
-      tbl+=`<th style="text-align:center;padding:7px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Total</th></tr></thead><tbody>`;
-      activePartners.forEach(code=>{
+    const activeP=Object.keys(pgCounts);
+    const activeG=govDefs.map(g=>g.name).filter(g=>users.some(u=>normGov(u.governorate)===g));
+    if(activeP.length && activeG.length){
+      let tbl='<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        +'<thead><tr><th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--bdr)">Partner</th>';
+      activeG.forEach(g=>tbl+='<th style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:600;color:var(--t3)">'+g.split(' ')[0]+'</th>');
+      tbl+='<th style="text-align:center;padding:7px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Total</th></tr></thead><tbody>';
+      activeP.forEach(code=>{
         const p=PARTNERS.find(x=>x.code===code)||{color:'var(--or)'};
-        const rowTotal=Object.values(partnerGovCounts[code]).reduce((s,v)=>s+v,0);
-        tbl+=`<tr><td style="padding:7px 10px;border-bottom:0.5px solid var(--bdr)"><div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:${p.color||'var(--or)'}"></div><span style="font-weight:600">${code}</span></div></td>`;
-        activeGovs.forEach(g=>{
-          const n=partnerGovCounts[code][g]||0;
-          tbl+=`<td style="text-align:center;padding:7px 6px;border-bottom:0.5px solid var(--bdr)">
-            ${n>0?`<span style="font-weight:600;color:var(--fb1)">${n}</span>`:'<span style="color:var(--bdr)">—</span>'}
-          </td>`;
+        const rowT=Object.values(pgCounts[code]).reduce((s,v)=>s+v,0);
+        tbl+='<tr><td style="padding:7px 10px;border-bottom:0.5px solid var(--bdr)">'
+          +'<div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:'+(p.color||'var(--or)')+'"></div>'
+          +'<span style="font-weight:600">'+code+'</span></div></td>';
+        activeG.forEach(g=>{
+          const n=pgCounts[code][g]||0;
+          tbl+='<td style="text-align:center;padding:7px 4px;border-bottom:0.5px solid var(--bdr)">'
+            +(n>0?'<span style="font-weight:600;color:var(--fb1)">'+n+'</span>':'<span style="color:var(--bdr)">—</span>')
+            +'</td>';
         });
-        tbl+=`<td style="text-align:center;padding:7px 10px;border-bottom:0.5px solid var(--bdr);font-weight:700;color:var(--or)">${rowTotal}</td></tr>`;
+        tbl+='<td style="text-align:center;padding:7px 10px;border-bottom:0.5px solid var(--bdr);font-weight:700;color:var(--or)">'+rowT+'</td></tr>';
       });
       tbl+='</tbody></table>';
       document.getElementById('map-partner-table').innerHTML=tbl;
     } else {
-      document.getElementById('map-partner-table').innerHTML='<p style="color:var(--t3);font-size:13px;padding:.5rem 0">No data to display. Add participants with governorate information.</p>';
+      document.getElementById('map-partner-table').innerHTML='<p style="color:var(--t3);font-size:13px;padding:.5rem 0">'
+        +(total===0?'No participants match the selected filters.':'No governorate data available for these participants.')+'</p>';
     }
 
   } catch(e){
-    document.getElementById('map-svg').innerHTML='<text x="210" y="170" text-anchor="middle" font-size="13" fill="#94A3B8" font-family="sans-serif">Error loading map data</text>';
-    console.error('Map error:',e);
+    console.error('Map error:', e);
+    document.getElementById('map-svg').innerHTML='<text x="210" y="170" text-anchor="middle" font-size="13" fill="#94A3B8" font-family="sans-serif">'+e.message+'</text>';
   }
 }
 
