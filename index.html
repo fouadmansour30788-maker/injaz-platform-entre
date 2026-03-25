@@ -1528,6 +1528,16 @@ function emptyState(icon,h,p){ return`<div class="empty"><div class="empty-icon"
 // ── DASHBOARD ──
 async function loadDashboard(){
   const partner=document.getElementById('dash-partner-filter')?.value||'all';
+  // Auto-sync partner actuals from real team data
+  try {
+    const teams=await sb.get('teams','select=partner_id,current_phase');
+    const counts={};
+    teams.forEach(t=>{if(!t.partner_id)return;const k=t.partner_id+'|'+t.current_phase;counts[k]=(counts[k]||0)+1;});
+    await Promise.all(Object.entries(counts).map(([k,v])=>{
+      const [pid,ph]=k.split('|');
+      return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:v},'partner_id,phase_code').catch(()=>{});
+    }));
+  } catch(e){}
   try {
     // Load partner achievement
     const qs=partner==='all'?'order=partner_code,phase_code':'partner_code=eq.'+partner+'&order=phase_code';
@@ -2122,6 +2132,27 @@ function ptUpdate(inp){
   if(!partnerActuals[code]) partnerActuals[code]={};
   partnerActuals[code][ph]=val;
 }
+async function syncActualsFromTeams(){
+  // Auto-compute actuals from real team data and save
+  try {
+    const teams = await sb.get('teams','select=partner_id,current_phase');
+    const counts = {};
+    teams.forEach(t=>{
+      if(!t.partner_id) return;
+      const key = t.partner_id+'|'+t.current_phase;
+      counts[key] = (counts[key]||0)+1;
+    });
+    const saves = Object.entries(counts).map(([key,val])=>{
+      const [pid,ph] = key.split('|');
+      return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:val},'partner_id,phase_code');
+    });
+    await Promise.all(saves);
+    toast('Actuals synced','Partner figures updated from team data');
+    loadPartnerPage();
+    loadDashboard();
+  } catch(e){ toast('Sync failed',e.message,'error'); }
+}
+
 async function saveAllActuals(){
   try {
     const saves=[];
@@ -2568,10 +2599,19 @@ document.addEventListener('DOMContentLoaded', function(){
 // ── MAP ──
 async function loadMap(){
   try{
-    const rows=await sb.get('users','select=governorate&role=eq.participant&governorate=not.is.null');
+    // Get governorates from all enrolled team members
+    const rows=await sb.get('users',
+      'select=governorate&role=eq.participant&governorate=not.is.null'
+    );
+    // Also get from applications (may have newer data)
+    const appRows=await sb.get('applications',
+      'select=governorate&governorate=not.is.null&status=not.is.null'
+    ).catch(()=>[]);
     const counts={};
-    rows.forEach(r=>{counts[r.governorate]=(counts[r.governorate]||0)+1;});
-    const total=rows.length;
+    rows.forEach(r=>{if(r.governorate)counts[r.governorate]=(counts[r.governorate]||0)+1;});
+    appRows.forEach(r=>{if(r.governorate && !rows.find(u=>u.governorate===r.governorate))
+      counts[r.governorate]=(counts[r.governorate]||0)+0;}); // just ensure key exists
+    const total=rows.length||appRows.length;
     document.getElementById('map-total').textContent=total;
     document.getElementById('map-govs').textContent=Object.values(counts).filter(n=>n>0).length;
     const govs=[
@@ -2605,10 +2645,13 @@ async function loadMap(){
 // ── ANALYTICS ──
 async function loadAnalytics(){
   try{
+    // Count all participants via team_members (most accurate)
+    const tmCount=await sb.get('team_members','select=user_id').catch(()=>[]);
+    const uniqueUserIds=[...new Set(tmCount.map(r=>r.user_id))];
     const users=await sb.get('users','select=gender,nationality,date_of_birth&role=eq.participant');
     const total=users.length;
     document.getElementById('analytics-kpis').innerHTML=`
-      <div class="stat"><div class="slbl">Participants</div><div class="sval" style="color:var(--or)">${total}</div></div>
+      <div class="stat"><div class="slbl">Participants</div><div class="sval" style="color:var(--or)">${uniqueUserIds.length||total}</div></div>
       <div class="stat"><div class="slbl">Female</div><div class="sval" style="color:var(--dt)">${users.filter(u=>u.gender==='female'||u.gender==='Female').length}</div></div>
       <div class="stat"><div class="slbl">Lebanese</div><div class="sval">${users.filter(u=>u.nationality==='Lebanese').length}</div></div>`;
     const bar=(label,n,color)=>{const pct=total?Math.round(n/total*100):0;return `<div><div class="fbet mb4" style="font-size:12px"><span style="text-transform:capitalize">${label}</span><span style="font-weight:600">${n} (${pct}%)</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${color}"></div></div></div>`;};
