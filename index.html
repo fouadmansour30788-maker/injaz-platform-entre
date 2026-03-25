@@ -626,6 +626,131 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       </div>
     </div>
 
+    <!-- ════ ADMIN: WORKPLAN ════ -->
+    <div class="page" id="pg-workplan">
+      <!-- Header -->
+      <div class="fbet mb15" style="flex-wrap:wrap;gap:8px">
+        <div>
+          <h2 style="font-size:18px;font-weight:700">Workplan 2026–2027</h2>
+          <p style="font-size:12px;color:var(--t3)">GIL Implementation — INJAZ Lebanon · Track, update and manage delays</p>
+        </div>
+        <div class="fctr g8" style="flex-wrap:wrap">
+          <select class="sel" id="wp-cat-filter" onchange="loadWorkplan()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All categories</option>
+            <option value="Administration">Administration</option>
+            <option value="Curriculum">Curriculum</option>
+            <option value="Communications">Communications</option>
+            <option value="Outreach">Outreach</option>
+            <option value="Implementation">Implementation</option>
+            <option value="M&E">M&amp;E</option>
+            <option value="Reporting">Reporting</option>
+            <option value="1.Mobilization">Mobilization</option>
+            <option value="2.Outreach">Outreach (Legacy)</option>
+          </select>
+          <select class="sel" id="wp-status-filter" onchange="loadWorkplan()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All statuses</option>
+            <option value="not_started">Not started</option>
+            <option value="in_progress">In progress</option>
+            <option value="completed">Completed</option>
+            <option value="delayed">Delayed</option>
+            <option value="at_risk">At risk</option>
+          </select>
+          <select class="sel" id="wp-time-filter" onchange="loadWorkplan()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All periods</option>
+            <option value="overdue">Overdue</option>
+            <option value="this_month">This month</option>
+            <option value="next_month">Next month</option>
+            <option value="q2_2026">Q2 2026</option>
+            <option value="q3_2026">Q3 2026</option>
+            <option value="q4_2026">Q4 2026</option>
+            <option value="2027">2027</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadWorkplan()">↺ Refresh</button>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="g4 mb15" id="wp-kpis"></div>
+
+      <!-- Alert banner -->
+      <div id="wp-alert-banner" style="display:none;border-radius:10px;padding:12px 16px;margin-bottom:1rem;background:#FEF2F2;border:1px solid #FECACA">
+        <div class="fctr g8 mb4">
+          <span style="font-size:1.2rem">🚨</span>
+          <span style="font-weight:700;color:#DC2626" id="wp-alert-count"></span>
+        </div>
+        <p style="font-size:12px;color:#DC2626" id="wp-alert-details"></p>
+      </div>
+
+      <!-- Main table -->
+      <div class="card" style="overflow-x:auto;padding:0">
+        <div id="wp-table-wrap"></div>
+      </div>
+
+      <!-- Delay / Update Modal -->
+      <div id="wp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+        <div style="background:var(--card);border-radius:14px;padding:1.5rem;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+          <div class="fbet mb15">
+            <h3 style="font-size:16px;font-weight:700" id="wp-modal-title">Update activity</h3>
+            <button onclick="closeWpModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3)">×</button>
+          </div>
+          <div id="wp-modal-activity" style="font-size:13px;color:var(--t2);padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:1rem;line-height:1.6"></div>
+
+          <div class="g2 mb12">
+            <div>
+              <label class="flbl">Status</label>
+              <select class="sel w100" id="wp-m-status">
+                <option value="not_started">Not started</option>
+                <option value="in_progress">In progress</option>
+                <option value="completed">✓ Completed</option>
+                <option value="delayed">⚠ Delayed</option>
+                <option value="at_risk">🔴 At risk</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl">Completion %</label>
+              <input type="number" class="inp" id="wp-m-pct" min="0" max="100" placeholder="0–100">
+            </div>
+          </div>
+          <div class="g2 mb12">
+            <div>
+              <label class="flbl">Actual start date</label>
+              <input type="date" class="inp" id="wp-m-actual-start">
+            </div>
+            <div>
+              <label class="flbl">Actual end date</label>
+              <input type="date" class="inp" id="wp-m-actual-end">
+            </div>
+          </div>
+          <div class="mb12">
+            <label class="flbl">Responsible person / team</label>
+            <input class="inp" id="wp-m-responsible" placeholder="Name or team">
+          </div>
+
+          <!-- Delay section - shown when status = delayed or at_risk -->
+          <div id="wp-m-delay-section" style="display:none;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:12px;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:700;color:#DC2626;margin-bottom:8px">⚠ Delay justification required</div>
+            <label class="flbl">Reason for delay / risk</label>
+            <textarea class="txa mb8" rows="3" id="wp-m-delay-reason" placeholder="Explain what caused the delay and what is being done..."></textarea>
+          </div>
+
+          <!-- Action points -->
+          <div class="mb12">
+            <div class="fbet mb8">
+              <label class="flbl" style="margin:0">Action points</label>
+              <button class="btn btn-sm" onclick="addWpActionPoint()">+ Add</button>
+            </div>
+            <div id="wp-m-actions" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+
+          <div id="wp-m-err" style="display:none;color:var(--fail-t);font-size:13px;padding:8px 12px;background:var(--fail-bg);border-radius:6px;margin-bottom:10px"></div>
+          <div class="fbet">
+            <button class="btn" onclick="closeWpModal()">Cancel</button>
+            <button class="btn-p" onclick="saveWpActivity()">Save update</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ════ ADMIN: COHORT ════ -->
     <div class="page" id="pg-cohort">
       <div class="fbet mb15">
@@ -1533,9 +1658,9 @@ const ADMIN_TABS=[
   {l:'Dashboard',p:'pg-dashboard'},{l:'Cohort',p:'pg-cohort'},
   {l:'Assessments',p:'pg-assess-queue'},{l:'Classes',p:'pg-classes'},
   {l:'Attendance',p:'pg-attendance'},{l:'Track',p:'pg-track'},
-  {l:'Map',p:'pg-map'},{l:'Applications',p:'pg-applications'},
-  {l:'Rubric',p:'pg-rubric'},{l:'Notifications',p:'pg-notifications'},
-  {l:'Register team',p:'pg-register'},
+  {l:'Workplan',p:'pg-workplan'},{l:'Map',p:'pg-map'},
+  {l:'Applications',p:'pg-applications'},{l:'Rubric',p:'pg-rubric'},
+  {l:'Notifications',p:'pg-notifications'},{l:'Register team',p:'pg-register'},
 ];
 const PARTICIPANT_TABS=[
   {l:'My journey',p:'pg-journey'},{l:'Submit work',p:'pg-submit-work'},
@@ -1569,6 +1694,7 @@ function nav(id){
   if(id==='pg-notifications') loadNotifications();
   if(id==='pg-p-notifications') loadParticipantNotifications();
   if(id==='pg-track') loadTrack();
+  if(id==='pg-workplan') loadWorkplan();
   if(id==='pg-p-track') loadParticipantTrack();
   if(id==='pg-submit-work') loadSubmitWork();
 }
@@ -3678,6 +3804,308 @@ async function loadParticipantTrack() {
     console.error('Participant track error:', e);
   }
 }
+
+
+// ── WORKPLAN ──
+let _wpCurrentId = null;
+let _wpActionPoints = [];
+
+const WP_STATUS_CONFIG = {
+  not_started: {label:'Not started', color:'var(--t3)',    bg:'var(--bg)',       icon:'○'},
+  in_progress:  {label:'In progress', color:'var(--fb1)',  bg:'var(--fb1-bg)',   icon:'●'},
+  completed:    {label:'Completed',   color:'var(--pass)', bg:'var(--pass-bg)',  icon:'✓'},
+  delayed:      {label:'Delayed',     color:'#DC2626',     bg:'#FEF2F2',         icon:'⚠'},
+  at_risk:      {label:'At risk',     color:'var(--warn)', bg:'var(--warn-bg)',  icon:'🔴'},
+};
+
+const CAT_COLORS = {
+  'Administration':'#6366F1','Curriculum':'#0EA5E9','Communications':'#EC4899',
+  'Outreach':'#F59E0B','Implementation':'#10B981','M&E':'#8B5CF6',
+  'Reporting':'#EF4444','1.Mobilization':'#F97316','2.Outreach':'#F59E0B',
+  '3.Implementation':'#10B981','4.Partnerships and Stakeholder Engagement':'#0EA5E9',
+  '5.M&E & Reporting':'#8B5CF6','2.Outreach and Communications / Marketing':'#EC4899',
+};
+
+function wpCatColor(cat){ return CAT_COLORS[cat]||'var(--or)'; }
+
+async function loadWorkplan(){
+  const catF    = document.getElementById('wp-cat-filter')?.value||'all';
+  const statusF = document.getElementById('wp-status-filter')?.value||'all';
+  const timeF   = document.getElementById('wp-time-filter')?.value||'all';
+  const wrap    = document.getElementById('wp-table-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div style="padding:2rem;text-align:center"><div class="spin" style="margin:0 auto"></div></div>';
+
+  try {
+    let qs = 'order=from_date,ref_id';
+    const rows = await sb.get('workplan_activities', qs);
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().slice(0,10);
+
+    // Filter
+    const filtered = rows.filter(r=>{
+      if(catF!=='all' && r.category!==catF) return false;
+      if(statusF!=='all' && r.status!==statusF) return false;
+      if(timeF!=='all'){
+        const due = r.to_date||r.from_date;
+        if(!due) return timeF==='all';
+        const d = new Date(due);
+        if(timeF==='overdue')     return r.status!=='completed' && d<today;
+        if(timeF==='this_month')  return d.getFullYear()===today.getFullYear()&&d.getMonth()===today.getMonth();
+        if(timeF==='next_month')  { const n=new Date(today.getFullYear(),today.getMonth()+1,1); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth(); }
+        if(timeF==='q2_2026')     return d>= new Date('2026-04-01') && d<=new Date('2026-06-30');
+        if(timeF==='q3_2026')     return d>= new Date('2026-07-01') && d<=new Date('2026-09-30');
+        if(timeF==='q4_2026')     return d>= new Date('2026-10-01') && d<=new Date('2026-12-31');
+        if(timeF==='2027')        return d.getFullYear()===2027;
+      }
+      return true;
+    });
+
+    // KPIs from ALL rows
+    const total      = rows.length;
+    const completed  = rows.filter(r=>r.status==='completed').length;
+    const delayed    = rows.filter(r=>r.status==='delayed').length;
+    const atRisk     = rows.filter(r=>r.status==='at_risk').length;
+    const overdue    = rows.filter(r=>r.status!=='completed'&&r.to_date&&new Date(r.to_date)<today).length;
+    const inProgress = rows.filter(r=>r.status==='in_progress').length;
+    const pct        = total?Math.round(completed/total*100):0;
+
+    document.getElementById('wp-kpis').innerHTML =
+      '<div class="stat"><div class="slbl">Total activities</div><div class="sval">'+total+'</div><div class="ssub">'+pct+'% completed</div></div>'+
+      '<div class="stat"><div class="slbl">Completed</div><div class="sval" style="color:var(--pass)">'+completed+'</div><div class="ssub">'+inProgress+' in progress</div></div>'+
+      '<div class="stat"><div class="slbl">Delayed</div><div class="sval" style="color:#DC2626">'+delayed+'</div><div class="ssub">'+atRisk+' at risk</div></div>'+
+      '<div class="stat"><div class="slbl">Overdue</div><div class="sval" style="color:var(--fail)">'+overdue+'</div><div class="ssub">Past due date</div></div>';
+
+    // Alert banner
+    const alertBanner = document.getElementById('wp-alert-banner');
+    const alertCount  = document.getElementById('wp-alert-count');
+    const alertDetail = document.getElementById('wp-alert-details');
+    const issues = delayed+atRisk+overdue;
+    if(issues>0){
+      alertBanner.style.display='block';
+      alertCount.textContent  = issues+' activities need attention';
+      const names = rows.filter(r=>(r.status==='delayed'||r.status==='at_risk'||(r.status!=='completed'&&r.to_date&&new Date(r.to_date)<today))).slice(0,3).map(r=>r.activity);
+      alertDetail.textContent = names.join(' · ')+(issues>3?' · and '+(issues-3)+' more':'');
+    } else {
+      alertBanner.style.display='none';
+    }
+
+    if(!filtered.length){
+      wrap.innerHTML='<div style="padding:3rem;text-align:center;color:var(--t3)">No activities match the selected filters.</div>';
+      return;
+    }
+
+    // Group by category
+    const byCategory = {};
+    filtered.forEach(r=>{
+      const cat = r.category||'General';
+      if(!byCategory[cat]) byCategory[cat]=[];
+      byCategory[cat].push(r);
+    });
+
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+    html += '<thead><tr style="background:var(--bg)">'
+      +'<th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;width:36%">Activity</th>'
+      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Planned dates</th>'
+      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Status</th>'
+      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Progress</th>'
+      +'<th style="text-align:left;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Notes / Delay</th>'
+      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Action</th>'
+      +'</tr></thead><tbody>';
+
+    Object.entries(byCategory).forEach(([cat, items])=>{
+      const catCol = wpCatColor(cat);
+      const catCompleted = items.filter(r=>r.status==='completed').length;
+      // Category header row
+      html += '<tr style="background:var(--bg)">'
+        +'<td colspan="6" style="padding:8px 12px;border-bottom:0.5px solid var(--bdr)">'
+        +'<div class="fctr g8">'
+        +'<div style="width:3px;height:16px;border-radius:2px;background:'+catCol+'"></div>'
+        +'<span style="font-size:11px;font-weight:700;color:'+catCol+'">'+cat+'</span>'
+        +'<span style="font-size:10px;color:var(--t3)">'+catCompleted+'/'+items.length+' completed</span>'
+        +'</div></td></tr>';
+
+      items.forEach(r=>{
+        const sc   = WP_STATUS_CONFIG[r.status]||WP_STATUS_CONFIG.not_started;
+        const pct  = r.completion_pct||0;
+        const due  = r.to_date||r.from_date;
+        const isOverdue = r.status!=='completed' && due && new Date(due)<today;
+        const rowBg = isOverdue?'rgba(220,38,38,0.03)':r.status==='delayed'?'rgba(220,38,38,0.03)':'';
+        const aps  = Array.isArray(r.action_points)?r.action_points:[];
+        const openAps = aps.filter(a=>!a.done).length;
+
+        // Format dates
+        const fmt = d=>{ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+        const dateStr = r.from_date===r.to_date||!r.to_date ? fmt(r.from_date) : fmt(r.from_date)+' → '+fmt(r.to_date);
+
+        html += '<tr style="background:'+rowBg+'">'
+          // Activity
+          +'<td style="padding:10px 12px;border-bottom:0.5px solid var(--bdr);vertical-align:top">'
+          +(isOverdue?'<div style="font-size:9px;font-weight:700;color:#DC2626;margin-bottom:2px">⚠ OVERDUE</div>':'')
+          +'<div style="font-weight:500;margin-bottom:3px">'+r.activity+'</div>'
+          +(r.notes_challenges?'<div style="font-size:11px;color:var(--t3);font-style:italic">'+r.notes_challenges.slice(0,80)+(r.notes_challenges.length>80?'...':'')+'</div>':'')
+          +(r.responsible?'<div style="font-size:10px;color:var(--fb1);margin-top:3px">👤 '+r.responsible+'</div>':'')
+          +(openAps>0?'<div style="font-size:10px;color:var(--warn);margin-top:2px">📋 '+openAps+' open action'+(openAps>1?'s':'')+'</div>':'')
+          +'</td>'
+          // Dates
+          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;vertical-align:top">'
+          +'<div style="font-size:11px;color:var(--t2)">'+dateStr+'</div>'
+          +(r.actual_start||r.actual_end?'<div style="font-size:10px;color:var(--pass);margin-top:3px">Actual: '+fmt(r.actual_start)+(r.actual_end?' → '+fmt(r.actual_end):'')+'</div>':'')
+          +'</td>'
+          // Status
+          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;vertical-align:top">'
+          +'<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:'+sc.bg+';border:0.5px solid '+sc.color+'">'
+          +'<span style="font-size:11px">'+sc.icon+'</span>'
+          +'<span style="font-size:10px;font-weight:600;color:'+sc.color+'">'+sc.label+'</span>'
+          +'</div></td>'
+          // Progress bar
+          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);vertical-align:top;min-width:80px">'
+          +'<div style="text-align:center;font-size:11px;font-weight:700;color:'+(pct===100?'var(--pass)':'var(--t)')+';margin-bottom:4px">'+pct+'%</div>'
+          +'<div style="height:6px;background:var(--bdr);border-radius:3px;overflow:hidden">'
+          +'<div style="width:'+pct+'%;height:6px;background:'+(pct===100?'var(--pass)':pct>=50?'var(--fb1)':'var(--warn)')+';border-radius:3px;transition:width .4s"></div>'
+          +'</div></td>'
+          // Notes
+          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);vertical-align:top;max-width:200px">'
+          +(r.is_delayed&&r.delay_reason?'<div style="font-size:11px;color:#DC2626;line-height:1.5">'+r.delay_reason.slice(0,100)+(r.delay_reason.length>100?'...':'')+'</div>':'')
+          +(aps.length?aps.slice(0,2).map(a=>'<div style="font-size:10px;color:'+(a.done?'var(--pass-t)':'var(--t2)')+';margin-top:3px">'+(a.done?'✓ ':'• ')+a.text+(a.due_date?' ('+fmt(a.due_date)+')':'')+'</div>').join(''):'<span style="font-size:11px;color:var(--t3)">—</span>')
+          +'</td>'
+          // Action button
+          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;vertical-align:top">'
+          +'<button class="btn btn-sm" data-wpid="'+r.id+'" onclick="openWpModal(this.dataset.wpid)">Update</button>'
+          +'</td>'
+          +'</tr>';
+      });
+    });
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+
+  } catch(e){
+    wrap.innerHTML = '<div style="padding:2rem;color:var(--fail-t);font-size:13px">Error loading workplan: '+e.message+'<br><span style="color:var(--t3)">Make sure you have run create_workplan_table.sql in Supabase.</span></div>';
+    console.error('Workplan error:',e);
+  }
+}
+
+async function openWpModal(id){
+  _wpCurrentId = id;
+  _wpActionPoints = [];
+  const errEl = document.getElementById('wp-m-err');
+  if(errEl) errEl.style.display='none';
+
+  try {
+    const rows = await sb.get('workplan_activities','id=eq.'+id);
+    const r = rows[0]; if(!r) return;
+
+    document.getElementById('wp-modal-title').textContent = 'Update — '+r.category;
+    document.getElementById('wp-modal-activity').innerHTML =
+      '<strong>'+r.activity+'</strong>'
+      +(r.notes_challenges?'<br><span style="color:var(--t3);font-size:12px">'+r.notes_challenges+'</span>':'')
+      +(r.from_date?'<br><span style="font-size:11px;color:var(--t3)">Planned: '+r.from_date+(r.to_date&&r.to_date!==r.from_date?' → '+r.to_date:'')+'</span>':'');
+
+    document.getElementById('wp-m-status').value       = r.status||'not_started';
+    document.getElementById('wp-m-pct').value          = r.completion_pct||0;
+    document.getElementById('wp-m-actual-start').value = r.actual_start||'';
+    document.getElementById('wp-m-actual-end').value   = r.actual_end||'';
+    document.getElementById('wp-m-responsible').value  = r.responsible||'';
+    document.getElementById('wp-m-delay-reason').value = r.delay_reason||'';
+    toggleDelaySection();
+
+    _wpActionPoints = Array.isArray(r.action_points)?JSON.parse(JSON.stringify(r.action_points)):[];
+    renderWpActions();
+
+    document.getElementById('wp-modal').style.display='flex';
+  } catch(e){ toast('Error loading activity', e.message, 'error'); }
+}
+
+function closeWpModal(){
+  document.getElementById('wp-modal').style.display='none';
+  _wpCurrentId=null; _wpActionPoints=[];
+}
+
+function toggleDelaySection(){
+  const s = document.getElementById('wp-m-status')?.value;
+  const sec = document.getElementById('wp-m-delay-section');
+  if(sec) sec.style.display = (s==='delayed'||s==='at_risk')?'block':'none';
+}
+
+function addWpActionPoint(){
+  _wpActionPoints.push({text:'',due_date:'',assignee:'',done:false});
+  renderWpActions();
+}
+
+function wpToggleAP(el){
+  const i=parseInt(el.dataset.idx);
+  _wpActionPoints[i].done=el.checked;
+  const row=el.closest('div');
+  const txt=row.querySelector('.ap-text');
+  if(txt) txt.style.textDecoration=el.checked?'line-through':'';
+}
+function renderWpActions(){
+  const container = document.getElementById('wp-m-actions');
+  if(!container) return;
+  container.innerHTML = _wpActionPoints.map((a,i)=>
+    '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
+    +'<input type="checkbox" '+(a.done?'checked':'')+' data-idx="'+i+'" onchange="wpToggleAP(this)" style="margin:0">'
+    +'<input class="inp ap-text" style="flex:2;font-size:12px;padding:5px 8px;'+(a.done?'text-decoration:line-through;color:var(--t3)':'')+'" value="'+a.text+'" placeholder="Action point..." '
+      +'oninput="_wpActionPoints['+i+'].text=this.value">'
+    +'<input type="date" class="inp" style="width:130px;font-size:11px;padding:5px 8px" value="'+(a.due_date||'')+'" '
+      +'oninput="_wpActionPoints['+i+'].due_date=this.value">'
+    +'<input class="inp" style="width:100px;font-size:11px;padding:5px 8px" value="'+(a.assignee||'')+'" placeholder="Who?" '
+      +'oninput="_wpActionPoints['+i+'].assignee=this.value">'
+    +'<button onclick="_wpActionPoints.splice('+i+',1);renderWpActions()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;padding:0 4px">×</button>'
+    +'</div>'
+  ).join('') || '<p style="font-size:12px;color:var(--t3)">No action points yet. Add one above.</p>';
+}
+
+async function saveWpActivity(){
+  const errEl = document.getElementById('wp-m-err');
+  if(errEl) errEl.style.display='none';
+
+  const status    = document.getElementById('wp-m-status').value;
+  const pct       = parseInt(document.getElementById('wp-m-pct').value)||0;
+  const actStart  = document.getElementById('wp-m-actual-start').value||null;
+  const actEnd    = document.getElementById('wp-m-actual-end').value||null;
+  const responsible = document.getElementById('wp-m-responsible').value.trim()||null;
+  const delayReason = document.getElementById('wp-m-delay-reason').value.trim()||null;
+
+  // Validate delay reason required
+  if((status==='delayed'||status==='at_risk') && !delayReason){
+    if(errEl){ errEl.textContent='Please provide a delay/risk justification.'; errEl.style.display='block'; }
+    return;
+  }
+  // Validate action points text
+  for(const ap of _wpActionPoints){
+    if(!ap.text.trim()){
+      if(errEl){ errEl.textContent='Please fill in all action point descriptions.'; errEl.style.display='block'; }
+      return;
+    }
+  }
+
+  try {
+    await sb.patch('workplan_activities','id=eq.'+_wpCurrentId,{
+      status, completion_pct:pct,
+      actual_start:actStart, actual_end:actEnd,
+      responsible,
+      is_delayed: status==='delayed'||status==='at_risk',
+      delay_reason: (status==='delayed'||status==='at_risk')?delayReason:null,
+      delay_updated_at: (status==='delayed'||status==='at_risk')?new Date().toISOString():null,
+      delay_updated_by: PROFILE?.id||null,
+      action_points: _wpActionPoints,
+      updated_at: new Date().toISOString(),
+    });
+    toast('Activity updated','Workplan saved');
+    closeWpModal();
+    loadWorkplan();
+  } catch(e){
+    if(errEl){ errEl.textContent=e.message; errEl.style.display='block'; }
+  }
+}
+
+// Add status change listener
+document.addEventListener('change', e=>{
+  if(e.target.id==='wp-m-status') toggleDelaySection();
+});
 
 
 // ── MAP ──
