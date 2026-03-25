@@ -5021,11 +5021,12 @@ async function decideApp(decision){
 
           // 2. If no users row, create Supabase Auth account + users row via trigger
           if(!user && m.email) {
-            const tempPw = 'InjazGIL!' + Math.random().toString(36).slice(2,10);
+            // Use member's own chosen password (stored in application) or fallback
+            const memberPw = m.password || ('InjazGIL2026!'+Math.random().toString(36).slice(2,8));
             const signRes = await fetch(SUPA_URL+'/auth/v1/signup',{
               method:'POST',
               headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
-              body:JSON.stringify({email:m.email, password:tempPw,
+              body:JSON.stringify({email:m.email, password:memberPw,
                 options:{data:{full_name:m.name}}})
             });
             const signData = await signRes.json();
@@ -5051,12 +5052,7 @@ async function decideApp(decision){
               const created = await res.json();
               user = Array.isArray(created)?created[0]:created;
             }
-            // Send password reset so member can set their own password
-            await fetch(SUPA_URL+'/auth/v1/recover',{
-              method:'POST',
-              headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
-              body:JSON.stringify({email:m.email})
-            }).catch(()=>{});
+            // No password reset needed — member set their own password in the application
           }
 
           // 3. Link to team
@@ -5155,6 +5151,8 @@ function afAddMember(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div><label class="flbl">Full name *</label><input class="finput af-m-name" placeholder="Full name" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
       <div><label class="flbl">Email *</label><input class="finput af-m-email" type="email" placeholder="email@example.com" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
+      <div><label class="flbl">Password * <span style="font-weight:400;color:#94A3B8;font-size:10px">min 8 chars</span></label><input class="finput af-m-pw" type="password" placeholder="Choose a password" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
+      <div><label class="flbl">Confirm password *</label><input class="finput af-m-pw2" type="password" placeholder="Repeat password" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
       <div><label class="flbl">Date of birth *</label><input class="finput af-m-dob" type="date" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
       <div><label class="flbl">Phone</label><input class="finput af-m-phone" placeholder="+961 xx xxx xxx" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;"></div>
       <div><label class="flbl">Gender</label><select class="finput af-m-gender" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option>Male</option><option>Female</option><option>Prefer not to say</option></select></div>
@@ -5191,6 +5189,11 @@ function afNext(step){
   }else if(step===2){
     for(const row of document.querySelectorAll('.af-member-row')){
       if(!row.querySelector('.af-m-name')?.value.trim())return afShowErr(2,'Enter name for all members.');
+      if(!row.querySelector('.af-m-email')?.value.trim())return afShowErr(2,'Enter email for all members.');
+      const pw  = row.querySelector('.af-m-pw')?.value||'';
+      const pw2 = row.querySelector('.af-m-pw2')?.value||'';
+      if(pw.length<8)return afShowErr(2,'Password must be at least 8 characters for all members.');
+      if(pw!==pw2)return afShowErr(2,'Passwords do not match for one or more members.');
       if(!row.querySelector('.af-m-dob')?.value)return afShowErr(2,'Enter DOB for all members.');
       const age=Math.floor((Date.now()-new Date(row.querySelector('.af-m-dob').value))/(365.25*24*3600*1000));
       if(age<18||age>28)return afShowErr(2,'All members must be 18–28.');
@@ -5227,6 +5230,7 @@ async function afSubmit(){
       if(n)members.push({
         name:n,
         email:row.querySelector('.af-m-email')?.value.trim(),
+        password:row.querySelector('.af-m-pw')?.value||'',
         dob:row.querySelector('.af-m-dob')?.value,
         phone:row.querySelector('.af-m-phone')?.value.trim(),
         gender:row.querySelector('.af-m-gender')?.value,
@@ -5308,41 +5312,50 @@ async function afSubmit(){
     await fetch(SUPA_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{
       method:'PATCH', headers:h, body:JSON.stringify(profileData)
     }).catch(()=>{});
-    // Auto-create auth accounts for co-founders
-    // They will receive a password-reset email to set their own password
+    // Create auth accounts for co-founders using THEIR OWN chosen password
     for(const m of members.filter(m=>m.role!=='lead' && m.email && m.name)){
       try {
-        // 1. Create their users profile row first (if not exists)
+        const memberPw = m.password || ('InjazGIL2026!'+Math.random().toString(36).slice(2,8));
+
+        // 1. Create Supabase auth account with the member's chosen password
+        const signupRes = await fetch(SUPA_URL+'/auth/v1/signup',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+          body:JSON.stringify({
+            email:m.email,
+            password:memberPw,
+            options:{data:{full_name:m.name}}
+          })
+        });
+        const signupData = await signupRes.json();
+        const memberAuthId = signupData.user?.id || signupData.id || null;
+
+        // 2. Create or update users profile row
         const existing = await sb.get('users','email=eq.'+encodeURIComponent(m.email)+'&limit=1').catch(()=>[]);
         if(!existing.length){
           await fetch(SUPA_URL+'/rest/v1/users',{
             method:'POST', headers:h,
             body:JSON.stringify({
-              email:m.email, full_name:m.name, role:'participant',
-              date_of_birth:m.dob||null, gender:m.gender||null,
-              nationality:m.nationality||null, governorate:m.governorate||null,
-              disability_type:m.disability!=='none'?m.disability:null,
+              auth_id:    memberAuthId,
+              email:      m.email,
+              full_name:  m.name,
+              role:       'participant',
+              date_of_birth: m.dob||null,
+              gender:     m.gender||null,
+              nationality: m.nationality||null,
+              governorate: m.governorate||null,
+              disability_type: m.disability!=='none'?m.disability:null,
             })
           }).catch(()=>{});
-        }
-        // 2. Create their Supabase auth account with a random temp password
-        const tempPw = 'InjazGIL2026!' + Math.random().toString(36).slice(2,8);
-        const signupRes = await fetch(SUPA_URL+'/auth/v1/signup',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
-          body:JSON.stringify({email:m.email, password:tempPw,
-            options:{data:{full_name:m.name}}})
-        });
-        const signupData = await signupRes.json();
-        // 3. Send password reset email so they can set their own password
-        if(signupData.user || signupData.id){
-          await fetch(SUPA_URL+'/auth/v1/recover',{
-            method:'POST',
-            headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
-            body:JSON.stringify({email:m.email})
+        } else if(memberAuthId && !existing[0].auth_id){
+          // Link auth_id if not yet set
+          await fetch(SUPA_URL+'/rest/v1/users?id=eq.'+existing[0].id,{
+            method:'PATCH', headers:h,
+            body:JSON.stringify({auth_id:memberAuthId})
           }).catch(()=>{});
         }
-      } catch(e){ console.warn('Co-founder setup skipped for',m.email,e.message); }
+        // No password reset email — member chose their own password above
+      } catch(e){ console.warn('Co-founder setup skipped for',m.email,':',e.message); }
     }
     document.getElementById('af-success-email').textContent=email;
     // If email confirmation is required, show note
