@@ -329,7 +329,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid #F1F5F9;text-align:center;">
         <p style="font-size:13px;color:#64748B;margin-bottom:10px">First time? Apply to GIL 2026</p>
         <button onclick="showApplyForm()" style="width:100%;padding:11px;background:transparent;border:1.5px solid #1A56DB;border-radius:10px;color:#1A56DB;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Apply to INJAZ Lebanon →</button>
-        <button onclick="showMemberSignup()" style="width:100%;margin-top:8px;padding:10px;background:transparent;border:1.5px solid #E2E8F0;border-radius:10px;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit;">I'm a team member — create my account</button>
+        <button onclick="showMemberSignup()" style="width:100%;margin-top:8px;padding:10px;background:transparent;border:1.5px solid #E2E8F0;border-radius:10px;color:#64748B;font-size:13px;cursor:pointer;font-family:inherit;">I'm a team member — set my password</button>
       </div>
       <div class="auth-footer-r">INJAZ Lebanon · Program Platform</div>
     </div>
@@ -445,8 +445,11 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
   <div style="font-size:3rem;margin-bottom:1rem;">🎉</div>
   <h2 style="font-size:1.4rem;font-weight:800;color:#0A1C3E;margin-bottom:8px;">Application submitted!</h2>
   <p style="font-size:14px;color:#64748B;line-height:1.7;margin-bottom:1rem;">Your application has been received. INJAZ Lebanon will review it and contact you at <strong id="af-success-email"></strong>.</p>
+  <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px 16px;margin-bottom:1.5rem;font-size:13px;color:#166534;line-height:1.6;text-align:left;">
+    ✅ <strong>All team members have been registered.</strong> Each co-founder will receive an email to set their own password and access the platform.
+  </div>
   <div id="af-success-note" style="display:none;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 16px;margin-bottom:1.5rem;font-size:13px;color:#92400E;line-height:1.6;text-align:left;">
-    📧 <strong>Check your email</strong> — you may need to confirm your email address before signing in. Once confirmed, come back and sign in with your email and password.
+    📧 <strong>Check your email</strong> — you may need to confirm your email address before signing in.
   </div>
   <button class="abtn" onclick="hideApplyForm()" style="width:auto;padding:12px 32px;">Sign in to your account</button>
 </div>
@@ -3056,40 +3059,67 @@ async function decideApp(decision){
         team_id: team.id, track: 'undecided'
       }).catch(()=>{});
 
-      // Create team members from application members array
+      // Create team members — fully enroll ALL members same as lead
       const members = Array.isArray(app.members) ? app.members : [];
       const enrolledUserIds = [];
       for(const m of members) {
         if(!m.name) continue;
-        // Find existing user by email
-        let userRows = [];
-        if(m.email) userRows = await sb.get('users', 'email=eq.'+encodeURIComponent(m.email)+'&limit=1');
-        let user = userRows[0];
-        // If no user row exists yet, create one (they'll link auth when they sign up)
-        if(!user && m.email) {
-          try {
-            const res = await fetch(SUPA_URL+'/rest/v1/users', {
+        try {
+          // 1. Find existing users row by email
+          let userRows = [];
+          if(m.email) userRows = await sb.get('users','email=eq.'+encodeURIComponent(m.email)+'&limit=1').catch(()=>[]);
+          let user = userRows[0];
+
+          // 2. If no users row, create Supabase Auth account + users row via trigger
+          if(!user && m.email) {
+            const tempPw = 'InjazGIL!' + Math.random().toString(36).slice(2,10);
+            const signRes = await fetch(SUPA_URL+'/auth/v1/signup',{
               method:'POST',
-              headers:{'Content-Type':'application/json','apikey':SUPA_KEY,
-                'Authorization':'Bearer '+sb._token,'Prefer':'return=representation'},
-              body:JSON.stringify({
-                email:m.email, full_name:m.name, role:'participant',
-                date_of_birth:m.dob||null, gender:m.gender||null,
-                nationality:m.nationality||null, governorate:m.governorate||null,
-              })
+              headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+              body:JSON.stringify({email:m.email, password:tempPw,
+                options:{data:{full_name:m.name}}})
             });
-            const created = await res.json();
-            user = Array.isArray(created) ? created[0] : created;
-          } catch(e){ console.warn('Could not create user for',m.email,e); }
-        }
-        if(user?.id) {
-          await sb.patch('users','id=eq.'+user.id,{partner_id:partner?.id||null}).catch(()=>{});
-          await sb.post('team_members',{
-            team_id:team.id, user_id:user.id,
-            role_in_team: m.role==='lead' ? 'lead' : 'member'
-          }).catch(()=>{});
-          enrolledUserIds.push(user.id);
-        }
+            const signData = await signRes.json();
+            // Wait briefly for trigger to create users row
+            await new Promise(r=>setTimeout(r,600));
+            // Re-fetch users row (trigger should have created it)
+            if(m.email) userRows = await sb.get('users','email=eq.'+encodeURIComponent(m.email)+'&limit=1').catch(()=>[]);
+            user = userRows[0];
+            // If trigger didn't fire, create users row manually
+            if(!user) {
+              const res = await fetch(SUPA_URL+'/rest/v1/users',{
+                method:'POST',
+                headers:{'Content-Type':'application/json','apikey':SUPA_KEY,
+                  'Authorization':'Bearer '+sb._token,'Prefer':'return=representation'},
+                body:JSON.stringify({
+                  email:m.email, full_name:m.name, role:'participant',
+                  auth_id: signData.user?.id||null,
+                  date_of_birth:m.dob||null, gender:m.gender||null,
+                  nationality:m.nationality||null, governorate:m.governorate||null,
+                  partner_id:partner?.id||null,
+                })
+              });
+              const created = await res.json();
+              user = Array.isArray(created)?created[0]:created;
+            }
+            // Send password reset so member can set their own password
+            await fetch(SUPA_URL+'/auth/v1/recover',{
+              method:'POST',
+              headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+              body:JSON.stringify({email:m.email})
+            }).catch(()=>{});
+          }
+
+          // 3. Link to team
+          if(user?.id) {
+            await sb.patch('users','id=eq.'+user.id,{partner_id:partner?.id||null}).catch(()=>{});
+            await sb.post('team_members',{
+              team_id:team.id, user_id:user.id,
+              role_in_team: m.role==='lead'?'lead':'member'
+            }).catch(()=>{});
+            enrolledUserIds.push(user.id);
+          }
+        } catch(e){ console.warn('Member enrollment failed for',m.name,e.message); }
       }
 
       // Find or create a default class for this partner + phase
@@ -3312,23 +3342,41 @@ async function afSubmit(){
         })
       }).catch(e=>console.warn('Profile update skipped:',e));
     }
-    // Create pending user rows for co-founders (no auth yet)
-    // They will be linked when they sign up using the same email
+    // Auto-create auth accounts for co-founders
+    // They will receive a password-reset email to set their own password
     for(const m of members.filter(m=>m.role!=='lead' && m.email && m.name)){
-      // Check if user already exists
-      const existing = await sb.get('users','email=eq.'+encodeURIComponent(m.email)+'&limit=1').catch(()=>[]);
-      if(!existing.length){
-        await fetch(SUPA_URL+'/rest/v1/users',{
+      try {
+        // 1. Create their users profile row first (if not exists)
+        const existing = await sb.get('users','email=eq.'+encodeURIComponent(m.email)+'&limit=1').catch(()=>[]);
+        if(!existing.length){
+          await fetch(SUPA_URL+'/rest/v1/users',{
+            method:'POST', headers:h,
+            body:JSON.stringify({
+              email:m.email, full_name:m.name, role:'participant',
+              date_of_birth:m.dob||null, gender:m.gender||null,
+              nationality:m.nationality||null, governorate:m.governorate||null,
+              disability_type:m.disability!=='none'?m.disability:null,
+            })
+          }).catch(()=>{});
+        }
+        // 2. Create their Supabase auth account with a random temp password
+        const tempPw = 'InjazGIL2026!' + Math.random().toString(36).slice(2,8);
+        const signupRes = await fetch(SUPA_URL+'/auth/v1/signup',{
           method:'POST',
-          headers:h,
-          body:JSON.stringify({
-            email:m.email, full_name:m.name, role:'participant',
-            date_of_birth:m.dob||null, gender:m.gender||null,
-            nationality:m.nationality||null, governorate:m.governorate||null,
-            // auth_id is null until they sign up — trigger will link them
-          })
-        }).catch(()=>{});
-      }
+          headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+          body:JSON.stringify({email:m.email, password:tempPw,
+            options:{data:{full_name:m.name}}})
+        });
+        const signupData = await signupRes.json();
+        // 3. Send password reset email so they can set their own password
+        if(signupData.user || signupData.id){
+          await fetch(SUPA_URL+'/auth/v1/recover',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+            body:JSON.stringify({email:m.email})
+          }).catch(()=>{});
+        }
+      } catch(e){ console.warn('Co-founder setup skipped for',m.email,e.message); }
     }
     document.getElementById('af-success-email').textContent=email;
     // If email confirmation is required, show note
