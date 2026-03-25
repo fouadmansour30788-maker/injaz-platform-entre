@@ -586,6 +586,46 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <div id="dash-sdgs" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
     </div>
+    <!-- ════ ADMIN: TRACK ════ -->
+    <div class="page" id="pg-track">
+      <div class="fbet mb15" style="flex-wrap:wrap;gap:8px">
+        <div><h2 style="font-size:18px;font-weight:700">Program Track</h2>
+          <p style="font-size:12px;color:var(--t3)">Full view of all teams, members, phases, attendance and scores</p>
+        </div>
+        <div class="fctr g8" style="flex-wrap:wrap">
+          <select class="sel" id="track-partner-f" onchange="loadTrack()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All partners</option>
+          </select>
+          <select class="sel" id="track-phase-f" onchange="loadTrack()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All phases</option>
+            <option value="DT">Design Thinking</option>
+            <option value="FB1">FB Stage 1</option>
+            <option value="FB2">FB Stage 2</option>
+            <option value="INC">Incubation</option>
+          </select>
+          <select class="sel" id="track-gender-f" onchange="loadTrack()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <input class="inp" id="track-search" placeholder="Search team or member..." style="font-size:12px;padding:5px 10px;width:180px" oninput="loadTrack()">
+          <button class="btn btn-sm" onclick="exportTrackCSV()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div id="track-kpis" class="g4 mb15"></div>
+      <div class="card" style="overflow-x:auto;padding:0">
+        <div id="track-table-wrap"></div>
+      </div>
+    </div>
+
+    <!-- ════ PARTICIPANT: MY TRACK ════ -->
+    <div class="page" id="pg-p-track">
+      <div class="sh mb15"><h2>My track</h2><p>Your complete journey through the GIL 2026 programme</p></div>
+      <div id="p-track-content">
+        <div class="empty"><div class="spin" style="margin:0 auto"></div></div>
+      </div>
+    </div>
+
     <!-- ════ ADMIN: COHORT ════ -->
     <div class="page" id="pg-cohort">
       <div class="fbet mb15">
@@ -1492,13 +1532,15 @@ function confirm2(title,msg,onOk){
 const ADMIN_TABS=[
   {l:'Dashboard',p:'pg-dashboard'},{l:'Cohort',p:'pg-cohort'},
   {l:'Assessments',p:'pg-assess-queue'},{l:'Classes',p:'pg-classes'},
-  {l:'Attendance',p:'pg-attendance'},{l:'Map',p:'pg-map'},
-  {l:'Applications',p:'pg-applications'},{l:'Rubric',p:'pg-rubric'},
-  {l:'Notifications',p:'pg-notifications'},{l:'Register team',p:'pg-register'},
+  {l:'Attendance',p:'pg-attendance'},{l:'Track',p:'pg-track'},
+  {l:'Map',p:'pg-map'},{l:'Applications',p:'pg-applications'},
+  {l:'Rubric',p:'pg-rubric'},{l:'Notifications',p:'pg-notifications'},
+  {l:'Register team',p:'pg-register'},
 ];
 const PARTICIPANT_TABS=[
   {l:'My journey',p:'pg-journey'},{l:'Submit work',p:'pg-submit-work'},
-  {l:'My team',p:'pg-my-team'},{l:'My attendance',p:'pg-p-attendance'},{l:'Notifications',p:'pg-p-notifications'},
+  {l:'My track',p:'pg-p-track'},{l:'My team',p:'pg-my-team'},
+  {l:'My attendance',p:'pg-p-attendance'},{l:'Notifications',p:'pg-p-notifications'},
 ];
 function buildNav(){
   const tabs=ROLE==='admin'?ADMIN_TABS:PARTICIPANT_TABS;
@@ -1526,6 +1568,8 @@ function nav(id){
   if(id==='pg-applications') loadApplications();
   if(id==='pg-notifications') loadNotifications();
   if(id==='pg-p-notifications') loadParticipantNotifications();
+  if(id==='pg-track') loadTrack();
+  if(id==='pg-p-track') loadParticipantTrack();
   if(id==='pg-submit-work') loadSubmitWork();
 }
 
@@ -1653,7 +1697,7 @@ function showApp(){
   document.getElementById('tb-sub').textContent=ROLE==='admin'?'Program Manager':'Participant';
   // Populate partner dropdowns
   const pOpts=PARTNERS.map(p=>`<option value="${p.code}">${p.label}</option>`).join('');
-  ['dash-partner-filter','pt-partner-filter','cls-partner-f','partner-filter-cohort','map-partner-filter'].forEach(id=>{
+  ['dash-partner-filter','pt-partner-filter','cls-partner-f','partner-filter-cohort','map-partner-filter','track-partner-f'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){
       const allOpt=el.options[0]; el.innerHTML='';
@@ -3194,6 +3238,448 @@ document.addEventListener('DOMContentLoaded', function(){
   showAuth();
   (async()=>{ try{ if(!sb.restore()) return; const p=await sb.get('users','auth_id=eq.'+sb._uid+'&limit=1'); if(!p.length) return; PROFILE=p[0]; ROLE=p[0].role==='admin'?'admin':'participant'; try{PARTNERS=await sb.get('partners','order=label');}catch(e){PARTNERS=[];} showApp(); }catch(e){} })();
 });
+// ── ADMIN: PROGRAM TRACK TABLE ──
+let _trackData = [];
+
+async function loadTrack() {
+  const partnerF = document.getElementById('track-partner-f')?.value||'all';
+  const phaseF   = document.getElementById('track-phase-f')?.value||'all';
+  const genderF  = document.getElementById('track-gender-f')?.value||'all';
+  const search   = (document.getElementById('track-search')?.value||'').toLowerCase();
+
+  document.getElementById('track-table-wrap').innerHTML =
+    '<div style="padding:2rem;text-align:center"><div class="spin" style="margin:0 auto"></div></div>';
+
+  try {
+    // Load all data
+    const [teams, allTm, allUsers, allEnroll, allAss, allAtt, allCls, allCe] = await Promise.all([
+      sb.get('teams','select=id,name,idea_title,current_phase,partner_id,sector,siyb_track'),
+      sb.get('team_members','select=user_id,team_id,role_in_team'),
+      sb.get('users','select=id,full_name,gender,nationality,governorate,date_of_birth&role=eq.participant'),
+      sb.get('phase_enrollments','select=team_id,phase_code,status,score'),
+      sb.get('assessments','select=team_id,phase_code,score,recommendation&is_draft=eq.false&order=submitted_at.desc'),
+      sb.get('attendance','select=class_id,user_id,status'),
+      sb.get('classes','select=id,phase_code,partner_id'),
+      sb.get('class_enrollments','select=class_id,user_id'),
+    ]);
+
+    // Build lookups
+    const userMap = {};
+    allUsers.forEach(u=>{ userMap[u.id]=u; });
+
+    const teamMembers = {}; // team_id → [user_ids]
+    allTm.forEach(r=>{
+      if(!teamMembers[r.team_id]) teamMembers[r.team_id]=[];
+      teamMembers[r.team_id].push({user_id:r.user_id,role:r.role_in_team});
+    });
+
+    const teamEnroll = {}; // team_id → {DT:{status,score}, FB1:..., ...}
+    allEnroll.forEach(e=>{
+      if(!teamEnroll[e.team_id]) teamEnroll[e.team_id]={};
+      teamEnroll[e.team_id][e.phase_code]={status:e.status,score:e.score};
+    });
+
+    const teamAssess = {}; // team_id → {DT:{score,rec}, ...}
+    allAss.forEach(a=>{
+      if(!teamAssess[a.team_id]) teamAssess[a.team_id]={};
+      if(!teamAssess[a.team_id][a.phase_code]) // keep latest
+        teamAssess[a.team_id][a.phase_code]={score:a.score,rec:a.recommendation};
+    });
+
+    // Attendance per user per phase
+    const clsPhase = {}; // class_id → phase_code
+    const clsPartner = {}; // class_id → partner_id
+    allCls.forEach(c=>{ clsPhase[c.id]=c.phase_code; clsPartner[c.id]=c.partner_id; });
+
+    // user → phase → {P,A,E,total}
+    const userAttByPhase = {};
+    allAtt.forEach(a=>{
+      const ph = clsPhase[a.class_id]; if(!ph) return;
+      if(!userAttByPhase[a.user_id]) userAttByPhase[a.user_id]={};
+      if(!userAttByPhase[a.user_id][ph]) userAttByPhase[a.user_id][ph]={P:0,A:0,E:0,total:0};
+      userAttByPhase[a.user_id][ph][a.status]++;
+      userAttByPhase[a.user_id][ph].total++;
+    });
+
+    // Filter teams
+    let filtTeams = teams.filter(t=>{
+      const p = PARTNERS.find(x=>x.id===t.partner_id);
+      if(partnerF!=='all' && p?.code!==partnerF) return false;
+      if(phaseF!=='all' && t.current_phase!==phaseF) return false;
+      return true;
+    });
+
+    // KPIs
+    const totalTeams = filtTeams.length;
+    const totalMembers = filtTeams.reduce((s,t)=>(teamMembers[t.id]||[]).length+s,0);
+    const passedDT = filtTeams.filter(t=>teamEnroll[t.id]?.DT?.status==='passed').length;
+    const inInc = filtTeams.filter(t=>t.current_phase==='INC').length;
+
+    document.getElementById('track-kpis').innerHTML =
+      '<div class="stat"><div class="slbl">Teams</div><div class="sval" style="color:var(--or)">'+totalTeams+'</div></div>'+
+      '<div class="stat"><div class="slbl">Members</div><div class="sval" style="color:var(--fb1)">'+totalMembers+'</div></div>'+
+      '<div class="stat"><div class="slbl">Passed DT</div><div class="sval" style="color:var(--pass)">'+passedDT+'</div></div>'+
+      '<div class="stat"><div class="slbl">In Incubation</div><div class="sval" style="color:var(--inc)">'+inInc+'</div></div>';
+
+    // Build rows — one row per MEMBER
+    const PHASES = ['DT','FB1','FB2','INC'];
+    const rows = [];
+
+    filtTeams.forEach(t=>{
+      const partner = PARTNERS.find(x=>x.id===t.partner_id);
+      const members = (teamMembers[t.id]||[]).map(m=>({...m,user:userMap[m.user_id]}));
+
+      members.forEach((m,mi)=>{
+        const u = m.user||{};
+        // Apply member-level filters
+        if(genderF!=='all' && u.gender!==genderF) return;
+        if(search && !t.name.toLowerCase().includes(search) && !(u.full_name||'').toLowerCase().includes(search)) return;
+
+        const age = u.date_of_birth?Math.floor((Date.now()-new Date(u.date_of_birth))/(365.25*24*3600*1000)):null;
+        const att = userAttByPhase[u.id]||{};
+
+        rows.push({
+          teamId:t.id,
+          teamName:t.name,
+          ideaTitle:t.idea_title||'—',
+          partner:partner?.code||'—',
+          partnerColor:partner?.color||'var(--or)',
+          currentPhase:t.current_phase,
+          memberCount:members.length,
+          memberIndex:mi,
+          // Member info
+          name:u.full_name||'—',
+          role:m.role||'member',
+          gender:u.gender||'—',
+          nationality:u.nationality||'—',
+          governorate:u.governorate||'—',
+          age:age||'—',
+          // Per-phase data
+          phases: PHASES.reduce((acc,ph)=>{
+            const enroll = teamEnroll[t.id]?.[ph];
+            const assess = teamAssess[t.id]?.[ph];
+            const userAtt = att[ph];
+            const attRate = userAtt?.total?Math.round(userAtt.P/userAtt.total*100):null;
+            acc[ph] = {
+              enrolled: !!enroll,
+              status: enroll?.status||null,
+              score: assess?.score??null,
+              rec: assess?.rec||null,
+              attRate,
+              attTotal: userAtt?.total||0,
+              attP: userAtt?.P||0,
+            };
+            return acc;
+          },{}),
+        });
+      });
+    });
+
+    _trackData = rows;
+
+    // Build table
+    if(!rows.length){
+      document.getElementById('track-table-wrap').innerHTML =
+        '<div style="padding:3rem;text-align:center;color:var(--t3)">No participants match the selected filters.</div>';
+      return;
+    }
+
+    const phaseStatusIcon = (ph) => {
+      if(!ph.enrolled) return '<span style="color:var(--bdr)">—</span>';
+      const col = ph.status==='passed'?'var(--pass)':ph.status==='active'?'var(--fb1)':ph.status==='failed'?'var(--fail)':ph.status==='remediation'?'var(--warn)':'var(--t3)';
+      const icon = ph.status==='passed'?'✓':ph.status==='active'?'●':ph.status==='failed'?'✗':ph.status==='remediation'?'⚠':'·';
+      const attBadge = ph.attRate!==null
+        ? '<span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:'+(ph.attRate>=60?'var(--pass-bg)':'var(--fail-bg)')+';color:'+(ph.attRate>=60?'var(--pass-t)':'var(--fail-t)')+'">'+ph.attRate+'%</span>'
+        : '';
+      const scoreBadge = ph.score!==null
+        ? '<span style="font-size:9px;font-weight:700;color:'+(ph.score>=60?'var(--pass)':'var(--fail)')+'">'+ph.score+'</span>'
+        : '';
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px">'
+        +'<span style="font-size:13px;font-weight:700;color:'+col+'">'+icon+'</span>'
+        +attBadge+scoreBadge+'</div>';
+    };
+
+    let tbl = '<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px">';
+
+    // Header
+    tbl += '<thead><tr style="background:var(--bg)">'
+      +'<th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;position:sticky;left:0;background:var(--bg);z-index:2">Team</th>'
+      +'<th style="text-align:left;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Member</th>'
+      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Role</th>'
+      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Gender</th>'
+      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Nationality</th>'
+      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Age</th>'
+      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Gov.</th>';
+
+    PHASES.forEach(ph=>{
+      tbl += '<th style="text-align:center;padding:10px 4px;border-bottom:1px solid var(--bdr);min-width:72px">'
+        +'<div style="font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;background:'+( PHASE_BGS[ph]||'var(--bg)')+';color:'+(PHASE_TS[ph]||'var(--t2)')+'">'+ph+'</div>'
+        +'<div style="font-size:9px;color:var(--t3);margin-top:2px">att · score</div></th>';
+    });
+
+    tbl += '<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Status</th>'
+      +'</tr></thead><tbody>';
+
+    // Rows
+    rows.forEach((r,i)=>{
+      const isFirstMember = r.memberIndex===0;
+      const rowBg = i%2===0?'':'background:rgba(0,0,0,0.01)';
+      const borderTop = isFirstMember&&i>0?'border-top:2px solid var(--bdr)':'';
+
+      const statusBadge = r.currentPhase==='INC'
+        ?'<span class="tag tinc" style="font-size:9px">INC</span>'
+        :phaseTag(r.currentPhase);
+
+      tbl += '<tr style="'+rowBg+';'+borderTop+'">'
+        // Team (only show on first member)
+        +'<td style="padding:9px 12px;border-bottom:0.5px solid var(--bdr);vertical-align:middle;position:sticky;left:0;background:'+(i%2===0?'var(--card)':'#fafafa')+';z-index:1">'
+        +(isFirstMember
+          ?'<div style="font-weight:600;font-size:13px;margin-bottom:2px">'+r.teamName+'</div>'
+          +'<div style="font-size:10px;color:var(--t3)">'+r.ideaTitle+'</div>'
+          +'<div style="margin-top:4px"><span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--bg);border:0.5px solid var(--bdr)">'+r.partner+'</span></div>'
+          :'<span style="color:var(--bdr);font-size:11px">└</span>')
+        +'</td>'
+        // Member
+        +'<td style="padding:9px 8px;border-bottom:0.5px solid var(--bdr);vertical-align:middle">'
+        +'<div style="font-weight:500">'+r.name+'</div>'
+        +'<div style="font-size:10px;color:var(--t3)">'+r.governorate+'</div>'
+        +'</td>'
+        // Role
+        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center">'
+        +(r.role==='lead'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:10px;background:var(--or-l);color:#993C1D">Lead</span>'
+          :'<span style="font-size:10px;color:var(--t3)">Member</span>')
+        +'</td>'
+        // Gender
+        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center">'
+        +'<span style="font-size:11px;color:'+(r.gender==='Female'?'#EC4899':'var(--fb1)')+'">'+r.gender+'</span>'
+        +'</td>'
+        // Nationality
+        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:11px;color:var(--t2)">'+r.nationality+'</td>'
+        // Age
+        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:11px;font-weight:600">'+r.age+'</td>'
+        // Governorate (short)
+        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">'
+        +(r.governorate!=='—'?r.governorate.split(' ')[0]:'—')
+        +'</td>';
+
+      // Phase columns
+      PHASES.forEach(ph=>{
+        tbl += '<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center">'+phaseStatusIcon(r.phases[ph])+'</td>';
+      });
+
+      // Current status
+      tbl += '<td style="padding:9px 8px;border-bottom:0.5px solid var(--bdr);text-align:center">'+statusBadge+'</td>';
+      tbl += '</tr>';
+    });
+
+    tbl += '</tbody></table>';
+
+    document.getElementById('track-table-wrap').innerHTML = tbl;
+
+  } catch(e) {
+    console.error('Track error:', e);
+    document.getElementById('track-table-wrap').innerHTML =
+      '<div style="padding:2rem;color:var(--fail-t);font-size:13px">Error: '+e.message+'</div>';
+  }
+}
+
+// Export track to CSV
+function exportTrackCSV() {
+  if(!_trackData.length){ toast('No data to export','','error'); return; }
+  const PHASES = ['DT','FB1','FB2','INC'];
+  const headers = ['Team','Idea','Partner','Member','Role','Gender','Nationality','Age','Governorate',
+    ...PHASES.flatMap(ph=>[ph+' Status',ph+' Att%',ph+' Score']),
+    'Current Phase'];
+  const rows = _trackData.map(r=>[
+    r.teamName, r.ideaTitle, r.partner,
+    r.name, r.role, r.gender, r.nationality, r.age, r.governorate,
+    ...PHASES.flatMap(ph=>[
+      r.phases[ph].status||'—',
+      r.phases[ph].attRate!==null?r.phases[ph].attRate+'%':'—',
+      r.phases[ph].score!==null?r.phases[ph].score:'—',
+    ]),
+    r.currentPhase,
+  ]);
+  const esc=function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';};  const csv=[headers].concat(rows).map(function(r){return r.map(esc).join(',');}).join('\r\n');
+
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'GIL2026-Track-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('CSV exported',''+_trackData.length+' members');
+}
+
+// ── PARTICIPANT: MY TRACK ──
+async function loadParticipantTrack() {
+  const el = document.getElementById('p-track-content');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>';
+
+  try {
+    // Get team
+    const tmRows = await sb.get('team_members','user_id=eq.'+PROFILE.id+'&select=team_id,role_in_team&limit=1');
+    if(!tmRows.length){
+      el.innerHTML = '<div class="card">'+emptyState('👥','No team yet','You have not been assigned to a team yet.')+'</div>';
+      return;
+    }
+    const teamId = tmRows[0].team_id;
+
+    const [team, allTm, enrollments, assessments, allAtt, allCls] = await Promise.all([
+      sb.get('teams','id=eq.'+teamId+'&select=name,idea_title,current_phase,sector,siyb_track,partner_id'),
+      sb.get('team_members','team_id=eq.'+teamId+'&select=user_id,role_in_team'),
+      sb.get('phase_enrollments','team_id=eq.'+teamId+'&order=phase_code'),
+      sb.get('assessments','team_id=eq.'+teamId+'&is_draft=eq.false&order=submitted_at.desc'),
+      sb.get('attendance','user_id=eq.'+PROFILE.id),
+      sb.get('classes','select=id,phase_code'),
+    ]);
+
+    const t = team[0]||{};
+    const partner = PARTNERS.find(p=>p.id===t.partner_id);
+
+    // Member list
+    const uids = allTm.map(r=>r.user_id);
+    const members = uids.length ? await sb.get('users','id=in.('+uids.join(',')+')'+'&select=id,full_name,gender,nationality,date_of_birth,governorate') : [];
+
+    // Attendance by phase
+    const clsPhase={};
+    allCls.forEach(c=>{ clsPhase[c.id]=c.phase_code; });
+    const attByPhase={};
+    allAtt.forEach(a=>{
+      const ph=clsPhase[a.class_id]; if(!ph) return;
+      if(!attByPhase[ph]) attByPhase[ph]={P:0,A:0,E:0,total:0};
+      attByPhase[ph][a.status]++;
+      attByPhase[ph].total++;
+    });
+
+    const PHASES = ['DT','FB1','FB2','INC'];
+    const curIdx = PHASES.indexOf(t.current_phase);
+
+    // Build team header card
+    let html = '<div class="card mb15" style="border-left:4px solid var(--or)">'
+      +'<div class="fbet mb12">'
+      +'<div><div style="font-size:18px;font-weight:700;margin-bottom:3px">'+t.name+'</div>'
+      +'<div style="font-size:13px;color:var(--t2)">'+t.idea_title+'</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-top:4px">'+( partner?.label||'')+(t.sector?' · '+t.sector:'')+'</div>'
+      +'</div>'
+      +phaseTag(t.current_phase)
+      +'</div>';
+
+    // Phase progress strip
+    html += '<div style="display:flex;align-items:center;gap:0;margin:1rem 0">';
+    PHASES.forEach((ph,i)=>{
+      const enroll = enrollments.find(e=>e.phase_code===ph);
+      const assess = assessments.find(a=>a.phase_code===ph);
+      const status = enroll?.status||null;
+      const isCurrent = i===curIdx;
+      const isPast    = i<curIdx;
+
+      const col = isPast?'var(--pass)':isCurrent?'var(--or)':'var(--bdr)';
+      const bg  = isPast?'var(--pass-bg)':isCurrent?'#FFF7ED':'var(--bg)';
+      const icon= isPast?'✓':isCurrent?'●':'○';
+
+      html += '<div style="flex:1;text-align:center;padding:10px 6px;background:'+bg+';border-radius:8px;border:1.5px solid '+col+';margin:0 3px">'
+        +'<div style="font-size:18px;color:'+col+';font-weight:700">'+icon+'</div>'
+        +'<div style="font-size:10px;font-weight:700;color:'+col+';margin:3px 0">'+ph+'</div>'
+        +'<div style="font-size:9px;color:var(--t3)">'+(status?status:'—')+'</div>';
+
+      if(assess?.score!==undefined&&assess?.score!==null)
+        html += '<div style="font-size:11px;font-weight:700;color:'+(assess.score>=60?'var(--pass)':'var(--fail)')+'">'+assess.score+'/100</div>';
+
+      const att = attByPhase[ph];
+      if(att?.total)
+        html += '<div style="font-size:9px;color:var(--t3)">'+Math.round(att.P/att.total*100)+'% att.</div>';
+
+      html += '</div>';
+      if(i<PHASES.length-1) html += '<div style="width:16px;height:2px;background:var(--bdr)"></div>';
+    });
+    html += '</div></div>';
+
+    // Members card
+    html += '<div class="card mb15"><div class="clbl mb12">Team members</div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="background:var(--bg)">'
+      +'<th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Name</th>'
+      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Role</th>'
+      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Gender</th>'
+      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Nationality</th>'
+      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Age</th>'
+      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Governorate</th>'
+      +'</tr></thead><tbody>';
+
+    members.forEach(m=>{
+      const role = allTm.find(r=>r.user_id===m.id)?.role_in_team||'member';
+      const age  = m.date_of_birth?Math.floor((Date.now()-new Date(m.date_of_birth))/(365.25*24*3600*1000)):'-';
+      const isMe = m.id===PROFILE.id;
+      html += '<tr style="'+(isMe?'background:var(--or-l)':'')+'">'
+        +'<td style="padding:10px 12px;border-bottom:0.5px solid var(--bdr)">'
+        +'<span style="font-weight:600">'+m.full_name+(isMe?' <span style="font-size:10px;color:var(--or)">(you)</span>':'')+'</span>'
+        +'</td>'
+        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center">'
+        +(role==='lead'?'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:var(--or-l);color:#993C1D">Lead</span>':'<span style="font-size:11px;color:var(--t3)">Member</span>')
+        +'</td>'
+        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;color:'+(m.gender==='Female'?'#EC4899':'var(--fb1)')+'">'+( m.gender||'—')+'</td>'
+        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;color:var(--t2)">'+(m.nationality||'—')+'</td>'
+        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;font-weight:600">'+age+'</td>'
+        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;color:var(--t3)">'+(m.governorate||'—')+'</td>'
+        +'</tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // Phase detail cards
+    html += '<div style="display:flex;flex-direction:column;gap:12px">';
+    PHASES.forEach(ph=>{
+      const enroll = enrollments.find(e=>e.phase_code===ph);
+      if(!enroll) return; // only show phases team was enrolled in
+      const assess = assessments.find(a=>a.phase_code===ph);
+      const att = attByPhase[ph];
+      const attRate = att?.total?Math.round(att.P/att.total*100):null;
+      const score = assess?.score??null;
+      const rec = assess?.rec||null;
+      const status = enroll.status;
+
+      const statusCol = status==='passed'?'var(--pass)':status==='active'?'var(--or)':status==='failed'?'var(--fail)':status==='remediation'?'var(--warn)':'var(--t3)';
+      const statusBg  = status==='passed'?'var(--pass-bg)':status==='active'?'#FFF7ED':status==='failed'?'var(--fail-bg)':status==='remediation'?'var(--warn-bg)':'var(--bg)';
+
+      html += '<div class="card" style="border-left:3px solid '+statusCol+';background:'+statusBg+'">'
+        +'<div class="fbet mb12">'
+        +'<div class="fctr g8">'+phaseTag(ph)
+        +'<span style="font-size:14px;font-weight:600;color:'+statusCol+'">'+{DT:'Design Thinking',FB1:'FB Stage 1',FB2:'FB Stage 2',INC:'Incubation'}[ph]+'</span>'
+        +'</div>'
+        +'<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:white;color:'+statusCol+';text-transform:capitalize">'+status+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:24px;flex-wrap:wrap">'
+        // Attendance
+        +'<div style="text-align:center">'
+        +'<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:4px">Attendance</div>'
+        +(attRate!==null
+          ?'<div style="font-size:28px;font-weight:700;color:'+(attRate>=60?'var(--pass)':'var(--fail)')+'">'+attRate+'%</div>'
+          +'<div style="font-size:10px;color:var(--t3)">'+( att?.P||0)+'P · '+(att?.A||0)+'A · '+(att?.E||0)+'E</div>'
+          +'<div style="font-size:10px;font-weight:600;color:'+(attRate>=60?'var(--pass-t)':'var(--fail-t)')+';margin-top:2px">'+(attRate>=60?'✓ Gate met':'✗ Below 60%')+'</div>'
+          :'<div style="font-size:20px;color:var(--t3)">—</div><div style="font-size:10px;color:var(--t3)">No data</div>')
+        +'</div>'
+        // Score
+        +(score!==null
+          ?'<div style="text-align:center">'
+          +'<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:4px">Assessment score</div>'
+          +'<div style="font-size:28px;font-weight:700;color:'+(score>=60?'var(--pass)':'var(--fail)')+'">'+score+'<span style="font-size:14px;color:var(--t3)">/100</span></div>'
+          +'<div style="font-size:11px;color:var(--t3);text-transform:capitalize">'+( rec||'—')+'</div>'
+          +'</div>'
+          :'<div style="text-align:center">'
+          +'<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:4px">Assessment</div>'
+          +'<div style="font-size:20px;color:var(--t3)">Pending</div></div>')
+        +'</div>'
+        +'</div>';
+    });
+    html += '</div>';
+
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="card">'+emptyState('❌','Error',e.message)+'</div>';
+    console.error('Participant track error:', e);
+  }
+}
+
+
 // ── MAP ──
 async function loadMap(){
   const partnerF = document.getElementById('map-partner-filter')?.value||'all';
