@@ -544,6 +544,12 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         </div>
       </div>
 
+      <!-- ── Achievement matrix: partner × phase ── -->
+      <div class="card mb15" style="overflow-x:auto">
+        <div class="clbl mb12">Achievement per partner per phase</div>
+        <div id="dash-achievement-matrix"></div>
+      </div>
+
       <!-- ── Attendance chart ── -->
       <div class="card mb15">
         <div class="fbet mb12">
@@ -1698,6 +1704,74 @@ async function loadDashboard(){
         <div class="pb"><div class="pf" style="width:${Math.min(pct,100)}%;background:${p.color||'var(--or)'}"></div></div>
       </div>`;
     }).join('');
+
+    // ── Achievement matrix ──
+    const PHASES_MATRIX = ['IE','DT','FB1','FB2','INC'];
+    const visPartners = [...new Set(paRows.map(r=>r.partner_code))];
+    let mHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px">
+      <thead><tr>
+        <th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--bdr);width:90px">Partner</th>`;
+    PHASES_MATRIX.forEach(ph=>{
+      mHtml+=`<th style="text-align:center;padding:8px 6px;border-bottom:1px solid var(--bdr);min-width:90px">
+        <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${PHASE_BGS[ph]||'var(--bg)'};color:${PHASE_TS[ph]||'var(--t2)'}">${ph}</span>
+      </th>`;
+    });
+    mHtml+=`<th style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Total</th></tr></thead><tbody>`;
+
+    visPartners.forEach(code=>{
+      const p=PARTNERS.find(x=>x.code===code)||{color:'var(--or)'};
+      let rowT=0, rowA=0;
+      mHtml+=`<tr><td style="padding:8px 12px;border-bottom:0.5px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${p.color||'var(--or)'}"></div>
+          <span style="font-weight:600">${code}</span>
+        </div></td>`;
+      PHASES_MATRIX.forEach(ph=>{
+        const r=paRows.find(x=>x.partner_code===code&&x.phase_code===ph);
+        if(!r||r.target==null){
+          mHtml+=`<td style="text-align:center;padding:8px 6px;border-bottom:0.5px solid var(--bdr);color:var(--t3)">—</td>`;
+          return;
+        }
+        rowT+=r.target; rowA+=(r.actual||0);
+        const pct=r.target?Math.round(((r.actual||0)/r.target)*100):0;
+        const bg=pct>=80?'var(--pass-bg)':pct>=50?'var(--warn-bg)':'var(--fail-bg)';
+        const col=pctColor(pct);
+        mHtml+=`<td style="text-align:center;padding:5px 6px;border-bottom:0.5px solid var(--bdr)">
+          <div style="background:${bg};border-radius:8px;padding:6px 4px">
+            <div style="font-size:13px;font-weight:700;color:${col}">${r.actual||0}<span style="font-size:10px;font-weight:400;color:var(--t3)">/${r.target}</span></div>
+            <div style="font-size:10px;font-weight:700;color:${col}">${pct}%</div>
+            <div style="height:3px;background:rgba(0,0,0,0.08);border-radius:2px;margin-top:4px;overflow:hidden">
+              <div style="width:${Math.min(pct,100)}%;height:3px;background:${col};border-radius:2px"></div>
+            </div>
+          </div></td>`;
+      });
+      const rp=rowT?Math.round((rowA/rowT)*100):0;
+      mHtml+=`<td style="text-align:center;padding:8px 12px;border-bottom:0.5px solid var(--bdr)">
+        <div style="font-weight:700;font-size:13px;color:${pctColor(rp)}">${rowA}<span style="font-size:10px;font-weight:400;color:var(--t3)">/${rowT}</span></div>
+        <div style="font-size:10px;font-weight:700;color:${pctColor(rp)}">${rp}%</div>
+      </td></tr>`;
+    });
+
+    // Totals row
+    const grandT=Object.values(partnerTotals).reduce((s,v)=>s+v.t,0);
+    const grandA=Object.values(partnerTotals).reduce((s,v)=>s+v.a,0);
+    const grandPct=grandT?Math.round((grandA/grandT)*100):0;
+    mHtml+=`<tr style="background:var(--bg)"><td style="padding:8px 12px;font-weight:700;font-size:12px">TOTAL</td>`;
+    PHASES_MATRIX.forEach(ph=>{
+      const phT=paRows.filter(r=>r.phase_code===ph).reduce((s,r)=>s+(r.target||0),0);
+      const phA=paRows.filter(r=>r.phase_code===ph).reduce((s,r)=>s+(r.actual||0),0);
+      const pct=phT?Math.round((phA/phT)*100):0;
+      if(!phT){ mHtml+=`<td style="text-align:center;padding:8px 6px;color:var(--t3)">—</td>`; return; }
+      mHtml+=`<td style="text-align:center;padding:8px 6px">
+        <div style="font-weight:700;font-size:12px;color:${pctColor(pct)}">${phA}/${phT}</div>
+        <div style="font-size:10px;font-weight:700;color:${pctColor(pct)}">${pct}%</div>
+      </td>`;
+    });
+    mHtml+=`<td style="text-align:center;padding:8px 12px">
+      <div style="font-weight:700;font-size:13px;color:${pctColor(grandPct)}">${grandA}/${grandT}</div>
+      <div style="font-size:11px;font-weight:700;color:${pctColor(grandPct)}">${grandPct}%</div>
+    </td></tr></tbody></table>`;
+    document.getElementById('dash-achievement-matrix').innerHTML=mHtml;
 
     // ── Attendance chart ──
     const attByClass={};
