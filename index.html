@@ -1004,6 +1004,14 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       </div>
     </div>
 
+    <!-- ════ ADMIN: CLASS DETAIL ════ -->
+    <div class="page" id="pg-class-detail">
+      <button class="back-btn" onclick="nav('pg-classes')">← Back to classes</button>
+      <div id="cls-detail-content">
+        <div class="empty"><div class="spin" style="margin:0 auto"></div></div>
+      </div>
+    </div>
+
     <!-- ════ ADMIN: REGISTER TEAM ════ -->
     <div class="page" id="pg-register">
       <button class="back-btn" onclick="nav('pg-cohort')">← Back to cohort</button>
@@ -1354,7 +1362,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Problem clarity &amp; relevance</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-problem" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-problem" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1363,7 +1371,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Market opportunity &amp; size</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-market" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-market" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1372,7 +1380,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Innovation &amp; uniqueness</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-innovation" min="0" max="5" placeholder="0–5"
+                    <input type="number" id="sc-innovation" class="sc-input-field" min="0" max="5" placeholder="0–5"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/5</span>
@@ -1390,7 +1398,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Solution quality &amp; feasibility</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-solution" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-solution" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1399,7 +1407,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Revenue model clarity</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-revenue" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-revenue" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1408,7 +1416,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Has BMC / business stage</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-bmc" min="0" max="5" placeholder="0–5"
+                    <input type="number" id="sc-bmc" class="sc-input-field" min="0" max="5" placeholder="0–5"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/5</span>
@@ -1426,7 +1434,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Team composition &amp; diversity</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-team" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-team" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1435,7 +1443,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Commitment &amp; motivation</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-motivation" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-motivation" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1444,7 +1452,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Social impact potential</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-impact" min="0" max="5" placeholder="0–5"
+                    <input type="number" id="sc-impact" class="sc-input-field" min="0" max="5" placeholder="0–5"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/5</span>
@@ -1462,7 +1470,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Age &amp; eligibility criteria</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-eligibility" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-eligibility" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1471,7 +1479,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">GIL program alignment</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-fit" min="0" max="10" placeholder="0–10"
+                    <input type="number" id="sc-fit" class="sc-input-field" min="0" max="10" placeholder="0–10"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/10</span>
@@ -1480,7 +1488,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
                 <div class="fbet" style="font-size:12px">
                   <span style="color:var(--t2)">Partner / geography fit</span>
                   <div class="fctr g6">
-                    <input type="number" id="sc-geography" min="0" max="5" placeholder="0–5"
+                    <input type="number" id="sc-geography" class="sc-input-field" min="0" max="5" placeholder="0–5"
                       style="width:58px;padding:4px 6px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;text-align:center;outline:none;background:white"
                       oninput="appRecalc()" onfocus="this.style.borderColor='var(--or)'" onblur="this.style.borderColor=''">
                     <span style="font-size:11px;color:var(--t3)">/5</span>
@@ -1503,8 +1511,11 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           <textarea class="txa mb12" rows="2" id="app-note" placeholder="Internal notes for this application..."></textarea>
         </div>
 
+        <!-- Lock overlay (shown when already decided) -->
+        <div id="app-lock-overlay" style="display:none"></div>
+
         <!-- Decision buttons -->
-        <div class="card">
+        <div class="card" id="app-decision-card">
           <div class="clbl mb12">Final decision</div>
           <p style="font-size:12px;color:var(--t3);margin-bottom:1rem">The scoring above is a guide. You make the final call.</p>
           <div class="fctr g8">
@@ -1695,6 +1706,7 @@ function nav(id){
   if(id==='pg-p-notifications') loadParticipantNotifications();
   if(id==='pg-track') loadTrack();
   if(id==='pg-workplan') loadWorkplan();
+  if(id==='pg-class-detail') {}  // loaded on demand
   if(id==='pg-p-track') loadParticipantTrack();
   if(id==='pg-submit-work') loadSubmitWork();
 }
@@ -2593,39 +2605,308 @@ async function doSubmitAssessment(){
 
 // ── CLASSES ──
 async function loadClasses(){
-  const phase=document.getElementById('cls-phase-f')?.value||'';
-  const partner=document.getElementById('cls-partner-f')?.value||'';
+  const phase   = document.getElementById('cls-phase-f')?.value||'';
+  const partner = document.getElementById('cls-partner-f')?.value||'';
   try {
-    let qs='order=start_date,name';
-    if(phase) qs='phase_code=eq.'+phase+'&'+qs;
+    let qs = 'order=start_date,name';
+    if(phase)   qs = 'phase_code=eq.'+phase+'&'+qs;
     if(partner){ const p=PARTNERS.find(x=>x.code===partner); if(p) qs='partner_id=eq.'+p.id+'&'+qs; }
-    const classes=await sb.get('classes',qs);
-    // Get partner names
-    const grid=document.getElementById('cls-grid');
-    const form=document.getElementById('cls-new-form');
+    const classes = await sb.get('classes', qs);
+
+    // Get enrollment counts per class
+    const allCe  = await sb.get('class_enrollments','select=class_id,user_id').catch(()=>[]);
+    const allAtt = await sb.get('attendance','select=class_id,status').catch(()=>[]);
+
+    const ceCount  = {}; // class_id → count
+    allCe.forEach(r=>{ ceCount[r.class_id]=(ceCount[r.class_id]||0)+1; });
+
+    const attStats = {}; // class_id → {P,A,E,total}
+    allAtt.forEach(r=>{
+      if(!attStats[r.class_id]) attStats[r.class_id]={P:0,A:0,E:0,total:0};
+      attStats[r.class_id][r.status]=(attStats[r.class_id][r.status]||0)+1;
+      attStats[r.class_id].total++;
+    });
+
+    const grid = document.getElementById('cls-grid');
+    const form = document.getElementById('cls-new-form');
     if(form) form.style.display='none';
     grid.style.display='grid';
-    const PHASE_DAYS_MAP={DT:7,FB1:3,FB2:5,INC:null};
-    grid.innerHTML=classes.length?classes.map(c=>{
-      const p=PARTNERS.find(x=>x.id===c.partner_id)||{label:'—',color:'var(--or)'};
-      const sc=c.status==='completed'?{l:'Completed',bg:'var(--pass-bg)',col:'var(--pass-t)'}:c.status==='active'?{l:'Active',bg:'var(--fb1-bg)',col:'var(--fb1-t)'}:{l:'Upcoming',bg:'var(--warn-bg)',col:'var(--warn-t)'};
-      return `<div class="card" style="cursor:pointer;border:0.5px solid var(--bdr)" onmouseover="this.style.borderColor='var(--or)'" onmouseout="this.style.borderColor=''">
-        <div style="height:3px;border-radius:2px;margin-bottom:12px;background:${PHASE_COLORS[c.phase_code]||'var(--or)'}"></div>
-        <div class="fctr g8 mb8">
-          <span class="tag t${(c.phase_code||'dt').toLowerCase()}">${c.phase_code}</span>
-          <span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:${sc.bg};color:${sc.col}">${sc.l}</span>
-        </div>
-        <p style="font-size:14px;font-weight:500;margin-bottom:3px">${c.name}</p>
-        <p style="font-size:11px;color:var(--t3);margin-bottom:8px">${p.label}</p>
-        <div style="font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:3px">
-          <span>👤 ${c.facilitator||'—'}</span>
-          <span>📍 ${c.location||'—'}</span>
-          <span>📅 ${c.start_date||'—'} → ${c.end_date||'—'}</span>
-        </div>
-      </div>`;
-    }).join(''):emptyState('📚','No classes yet','Create a class using the button above');
-  } catch(e){ toast('Error loading classes',e.message,'error'); }
+
+    if(!classes.length){
+      grid.innerHTML = '<div style="grid-column:1/-1">'+emptyState('📚','No classes yet','Create a class using the button above')+'</div>';
+      return;
+    }
+
+    grid.innerHTML = classes.map(c=>{
+      const p   = PARTNERS.find(x=>x.id===c.partner_id)||{label:'—',color:'var(--or)'};
+      const sc  = c.status==='completed'?{l:'Completed',bg:'var(--pass-bg)',col:'var(--pass-t)'}
+                 :c.status==='active'   ?{l:'Active',   bg:'var(--fb1-bg)', col:'var(--fb1-t)'}
+                                        :{l:'Upcoming', bg:'var(--warn-bg)',col:'var(--warn-t)'};
+      const enrolled = ceCount[c.id]||0;
+      const att      = attStats[c.id]||{P:0,A:0,E:0,total:0};
+      const attRate  = att.total ? Math.round(att.P/att.total*100) : null;
+      const phaseColor = PHASE_COLORS[c.phase_code]||'var(--or)';
+
+      // Date helpers
+      const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+      const today   = new Date(); today.setHours(0,0,0,0);
+      const daysUntil = c.start_date ? Math.ceil((new Date(c.start_date)-today)/(1000*60*60*24)) : null;
+      const daysLeft  = c.end_date   ? Math.ceil((new Date(c.end_date)  -today)/(1000*60*60*24)) : null;
+      const durationDays = (c.start_date&&c.end_date) ? Math.ceil((new Date(c.end_date)-new Date(c.start_date))/(1000*60*60*24))+1 : null;
+
+      let timingNote = '';
+      if(c.status!=='completed'){
+        if(daysUntil!==null && daysUntil>0)  timingNote='<span style="font-size:10px;color:var(--warn-t);padding:1px 6px;background:var(--warn-bg);border-radius:4px">Starts in '+daysUntil+' days</span>';
+        else if(daysLeft!==null && daysLeft>0) timingNote='<span style="font-size:10px;color:var(--fb1-t);padding:1px 6px;background:var(--fb1-bg);border-radius:4px">'+daysLeft+' days left</span>';
+        else if(daysLeft!==null && daysLeft<=0&&c.status==='active') timingNote='<span style="font-size:10px;color:var(--fail-t);padding:1px 6px;background:var(--fail-bg);border-radius:4px">Overdue</span>';
+      }
+
+      return '<div class="card" style="cursor:pointer;border:0.5px solid var(--bdr);transition:border-color .15s,box-shadow .15s;position:relative;overflow:hidden" '
+      return '<div class="card" style="cursor:pointer;border:0.5px solid var(--bdr);transition:border-color .15s,box-shadow .15s;position:relative;overflow:hidden" '
+        +'onmouseover="this.classList.add(\'cls-hover\')" '
+        +'onmouseout="this.classList.remove(\'cls-hover\')" '
+        // Phase color bar top
+        +'<div style="height:3px;background:'+phaseColor+';margin:-1rem -1rem 12px -1rem"></div>'
+        // Tags row
+        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
+        +phaseTag(c.phase_code)
+        +'<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:'+sc.bg+';color:'+sc.col+'">'+sc.l+'</span>'
+        +timingNote
+        +'</div>'
+        // Class name & partner
+        +'<p style="font-size:15px;font-weight:600;margin-bottom:2px">'+c.name+'</p>'
+        +'<p style="font-size:12px;color:var(--t3);margin-bottom:10px">'+p.label+'</p>'
+        // Stats row
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">'
+        +'<div style="background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">'
+        +'<div style="font-size:16px;font-weight:700;color:var(--or)">'+enrolled+'</div>'
+        +'<div style="font-size:9px;color:var(--t3);text-transform:uppercase">Enrolled</div></div>'
+        +'<div style="background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">'
+        +'<div style="font-size:16px;font-weight:700;color:'+(attRate!==null?attRate>=60?'var(--pass)':'var(--fail)':'var(--t3)')+'">'+( attRate!==null?attRate+'%':'—')+'</div>'
+        +'<div style="font-size:9px;color:var(--t3);text-transform:uppercase">Attendance</div></div>'
+        +'<div style="background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">'
+        +'<div style="font-size:16px;font-weight:700;color:var(--t2)">'+(durationDays||'—')+'</div>'
+        +'<div style="font-size:9px;color:var(--t3);text-transform:uppercase">Days</div></div>'
+        +'</div>'
+        // Details
+        +'<div style="font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:4px">'
+        +'<div class="fctr g6"><span style="color:var(--t3)">👤</span><span>'+( c.facilitator||'—')+'</span></div>'
+        +'<div class="fctr g6"><span style="color:var(--t3)">📍</span><span>'+( c.location||'—')+'</span></div>'
+        +'<div class="fctr g6"><span style="color:var(--t3)">📅</span><span>'+fmtDate(c.start_date)+' → '+fmtDate(c.end_date)+'</span></div>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+
+  } catch(e){ toast('Error loading classes', e.message, 'error'); }
 }
+
+
+async function openClassDetail(classId){
+  nav('pg-class-detail');
+  const el = document.getElementById('cls-detail-content');
+  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>';
+
+  try {
+    const [cls] = await sb.get('classes','id=eq.'+classId);
+    if(!cls){ el.innerHTML='<p style="color:var(--t3)">Class not found.</p>'; return; }
+
+    const p = PARTNERS.find(x=>x.id===cls.partner_id)||{label:'—',color:'var(--or)'};
+    const sc = cls.status==='completed'?{l:'Completed',bg:'var(--pass-bg)',col:'var(--pass-t)'}
+              :cls.status==='active'   ?{l:'Active',   bg:'var(--fb1-bg)', col:'var(--fb1-t)'}
+                                       :{l:'Upcoming', bg:'var(--warn-bg)',col:'var(--warn-t)'};
+
+    // Load enrollments, attendance, assessments
+    const [ceRows, attRows] = await Promise.all([
+      sb.get('class_enrollments','class_id=eq.'+classId+'&select=user_id,users(id,full_name,gender,nationality,date_of_birth,governorate)'),
+      sb.get('attendance','class_id=eq.'+classId+'&order=day_number'),
+    ]);
+
+    const members = ceRows.map(r=>r.users).filter(Boolean);
+
+    // Per-user attendance
+    const userAtt = {};
+    attRows.forEach(a=>{
+      if(!userAtt[a.user_id]) userAtt[a.user_id]={P:0,A:0,E:0,total:0,days:{}};
+      userAtt[a.user_id][a.status]++;
+      userAtt[a.user_id].total++;
+      userAtt[a.user_id].days[a.day_number]=a.status;
+    });
+
+    const days = PHASE_DAYS[cls.phase_code]||3;
+    const fmtDate = d=>d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysLeft = cls.end_date ? Math.ceil((new Date(cls.end_date)-today)/(1000*60*60*24)) : null;
+
+    // Class-level stats
+    const totalRec = attRows.length;
+    const totalP   = attRows.filter(a=>a.status==='P').length;
+    const classRate= totalRec ? Math.round(totalP/totalRec*100) : null;
+    const atRisk   = members.filter(m=>{ const a=userAtt[m.id]; return a&&a.total>0&&Math.round(a.P/a.total*100)<60; }).length;
+
+    let html =
+      // Header
+      '<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:1.5rem;flex-wrap:wrap">'
+      +'<div style="flex:1">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +phaseTag(cls.phase_code)
+      +'<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:'+sc.bg+';color:'+sc.col+'">'+sc.l+'</span>'
+      +'</div>'
+      +'<h2 style="font-size:22px;font-weight:700;margin-bottom:4px">'+cls.name+'</h2>'
+      +'<p style="font-size:13px;color:var(--t3)">'+p.label+' · '+cls.location+'</p>'
+      +'</div>'
+      +'<div class="fctr g8">'
+      +'<select class="sel" id="cls-d-status" style="font-size:12px;padding:5px 9px">'
+      +'<option value="upcoming"'+(cls.status==='upcoming'?' selected':'')+'>Upcoming</option>'
+      +'<option value="active"'+(cls.status==='active'?' selected':'')+'>Active</option>'
+      +'<option value="completed"'+(cls.status==='completed'?' selected':'')+'>Completed</option>'
+      +'</select>'
+        +'<button class="btn-p" style="font-size:12px;padding:5px 12px" data-cid="'+classId+'" onclick="saveClassStatus(this.dataset.cid)">Save status</button>'
+      +'</div>'
+      +'</div>'
+
+      // KPI row
+      +'<div class="g4 mb15">'
+      +'<div class="stat"><div class="slbl">Enrolled</div><div class="sval" style="color:var(--or)">'+members.length+'</div></div>'
+      +'<div class="stat"><div class="slbl">Attendance rate</div><div class="sval" style="color:'+(classRate!==null?classRate>=60?'var(--pass)':'var(--fail)':'var(--t3)')+'">'+( classRate!==null?classRate+'%':'—')+'</div></div>'
+      +'<div class="stat"><div class="slbl">At risk (&lt;60%)</div><div class="sval" style="color:'+(atRisk>0?'var(--fail)':'var(--pass)')+'">'+atRisk+'</div></div>'
+      +'<div class="stat"><div class="slbl">Days remaining</div><div class="sval" style="color:'+(daysLeft!==null&&daysLeft>0?'var(--fb1)':daysLeft===0?'var(--warn)':'var(--t3)')+'">'+( daysLeft!==null?Math.max(0,daysLeft):'—')+'</div></div>'
+      +'</div>'
+
+      // Info cards
+      +'<div class="g2 mb15">'
+      +'<div class="card">'
+      +'<div class="clbl mb12">Class details</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'
+      +'<div class="fbet"><span style="color:var(--t3)">Facilitator</span><span style="font-weight:500">'+( cls.facilitator||'—')+'</span></div>'
+      +'<div class="fbet"><span style="color:var(--t3)">Location</span><span style="font-weight:500">'+( cls.location||'—')+'</span></div>'
+      +'<div class="fbet"><span style="color:var(--t3)">Start date</span><span>'+fmtDate(cls.start_date)+'</span></div>'
+      +'<div class="fbet"><span style="color:var(--t3)">End date</span><span>'+fmtDate(cls.end_date)+'</span></div>'
+      +'<div class="fbet"><span style="color:var(--t3)">Duration</span><span>'+days+' program days</span></div>'
+      +'<div class="fbet"><span style="color:var(--t3)">Partner</span><span>'+p.label+'</span></div>'
+      +'<div class="fbet"><span style="color:var(--t3)">Phase</span>'+phaseTag(cls.phase_code)+'</div>'
+      +'</div></div>'
+
+      +'<div class="card">'
+      +'<div class="fbet mb12"><div class="clbl" style="margin:0">Quick actions</div></div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+        +'<button class="btn" style="width:100%;text-align:left;padding:10px 14px;font-size:13px" onclick="goToAttendance()">'
+        +'📋 Open attendance register</button>'
+      +'📋 Open attendance register</button>'
+        +'<button class="btn" style="width:100%;text-align:left;padding:10px 14px;font-size:13px" data-cid="'+classId+'" data-cname="'+cls.name+'" onclick="exportClassCSV(this.dataset.cid,this.dataset.cname)">'
+        +'⬇ Export attendance CSV</button>'
+      +'⬇ Export attendance CSV</button>'
+      +'</div></div>'
+      +'</div>'
+
+      // Participant attendance table
+      +'<div class="card" style="overflow-x:auto">'
+      +'<div class="fbet mb12"><div class="clbl" style="margin:0">Participant attendance</div>'
+      +(classRate!==null?'<span style="font-size:12px;font-weight:600;color:'+(classRate>=60?'var(--pass)':'var(--fail)')+'">Avg '+classRate+'% present</span>':'')
+      +'</div>';
+
+    if(!members.length){
+      html += '<p style="color:var(--t3);font-size:13px">No participants enrolled yet. Enroll a team first.</p>';
+    } else {
+      // Day headers
+      const dayNums = Array.from({length:days},(_,i)=>i+1);
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        +'<thead><tr style="background:var(--bg)">'
+        +'<th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Participant</th>'
+        +'<th style="text-align:center;padding:8px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Gender</th>'
+        +'<th style="text-align:center;padding:8px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Nationality</th>';
+      dayNums.forEach(d=>html+='<th style="text-align:center;padding:8px 4px;border-bottom:1px solid var(--bdr);min-width:38px;font-size:10px;font-weight:700;color:var(--t3)">D'+d+'</th>');
+      html += '<th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Rate</th>'
+        +'<th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Gate</th>'
+        +'</tr></thead><tbody>';
+
+      members.forEach((m,i)=>{
+        const a   = userAtt[m.id]||{P:0,A:0,E:0,total:0,days:{}};
+        const rate= a.total ? Math.round(a.P/a.total*100) : null;
+        const col = rate!==null ? rate>=60?'var(--pass)':'var(--fail)' : 'var(--t3)';
+        const age = m.date_of_birth ? Math.floor((Date.now()-new Date(m.date_of_birth))/(365.25*24*3600*1000)) : null;
+        html += '<tr style="'+(i%2===0?'':'background:rgba(0,0,0,0.01)')+'">'
+          +'<td style="padding:8px 12px;border-bottom:0.5px solid var(--bdr)">'
+          +'<div style="font-weight:500">'+m.full_name+'</div>'
+          +(m.governorate?'<div style="font-size:10px;color:var(--t3)">'+m.governorate+(age?' · '+age+' yrs':'')+'</div>':'')
+          +'</td>'
+          +'<td style="padding:8px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:11px;color:'+(m.gender==='Female'?'#EC4899':'var(--fb1)')+'">'+( m.gender||'—')+'</td>'
+          +'<td style="padding:8px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:11px;color:var(--t2)">'+( m.nationality||'—')+'</td>';
+
+        dayNums.forEach(d=>{
+          const s = a.days[d];
+          const dayCol = s==='P'?'var(--pass-bg)':s==='A'?'var(--fail-bg)':s==='E'?'var(--warn-bg)':'';
+          const dayTxt = s==='P'?'var(--pass-t)':s==='A'?'var(--fail-t)':s==='E'?'var(--warn-t)':'var(--bdr)';
+          html += '<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center">'
+            +'<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:'+dayCol+';color:'+dayTxt+'">'+( s||'—')+'</span>'
+            +'</td>';
+        });
+
+        html += '<td style="padding:8px 10px;border-bottom:0.5px solid var(--bdr);text-align:center;font-weight:700;font-size:12px;color:'+col+'">'+(rate!==null?rate+'%':'—')+'</td>'
+          +'<td style="padding:8px 10px;border-bottom:0.5px solid var(--bdr);text-align:center">'
+          +(rate!==null
+            ? rate>=60
+              ? '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--pass-bg);color:var(--pass-t)">✓ Met</span>'
+              : '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--fail-bg);color:var(--fail-t)">✗ Risk</span>'
+            : '<span style="font-size:10px;color:var(--t3)">—</span>')
+          +'</td></tr>';
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>'; // end attendance card
+
+    el.innerHTML = html;
+
+  } catch(e){
+    el.innerHTML = '<div class="card">'+emptyState('❌','Error',e.message)+'</div>';
+    console.error('Class detail error:',e);
+  }
+}
+
+function goToAttendance(){ nav("pg-attendance"); setTimeout(()=>loadAttendanceClasses(),300); }
+async function saveClassStatus(classId){
+  const status = document.getElementById('cls-d-status')?.value;
+  if(!status) return;
+  try {
+    await sb.patch('classes','id=eq.'+classId,{status});
+    toast('Status updated','Class marked as '+status);
+    loadClasses();
+  } catch(e){ toast('Error',e.message,'error'); }
+}
+
+async function exportClassCSV(classId, className){
+  try {
+    const [ceRows, attRows, cls] = await Promise.all([
+      sb.get('class_enrollments','class_id=eq.'+classId+'&select=user_id,users(full_name,gender,nationality,governorate)'),
+      sb.get('attendance','class_id=eq.'+classId+'&order=day_number'),
+      sb.get('classes','id=eq.'+classId),
+    ]);
+    const days = PHASE_DAYS[cls[0]?.phase_code]||3;
+    const dayNums = Array.from({length:days},(_,i)=>i+1);
+    const headers = ['Name','Gender','Nationality','Governorate',...dayNums.map(d=>'Day '+d),'Total P','Total A','Total E','Attendance %'];
+    const userAtt = {};
+    attRows.forEach(a=>{
+      if(!userAtt[a.user_id]) userAtt[a.user_id]={P:0,A:0,E:0,days:{}};
+      userAtt[a.user_id][a.status]++;
+      userAtt[a.user_id].days[a.day_number]=a.status;
+    });
+    const rows = ceRows.map(r=>{
+      const u=r.users||{}; const a=userAtt[r.user_id]||{P:0,A:0,E:0,days:{}};
+      const total=a.P+a.A+a.E;
+      return [u.full_name||'',u.gender||'',u.nationality||'',u.governorate||'',
+        ...dayNums.map(d=>a.days[d]||''),a.P,a.A,a.E,total?Math.round(a.P/total*100)+'%':''];
+    });
+    const esc = v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    const csv = [headers,...rows].map(r=>r.map(esc).join(',')).join('\r\n');
+
+    const a2 = document.createElement('a');
+    a2.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+    a2.download=className.replace(/[^a-z0-9]/gi,'_')+'-attendance.csv';
+    a2.click();
+    toast('CSV exported',className);
+  } catch(e){ toast('Export failed',e.message,'error'); }
+}
+
+
 function showNewClassForm(){
   document.getElementById('cls-grid').style.display='none';
   document.getElementById('cls-new-form').style.display='block';
@@ -4448,7 +4729,54 @@ async function openApp(id){
     document.getElementById('app-detail-idea').innerHTML=`<p style="font-weight:500;margin-bottom:6px">${r.idea_title||'No title'}</p><p style="line-height:1.7">${r.idea_description||'No description.'}</p>`;
     const mems=r.members&&Array.isArray(r.members)?r.members:[];
     document.getElementById('app-detail-members').innerHTML=mems.length?mems.map(m=>`<div class="fbet" style="font-size:13px;padding:5px 0;border-bottom:0.5px solid var(--bdr)"><span>${m.name||'—'}</span><div style="display:flex;gap:8px;font-size:11px;color:var(--t3)"><span>${m.dob||''}</span><span>${m.gender||''}</span><span>${m.nationality||''}</span><span>${m.email||''}</span></div></div>`).join(''):'<p style="color:var(--t3);font-size:13px">No member data</p>';
-    if(r.admin_note)document.getElementById('app-note').value=r.admin_note;
+    if(r.admin_note) document.getElementById('app-note').value=r.admin_note;
+
+    // Lock scoring & decision if already assessed (not pending)
+    const isDecided = r.status !== 'pending';
+    const lockOverlay = document.getElementById('app-lock-overlay');
+    const decisionCard = document.getElementById('app-decision-card');
+
+    if(isDecided){
+      // Show read-only banner with decision
+      const statusLabels = {
+        approved_dt:'✓ Enrolled in Design Thinking',
+        approved_fb1:'✓ Enrolled in FB Stage 1',
+        ineligible:'✗ Marked ineligible',
+      };
+      const statusColors = {
+        approved_dt:'var(--dt)', approved_fb1:'var(--fb1)', ineligible:'var(--fail)'
+      };
+      const statusBgs = {
+        approved_dt:'var(--dt-bg)', approved_fb1:'var(--fb1-bg)', ineligible:'var(--fail-bg)'
+      };
+      const label  = statusLabels[r.status]  || r.status;
+      const color  = statusColors[r.status]  || 'var(--t2)';
+      const bg     = statusBgs[r.status]     || 'var(--bg)';
+      const when   = r.decided_at ? new Date(r.decided_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '';
+
+      if(lockOverlay){
+        lockOverlay.innerHTML =
+          '<div style="border-radius:10px;padding:14px 18px;background:'+bg+';border:1.5px solid '+color+';margin-bottom:1rem;display:flex;align-items:center;gap:12px">'
+          +'<span style="font-size:1.5rem">🔒</span>'
+          +'<div><p style="font-size:14px;font-weight:700;color:'+color+'">'+label+'</p>'
+          +'<p style="font-size:12px;color:'+color+';opacity:.8">'+(when?'Decided on '+when:'')+(r.admin_note?' · Note: '+r.admin_note:'')+'</p></div>'
+          +'</div>';
+        lockOverlay.style.display='block';
+      }
+      // Disable all score inputs and note
+      document.querySelectorAll('.sc-input-field').forEach(el=>{ el.disabled=true; el.style.opacity='0.5'; el.style.cursor='not-allowed'; });
+      document.getElementById('app-note')?.setAttribute('disabled','true');
+      document.getElementById('app-note')?.style.setProperty('opacity','0.5');
+      if(decisionCard) decisionCard.style.display='none';
+    } else {
+      // Enable everything
+      if(lockOverlay) lockOverlay.style.display='none';
+      document.querySelectorAll('.sc-input-field').forEach(el=>{ el.disabled=false; el.style.opacity=''; el.style.cursor=''; });
+      document.getElementById('app-note')?.removeAttribute('disabled');
+      document.getElementById('app-note')?.style.removeProperty('opacity');
+      if(decisionCard) decisionCard.style.display='block';
+    }
+
   }catch(e){toast('Error',e.message,'error');}
 }
 
