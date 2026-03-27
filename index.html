@@ -2618,7 +2618,14 @@ async function loadClasses(){
     let qs = 'order=start_date,name';
     if(phase)   qs = 'phase_code=eq.'+phase+'&'+qs;
     if(partner){ const p=PARTNERS.find(x=>x.code===partner); if(p) qs='partner_id=eq.'+p.id+'&'+qs; }
-    const classes = await sb.get('classes', qs);
+    let classes = [];
+    try {
+      classes = await sb.get('classes', qs);
+    } catch(clsErr) {
+      const g2=document.getElementById('cls-grid');
+      if(g2) g2.innerHTML='<div style="grid-column:1/-1;padding:2rem;text-align:center"><div style="color:var(--fail-t);font-size:13px;background:var(--fail-bg);padding:12px 16px;border-radius:8px;border:1px solid #F09595">⚠ Error loading classes: '+clsErr.message+'<br><span style="font-size:11px;color:var(--t3)">Make sure the classes table exists and RLS allows read access.</span></div></div>';
+      return;
+    }
 
     // Get enrollment counts per class — both optional, don't block rendering
     const [allCe, allAtt] = await Promise.all([
