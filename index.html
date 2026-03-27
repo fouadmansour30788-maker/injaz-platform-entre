@@ -2607,15 +2607,24 @@ async function doSubmitAssessment(){
 async function loadClasses(){
   const phase   = document.getElementById('cls-phase-f')?.value||'';
   const partner = document.getElementById('cls-partner-f')?.value||'';
+
+  // Always show grid and hide form immediately
+  const grid = document.getElementById('cls-grid');
+  const form = document.getElementById('cls-new-form');
+  if(form) form.style.display='none';
+  if(grid){ grid.style.display='grid'; grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:2rem"><div class="spin" style="margin:0 auto"></div></div>'; }
+
   try {
     let qs = 'order=start_date,name';
     if(phase)   qs = 'phase_code=eq.'+phase+'&'+qs;
     if(partner){ const p=PARTNERS.find(x=>x.code===partner); if(p) qs='partner_id=eq.'+p.id+'&'+qs; }
     const classes = await sb.get('classes', qs);
 
-    // Get enrollment counts per class
-    const allCe  = await sb.get('class_enrollments','select=class_id,user_id').catch(()=>[]);
-    const allAtt = await sb.get('attendance','select=class_id,status').catch(()=>[]);
+    // Get enrollment counts per class — both optional, don't block rendering
+    const [allCe, allAtt] = await Promise.all([
+      sb.get('class_enrollments','select=class_id,user_id').catch(()=>[]),
+      sb.get('attendance','select=class_id,status').catch(()=>[]),
+    ]);
 
     const ceCount  = {}; // class_id → count
     allCe.forEach(r=>{ ceCount[r.class_id]=(ceCount[r.class_id]||0)+1; });
@@ -2627,10 +2636,7 @@ async function loadClasses(){
       attStats[r.class_id].total++;
     });
 
-    const grid = document.getElementById('cls-grid');
-    const form = document.getElementById('cls-new-form');
-    if(form) form.style.display='none';
-    grid.style.display='grid';
+    // grid already shown above
 
     if(!classes.length){
       grid.innerHTML = '<div style="grid-column:1/-1">'+emptyState('📚','No classes yet','Create a class using the button above')+'</div>';
@@ -2697,7 +2703,11 @@ async function loadClasses(){
         +'</div>';
     }).join('');
 
-  } catch(e){ toast('Error loading classes', e.message, 'error'); }
+  } catch(e){
+    const g=document.getElementById('cls-grid');
+    if(g){ g.style.display='grid'; g.innerHTML='<div style="grid-column:1/-1">'+emptyState('⚠','Error loading classes',e.message)+'</div>'; }
+    toast('Error loading classes', e.message, 'error');
+  }
 }
 
 
