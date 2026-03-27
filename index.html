@@ -2608,112 +2608,95 @@ async function loadClasses(){
   const phase   = document.getElementById('cls-phase-f')?.value||'';
   const partner = document.getElementById('cls-partner-f')?.value||'';
 
-  // Always show grid and hide form immediately
+  // Show grid immediately with spinner
   const grid = document.getElementById('cls-grid');
   const form = document.getElementById('cls-new-form');
   if(form) form.style.display='none';
-  if(grid){ grid.style.display='grid'; grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:2rem"><div class="spin" style="margin:0 auto"></div></div>'; }
+  if(grid){ 
+    grid.style.display='grid'; 
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem"><div class="spin" style="margin:0 auto"></div></div>'; 
+  }
 
   try {
-    let qs = 'order=start_date,name';
-    if(phase)   qs = 'phase_code=eq.'+phase+'&'+qs;
+    let qs='order=start_date,name';
+    if(phase) qs='phase_code=eq.'+phase+'&'+qs;
     if(partner){ const p=PARTNERS.find(x=>x.code===partner); if(p) qs='partner_id=eq.'+p.id+'&'+qs; }
-    let classes = [];
+    
+    const classes = await sb.get('classes', qs);
+
+    // Load stats in background (non-blocking)
+    const ceCount={}, attStats={};
     try {
-      classes = await sb.get('classes', qs);
-    } catch(clsErr) {
-      const g2=document.getElementById('cls-grid');
-      if(g2) g2.innerHTML='<div style="grid-column:1/-1;padding:2rem;text-align:center"><div style="color:var(--fail-t);font-size:13px;background:var(--fail-bg);padding:12px 16px;border-radius:8px;border:1px solid #F09595">⚠ Error loading classes: '+clsErr.message+'<br><span style="font-size:11px;color:var(--t3)">Make sure the classes table exists and RLS allows read access.</span></div></div>';
-      return;
-    }
-
-    // Get enrollment counts per class — both optional, don't block rendering
-    const [allCe, allAtt] = await Promise.all([
-      sb.get('class_enrollments','select=class_id,user_id').catch(()=>[]),
-      sb.get('attendance','select=class_id,status').catch(()=>[]),
-    ]);
-
-    const ceCount  = {}; // class_id → count
-    allCe.forEach(r=>{ ceCount[r.class_id]=(ceCount[r.class_id]||0)+1; });
-
-    const attStats = {}; // class_id → {P,A,E,total}
-    allAtt.forEach(r=>{
-      if(!attStats[r.class_id]) attStats[r.class_id]={P:0,A:0,E:0,total:0};
-      attStats[r.class_id][r.status]=(attStats[r.class_id][r.status]||0)+1;
-      attStats[r.class_id].total++;
-    });
-
-    // grid already shown above
+      const allCe = await sb.get('class_enrollments','select=class_id,user_id');
+      allCe.forEach(r=>{ ceCount[r.class_id]=(ceCount[r.class_id]||0)+1; });
+    } catch(e){}
+    try {
+      const allAtt = await sb.get('attendance','select=class_id,status');
+      allAtt.forEach(r=>{
+        if(!attStats[r.class_id]) attStats[r.class_id]={P:0,A:0,E:0,total:0};
+        attStats[r.class_id][r.status]=(attStats[r.class_id][r.status]||0)+1;
+        attStats[r.class_id].total++;
+      });
+    } catch(e){}
 
     if(!classes.length){
-      grid.innerHTML = '<div style="grid-column:1/-1">'+emptyState('📚','No classes yet','Create a class using the button above')+'</div>';
+      grid.innerHTML='<div style="grid-column:1/-1">'+emptyState('📚','No classes yet','Create a class using the button above')+'</div>';
       return;
     }
 
-    grid.innerHTML = classes.map(c=>{
+    const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    grid.innerHTML = classes.map(c => {
       const p   = PARTNERS.find(x=>x.id===c.partner_id)||{label:'—',color:'var(--or)'};
-      const sc  = c.status==='completed'?{l:'Completed',bg:'var(--pass-bg)',col:'var(--pass-t)'}
-                 :c.status==='active'   ?{l:'Active',   bg:'var(--fb1-bg)', col:'var(--fb1-t)'}
-                                        :{l:'Upcoming', bg:'var(--warn-bg)',col:'var(--warn-t)'};
-      const enrolled = ceCount[c.id]||0;
-      const att      = attStats[c.id]||{P:0,A:0,E:0,total:0};
-      const attRate  = att.total ? Math.round(att.P/att.total*100) : null;
-      const phaseColor = PHASE_COLORS[c.phase_code]||'var(--or)';
+      const sc  = c.status==='completed' ? {l:'Completed',bg:'var(--pass-bg)',col:'var(--pass-t)'}
+                : c.status==='active'    ? {l:'Active',   bg:'var(--fb1-bg)', col:'var(--fb1-t)'}
+                :                          {l:'Upcoming', bg:'var(--warn-bg)',col:'var(--warn-t)'};
+      const enrolled  = ceCount[c.id]||0;
+      const att       = attStats[c.id]||{P:0,A:0,E:0,total:0};
+      const attRate   = att.total ? Math.round(att.P/att.total*100) : null;
+      const phaseCol  = PHASE_COLORS[c.phase_code]||'var(--or)';
+      const start     = c.start_date ? new Date(c.start_date) : null;
+      const end       = c.end_date   ? new Date(c.end_date)   : null;
+      const durDays   = (start&&end) ? Math.ceil((end-start)/(1000*60*60*24))+1 : null;
+      const daysLeft  = end   ? Math.ceil((end-today)/(1000*60*60*24))   : null;
+      const daysUntil = start ? Math.ceil((start-today)/(1000*60*60*24)) : null;
 
-      // Date helpers
-      const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
-      const today   = new Date(); today.setHours(0,0,0,0);
-      const daysUntil = c.start_date ? Math.ceil((new Date(c.start_date)-today)/(1000*60*60*24)) : null;
-      const daysLeft  = c.end_date   ? Math.ceil((new Date(c.end_date)  -today)/(1000*60*60*24)) : null;
-      const durationDays = (c.start_date&&c.end_date) ? Math.ceil((new Date(c.end_date)-new Date(c.start_date))/(1000*60*60*24))+1 : null;
-
-      let timingNote = '';
+      let timingBadge='';
       if(c.status!=='completed'){
-        if(daysUntil!==null && daysUntil>0)  timingNote='<span style="font-size:10px;color:var(--warn-t);padding:1px 6px;background:var(--warn-bg);border-radius:4px">Starts in '+daysUntil+' days</span>';
-        else if(daysLeft!==null && daysLeft>0) timingNote='<span style="font-size:10px;color:var(--fb1-t);padding:1px 6px;background:var(--fb1-bg);border-radius:4px">'+daysLeft+' days left</span>';
-        else if(daysLeft!==null && daysLeft<=0&&c.status==='active') timingNote='<span style="font-size:10px;color:var(--fail-t);padding:1px 6px;background:var(--fail-bg);border-radius:4px">Overdue</span>';
+        if(daysUntil!==null && daysUntil>0)
+          timingBadge='<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--warn-bg);color:var(--warn-t)">Starts in '+daysUntil+'d</span>';
+        else if(daysLeft!==null && daysLeft>0)
+          timingBadge='<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--fb1-bg);color:var(--fb1-t)">'+daysLeft+'d left</span>';
+        else if(daysLeft!==null && daysLeft<=0)
+          timingBadge='<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--fail-bg);color:var(--fail-t)">Overdue</span>';
       }
 
-      return '<div class="card" style="cursor:pointer;border:0.5px solid var(--bdr);transition:border-color .15s,box-shadow .15s;position:relative;overflow:hidden" '
-      return '<div class="card" style="cursor:pointer;border:0.5px solid var(--bdr);transition:border-color .15s,box-shadow .15s;position:relative;overflow:hidden" '
-        +'onmouseover="this.classList.add(\'cls-hover\')" '
-        +'onmouseout="this.classList.remove(\'cls-hover\')" '
-        // Phase color bar top
-        +'<div style="height:3px;background:'+phaseColor+';margin:-1rem -1rem 12px -1rem"></div>'
-        // Tags row
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
+      return '<div class="card" style="cursor:pointer;border:0.5px solid var(--bdr)" data-cid="'+c.id+'" onclick="openClassDetail(this.dataset.cid)">'
+        +'<div style="height:3px;background:'+phaseCol+';margin:-1rem -1rem 12px -1rem;border-radius:var(--rl) var(--rl) 0 0"></div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'
         +phaseTag(c.phase_code)
         +'<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:'+sc.bg+';color:'+sc.col+'">'+sc.l+'</span>'
-        +timingNote
+        +timingBadge
         +'</div>'
-        // Class name & partner
-        +'<p style="font-size:15px;font-weight:600;margin-bottom:2px">'+c.name+'</p>'
+        +'<p style="font-size:14px;font-weight:600;margin-bottom:2px">'+c.name+'</p>'
         +'<p style="font-size:12px;color:var(--t3);margin-bottom:10px">'+p.label+'</p>'
-        // Stats row
         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">'
-        +'<div style="background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">'
-        +'<div style="font-size:16px;font-weight:700;color:var(--or)">'+enrolled+'</div>'
-        +'<div style="font-size:9px;color:var(--t3);text-transform:uppercase">Enrolled</div></div>'
-        +'<div style="background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">'
-        +'<div style="font-size:16px;font-weight:700;color:'+(attRate!==null?attRate>=60?'var(--pass)':'var(--fail)':'var(--t3)')+'">'+( attRate!==null?attRate+'%':'—')+'</div>'
-        +'<div style="font-size:9px;color:var(--t3);text-transform:uppercase">Attendance</div></div>'
-        +'<div style="background:var(--bg);border-radius:6px;padding:6px 8px;text-align:center">'
-        +'<div style="font-size:16px;font-weight:700;color:var(--t2)">'+(durationDays||'—')+'</div>'
-        +'<div style="font-size:9px;color:var(--t3);text-transform:uppercase">Days</div></div>'
+        +'<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center"><div style="font-size:16px;font-weight:700;color:var(--or)">'+enrolled+'</div><div style="font-size:9px;color:var(--t3)">ENROLLED</div></div>'
+        +'<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center"><div style="font-size:16px;font-weight:700;color:'+(attRate!==null?(attRate>=60?'var(--pass)':'var(--fail)'):'var(--t3)')+'">'+( attRate!==null?attRate+'%':'—')+'</div><div style="font-size:9px;color:var(--t3)">ATTENDANCE</div></div>'
+        +'<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center"><div style="font-size:16px;font-weight:700;color:var(--t2)">'+(durDays||'—')+'</div><div style="font-size:9px;color:var(--t3)">DAYS</div></div>'
         +'</div>'
-        // Details
-        +'<div style="font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:4px">'
-        +'<div class="fctr g6"><span style="color:var(--t3)">👤</span><span>'+( c.facilitator||'—')+'</span></div>'
-        +'<div class="fctr g6"><span style="color:var(--t3)">📍</span><span>'+( c.location||'—')+'</span></div>'
-        +'<div class="fctr g6"><span style="color:var(--t3)">📅</span><span>'+fmtDate(c.start_date)+' → '+fmtDate(c.end_date)+'</span></div>'
+        +'<div style="font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:3px">'
+        +(c.facilitator?'<div>👤 '+c.facilitator+'</div>':'')
+        +(c.location?'<div>📍 '+c.location+'</div>':'')
+        +'<div>📅 '+fmtDate(c.start_date)+' → '+fmtDate(c.end_date)+'</div>'
         +'</div>'
         +'</div>';
     }).join('');
 
   } catch(e){
-    const g=document.getElementById('cls-grid');
-    if(g){ g.style.display='grid'; g.innerHTML='<div style="grid-column:1/-1">'+emptyState('⚠','Error loading classes',e.message)+'</div>'; }
-    toast('Error loading classes', e.message, 'error');
+    if(grid) grid.innerHTML='<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--fail-t);background:var(--fail-bg);border-radius:8px;font-size:13px">⚠ '+e.message+'</div>';
+    console.error('loadClasses error:', e);
   }
 }
 
