@@ -2144,7 +2144,7 @@ async function loadDashboard(){
     // ── Nationality ──
     const natMap={'Lebanese':'#0EA5E9','Syrian':'#7C3AED','Palestinian (PRL)':'#10B981','Palestinian (PRS)':'#F59E0B'};
     const natCounts={};
-    filtUsers.forEach(u=>{if(u.nationality){const k=normNat(u.nationality);natCounts[k]=(natCounts[k]||0)+1;}});
+    filtUsers.forEach(u=>{if(u.nationality&&u.nationality.trim()!=='NULL'){const k=normNat(u.nationality);natCounts[k]=(natCounts[k]||0)+1;}});
     const natTotal=Object.values(natCounts).reduce((s,v)=>s+v,0)||1;
     document.getElementById('dash-nationality').innerHTML=Object.entries(natCounts).sort((a,b)=>b[1]-a[1]).map(([n,v])=>{
       const pct=Math.round((v/natTotal)*100),col=natMap[n]||'#9E9B94';
@@ -2153,7 +2153,7 @@ async function loadDashboard(){
 
     // ── Governorate ──
     const govCounts={};
-    filtUsers.forEach(u=>{const g=normGov(u.governorate);if(g)govCounts[g]=(govCounts[g]||0)+1;});
+    filtUsers.forEach(u=>{const g=normGov(u.governorate);if(g&&g.trim()!=='NULL')govCounts[g]=(govCounts[g]||0)+1;});
     // Also pull from apps
     appRows.forEach(r=>{if(r.governorate&&!filtUsers.find(u=>u.governorate===r.governorate))govCounts[r.governorate]=(govCounts[r.governorate]||0)+0;});
     const govSorted=Object.entries(govCounts).sort((a,b)=>b[1]-a[1]);
