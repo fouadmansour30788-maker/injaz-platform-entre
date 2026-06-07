@@ -3926,1855 +3926,218 @@ document.getElementById('auth-email')?.addEventListener('keydown',e=>{ if(e.key=
     setSlogan(current);
   }, 4500);
 })();
+function showApplyForm(){
+  document.getElementById('auth').style.display='none';
+  document.getElementById('apply-form').style.display='block';
+  afGoStep(1);
+  const list=document.getElementById('af-members-list');
+  if(list&&!list.querySelector('.af-member-row'))afAddMember();
+}
+function hideApplyForm(){document.getElementById('apply-form').style.display='none';document.getElementById('auth').style.display='flex';}
+function afGoStep(n){
+  [1,2,3,4,'success'].forEach(i=>{const el=document.getElementById('af-step-'+i);if(el)el.style.display=i===n?'block':'none';});
+  const prog=document.getElementById('af-progress');
+  if(prog)prog.style.width={1:'25%',2:'50%',3:'75%',4:'100%',success:'100%'}[n]||'25%';
+  window.scrollTo(0,0);
+}
+function afBack(n){afGoStep(n-1);}
+function afShowErr(step,msg){const el=document.getElementById('af-err-'+step);if(el){el.textContent=msg;el.style.display='block';el.scrollIntoView({behavior:'smooth',block:'nearest'});}}
+function afHideErr(step){const el=document.getElementById('af-err-'+step);if(el)el.style.display='none';}
+function afAddMember(){
+  const list = document.getElementById('af-members-list');
+  const num  = list.querySelectorAll('.af-member-row').length + 2;
+  if(num > 5){ alert('Maximum 5 team members allowed.'); return; }
+  const div = document.createElement('div');
+  div.className = 'af-member-row';
+  div.style.cssText = 'background:white;border:1px solid #E2E8F0;border-radius:12px;padding:1.25rem;position:relative;';
+  div.innerHTML = `
+    <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;\">
+      <div style=\"font-size:12px;font-weight:700;color:#0A1C3E;text-transform:uppercase;letter-spacing:.3px;\">Member ${num}</div>
+      <button onclick=\"this.closest('.af-member-row').remove()\" style=\"background:none;border:none;color:#94A3B8;cursor:pointer;font-size:16px;padding:2px 6px;\">\u00d7</button>
+    </div>
+    <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;\">
+      <div><label class=\"flbl\">Full name *</label><input class=\"finput af-m-name\" placeholder=\"Full name\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;\"></div>
+      <div><label class=\"flbl\">Email *</label><input class=\"finput af-m-email\" type=\"email\" placeholder=\"email@example.com\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;\"></div>
+      <div><label class=\"flbl\">Date of birth *</label><input class=\"finput af-m-dob\" type=\"date\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;\"></div>
+      <div><label class=\"flbl\">Phone</label><input class=\"finput af-m-phone\" placeholder=\"+961 xx xxx xxx\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;\"></div>
+      <div><label class=\"flbl\">Gender</label><select class=\"finput af-m-gender\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;\"><option value=\"\">Select...</option><option>Male</option><option>Female</option><option>Prefer not to say</option></select></div>
+      <div><label class=\"flbl\">Nationality</label><select class=\"finput af-m-nationality\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;\"><option value=\"\">Select...</option><option>Lebanese</option><option>Syrian</option><option>Palestinian (PRL)</option><option>Palestinian (PRS)</option><option>Other</option></select></div>
+      <div><label class=\"flbl\">Governorate</label><select class=\"finput af-m-gov\" onchange=\"afUpdateDistrict(this.value,'af-m-dist-${num}')\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;\"><option value=\"\">Select...</option><option>Beirut</option><option>Mount Lebanon</option><option>North Lebanon</option><option>South Lebanon</option><option>Bekaa</option><option>Nabatieh</option><option>Akkar</option><option>Baalbek-Hermel</option></select></div>
+      <div><label class=\"flbl\">District</label><select class=\"finput af-m-district\" id=\"af-m-dist-${num}\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;\"><option value=\"\">Select governorate first</option></select></div>
+      <div><label class=\"flbl\">Education</label><select class=\"finput af-m-education\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;\"><option value=\"\">Select...</option><option>High school or below</option><option>Vocational / Technical</option><option>Bachelor's (in progress)</option><option>Bachelor's (completed)</option><option>Master's or above</option></select></div>
+      <div><label class=\"flbl\">Employment</label><select class=\"finput af-m-employment\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;\"><option value=\"\">Select...</option><option>Student</option><option>Employed full-time</option><option>Employed part-time</option><option>Self-employed</option><option>Unemployed seeking work</option><option>Not seeking employment</option></select></div>
+      <div style=\"grid-column:1/-1\"><label class=\"flbl\">Facebook / Instagram / LinkedIn <span style=\"font-weight:400;color:#94A3B8\">(optional, any)</span></label><input class=\"finput af-m-social\" placeholder=\"e.g. @username or profile URL\" style=\"background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;\"></div>
+    </div>`;
+  list.appendChild(div);
+}
 
-document.addEventListener('DOMContentLoaded', function(){
-  document.getElementById('auth-pw')?.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
-  document.getElementById('auth-email')?.addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('auth-pw')?.focus(); });
-  showAuth();
-  (async()=>{ try{ if(!sb.restore()) return; const p=await sb.get('users','auth_id=eq.'+sb._uid+'&limit=1'); if(!p.length) return; PROFILE=p[0]; ROLE=p[0].role==='admin'?'admin':'participant'; try{PARTNERS=await sb.get('partners','order=label');}catch(e){PARTNERS=[];} showApp(); }catch(e){} })();
-});
-// ── ADMIN: PROGRAM TRACK TABLE ──
-let _trackData = [];
-
-async function loadTrack() {
-  const partnerF = document.getElementById('track-partner-f')?.value||'all';
-  const phaseF   = document.getElementById('track-phase-f')?.value||'all';
-  const genderF  = document.getElementById('track-gender-f')?.value||'all';
-  const search   = (document.getElementById('track-search')?.value||'').toLowerCase();
-
-  document.getElementById('track-table-wrap').innerHTML =
-    '<div style="padding:2rem;text-align:center"><div class="spin" style="margin:0 auto"></div></div>';
-
-  try {
-    // Load all data
-    const [teams, allTm, allUsers, allEnroll, allAss, allAtt, allCls, allCe] = await Promise.all([
-      sb.get('teams','select=id,name,idea_title,current_phase,partner_id,sector,siyb_track'),
-      sb.get('team_members','select=user_id,team_id,role_in_team'),
-      sb.get('users','select=id,full_name,gender,nationality,governorate,date_of_birth&role=eq.participant'),
-      sb.get('phase_enrollments','select=team_id,phase_code,status,score'),
-      sb.get('assessments','select=team_id,phase_code,score,recommendation&is_draft=eq.false&order=submitted_at.desc'),
-      sb.get('attendance','select=class_id,user_id,status'),
-      sb.get('classes','select=id,phase_code,partner_id'),
-      sb.get('class_enrollments','select=class_id,user_id'),
-    ]);
-
-    // Build lookups
-    const userMap = {};
-    allUsers.forEach(u=>{ userMap[u.id]=u; });
-
-    const teamMembers = {}; // team_id → [user_ids]
-    allTm.forEach(r=>{
-      if(!teamMembers[r.team_id]) teamMembers[r.team_id]=[];
-      teamMembers[r.team_id].push({user_id:r.user_id,role:r.role_in_team});
-    });
-
-    const teamEnroll = {}; // team_id → {DT:{status,score}, FB1:..., ...}
-    allEnroll.forEach(e=>{
-      if(!teamEnroll[e.team_id]) teamEnroll[e.team_id]={};
-      teamEnroll[e.team_id][e.phase_code]={status:e.status,score:e.score};
-    });
-
-    const teamAssess = {}; // team_id → {DT:{score,rec}, ...}
-    allAss.forEach(a=>{
-      if(!teamAssess[a.team_id]) teamAssess[a.team_id]={};
-      if(!teamAssess[a.team_id][a.phase_code]) // keep latest
-        teamAssess[a.team_id][a.phase_code]={score:a.score,rec:a.recommendation};
-    });
-
-    // Attendance per user per phase
-    const clsPhase = {}; // class_id → phase_code
-    const clsPartner = {}; // class_id → partner_id
-    allCls.forEach(c=>{ clsPhase[c.id]=c.phase_code; clsPartner[c.id]=c.partner_id; });
-
-    // user → phase → {P,A,E,total}
-    const userAttByPhase = {};
-    allAtt.forEach(a=>{
-      const ph = clsPhase[a.class_id]; if(!ph) return;
-      if(!userAttByPhase[a.user_id]) userAttByPhase[a.user_id]={};
-      if(!userAttByPhase[a.user_id][ph]) userAttByPhase[a.user_id][ph]={P:0,A:0,E:0,total:0};
-      userAttByPhase[a.user_id][ph][a.status]++;
-      userAttByPhase[a.user_id][ph].total++;
-    });
-
-    // Filter teams
-    let filtTeams = teams.filter(t=>{
-      const p = PARTNERS.find(x=>x.id===t.partner_id);
-      if(partnerF!=='all' && p?.code!==partnerF) return false;
-      if(phaseF!=='all' && t.current_phase!==phaseF) return false;
-      return true;
-    });
-
-    // KPIs
-    const totalTeams = filtTeams.length;
-    const totalMembers = filtTeams.reduce((s,t)=>(teamMembers[t.id]||[]).length+s,0);
-    const passedDT = filtTeams.filter(t=>teamEnroll[t.id]?.DT?.status==='passed').length;
-    const inInc = filtTeams.filter(t=>t.current_phase==='INC').length;
-
-    document.getElementById('track-kpis').innerHTML =
-      '<div class="stat"><div class="slbl">Teams</div><div class="sval" style="color:var(--or)">'+totalTeams+'</div></div>'+
-      '<div class="stat"><div class="slbl">Members</div><div class="sval" style="color:var(--fb1)">'+totalMembers+'</div></div>'+
-      '<div class="stat"><div class="slbl">Passed DT</div><div class="sval" style="color:var(--pass)">'+passedDT+'</div></div>'+
-      '<div class="stat"><div class="slbl">In Incubation</div><div class="sval" style="color:var(--inc)">'+inInc+'</div></div>';
-
-    // Build rows — one row per MEMBER
-    const PHASES = ['DT','FB1','FB2','INC'];
-    const rows = [];
-
-    filtTeams.forEach(t=>{
-      const partner = PARTNERS.find(x=>x.id===t.partner_id);
-      const members = (teamMembers[t.id]||[]).map(m=>({...m,user:userMap[m.user_id]}));
-
-      members.forEach((m,mi)=>{
-        const u = m.user||{};
-        // Apply member-level filters
-        if(genderF!=='all' && u.gender!==genderF) return;
-        if(search && !t.name.toLowerCase().includes(search) && !(u.full_name||'').toLowerCase().includes(search)) return;
-
-        const age = u.date_of_birth?Math.floor((Date.now()-new Date(u.date_of_birth))/(365.25*24*3600*1000)):null;
-        const att = userAttByPhase[u.id]||{};
-
-        rows.push({
-          teamId:t.id,
-          teamName:t.name,
-          ideaTitle:t.idea_title||'—',
-          partner:partner?.code||'—',
-          partnerColor:partner?.color||'var(--or)',
-          currentPhase:t.current_phase,
-          memberCount:members.length,
-          memberIndex:mi,
-          // Member info
-          name:u.full_name||'—',
-          role:m.role||'member',
-          gender:u.gender||'—',
-          nationality:u.nationality||'—',
-          governorate:u.governorate||'—',
-          age:age||'—',
-          // Per-phase data
-          phases: PHASES.reduce((acc,ph)=>{
-            const enroll = teamEnroll[t.id]?.[ph];
-            const assess = teamAssess[t.id]?.[ph];
-            const userAtt = att[ph];
-            const attRate = userAtt?.total?Math.round(userAtt.P/userAtt.total*100):null;
-            acc[ph] = {
-              enrolled: !!enroll,
-              status: enroll?.status||null,
-              score: assess?.score??null,
-              rec: assess?.rec||null,
-              attRate,
-              attTotal: userAtt?.total||0,
-              attP: userAtt?.P||0,
-            };
-            return acc;
-          },{}),
-        });
-      });
-    });
-
-    _trackData = rows;
-
-    // Build table
-    if(!rows.length){
-      document.getElementById('track-table-wrap').innerHTML =
-        '<div style="padding:3rem;text-align:center;color:var(--t3)">No participants match the selected filters.</div>';
-      return;
+function afNext(step){
+  afHideErr(step);
+  if(step===1){
+    const v=(id)=>document.getElementById(id).value.trim();
+    if(!v('af-name'))return afShowErr(1,'Full name required.');
+    if(!v('af-email')||!v('af-email').includes('@'))return afShowErr(1,'Valid email required.');
+    if(document.getElementById('af-pw').value.length<8)return afShowErr(1,'Password min 8 characters.');
+    if(!v('af-dob'))return afShowErr(1,'Date of birth required.');
+    const age=Math.floor((Date.now()-new Date(v('af-dob')))/(365.25*24*3600*1000));
+    if(age<18||age>28)return afShowErr(1,'Must be 18\u201328 years old.');
+    if(!v('af-gender'))return afShowErr(1,'Please select gender.');
+    if(!v('af-nationality'))return afShowErr(1,'Please select nationality.');
+    if(!v('af-gov'))return afShowErr(1,'Please select governorate.');
+    if(!v('af-partner'))return afShowErr(1,'Please select partner organisation.');
+    afGoStep(2);
+    // Populate first member slot
+    if(!document.getElementById('af-members-list').querySelector('.af-member-row')){
+      afAddMember();
     }
-
-    const phaseStatusIcon = (ph) => {
-      if(!ph.enrolled) return '<span style="color:var(--bdr)">—</span>';
-      const col = ph.status==='passed'?'var(--pass)':ph.status==='active'?'var(--fb1)':ph.status==='failed'?'var(--fail)':ph.status==='remediation'?'var(--warn)':'var(--t3)';
-      const icon = ph.status==='passed'?'✓':ph.status==='active'?'●':ph.status==='failed'?'✗':ph.status==='remediation'?'⚠':'·';
-      const attBadge = ph.attRate!==null
-        ? '<span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:'+(ph.attRate>=60?'var(--pass-bg)':'var(--fail-bg)')+';color:'+(ph.attRate>=60?'var(--pass-t)':'var(--fail-t)')+'">'+ph.attRate+'%</span>'
-        : '';
-      const scoreBadge = ph.score!==null
-        ? '<span style="font-size:9px;font-weight:700;color:'+(ph.score>=60?'var(--pass)':'var(--fail)')+'">'+ph.score+'</span>'
-        : '';
-      return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px">'
-        +'<span style="font-size:13px;font-weight:700;color:'+col+'">'+icon+'</span>'
-        +attBadge+scoreBadge+'</div>';
-    };
-
-    let tbl = '<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px">';
-
-    // Header
-    tbl += '<thead><tr style="background:var(--bg)">'
-      +'<th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;position:sticky;left:0;background:var(--bg);z-index:2">Team</th>'
-      +'<th style="text-align:left;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Member</th>'
-      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Role</th>'
-      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Gender</th>'
-      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Nationality</th>'
-      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Age</th>'
-      +'<th style="text-align:center;padding:10px 6px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Gov.</th>';
-
-    PHASES.forEach(ph=>{
-      tbl += '<th style="text-align:center;padding:10px 4px;border-bottom:1px solid var(--bdr);min-width:72px">'
-        +'<div style="font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;background:'+( PHASE_BGS[ph]||'var(--bg)')+';color:'+(PHASE_TS[ph]||'var(--t2)')+'">'+ph+'</div>'
-        +'<div style="font-size:9px;color:var(--t3);margin-top:2px">att · score</div></th>';
-    });
-
-    tbl += '<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Status</th>'
-      +'</tr></thead><tbody>';
-
-    // Rows
-    rows.forEach((r,i)=>{
-      const isFirstMember = r.memberIndex===0;
-      const rowBg = i%2===0?'':'background:rgba(0,0,0,0.01)';
-      const borderTop = isFirstMember&&i>0?'border-top:2px solid var(--bdr)':'';
-
-      const statusBadge = r.currentPhase==='INC'
-        ?'<span class="tag tinc" style="font-size:9px">INC</span>'
-        :phaseTag(r.currentPhase);
-
-      tbl += '<tr style="'+rowBg+';'+borderTop+'">'
-        // Team (only show on first member)
-        +'<td style="padding:9px 12px;border-bottom:0.5px solid var(--bdr);vertical-align:middle;position:sticky;left:0;background:'+(i%2===0?'var(--card)':'#fafafa')+';z-index:1">'
-        +(isFirstMember
-          ?'<div style="font-weight:600;font-size:13px;margin-bottom:2px">'+r.teamName+'</div>'
-          +'<div style="font-size:10px;color:var(--t3)">'+r.ideaTitle+'</div>'
-          +'<div style="margin-top:4px"><span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--bg);border:0.5px solid var(--bdr)">'+r.partner+'</span></div>'
-          :'<span style="color:var(--bdr);font-size:11px">└</span>')
-        +'</td>'
-        // Member
-        +'<td style="padding:9px 8px;border-bottom:0.5px solid var(--bdr);vertical-align:middle">'
-        +'<div style="font-weight:500">'+r.name+'</div>'
-        +'<div style="font-size:10px;color:var(--t3)">'+r.governorate+'</div>'
-        +'</td>'
-        // Role
-        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center">'
-        +(r.role==='lead'?'<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:10px;background:var(--or-l);color:#993C1D">Lead</span>'
-          :'<span style="font-size:10px;color:var(--t3)">Member</span>')
-        +'</td>'
-        // Gender
-        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center">'
-        +'<span style="font-size:11px;color:'+(r.gender==='Female'?'#EC4899':'var(--fb1)')+'">'+r.gender+'</span>'
-        +'</td>'
-        // Nationality
-        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:11px;color:var(--t2)">'+r.nationality+'</td>'
-        // Age
-        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:11px;font-weight:600">'+r.age+'</td>'
-        // Governorate (short)
-        +'<td style="padding:9px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">'
-        +(r.governorate!=='—'?r.governorate.split(' ')[0]:'—')
-        +'</td>';
-
-      // Phase columns
-      PHASES.forEach(ph=>{
-        tbl += '<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center">'+phaseStatusIcon(r.phases[ph])+'</td>';
-      });
-
-      // Current status
-      tbl += '<td style="padding:9px 8px;border-bottom:0.5px solid var(--bdr);text-align:center">'+statusBadge+'</td>';
-      tbl += '</tr>';
-    });
-
-    tbl += '</tbody></table>';
-
-    document.getElementById('track-table-wrap').innerHTML = tbl;
-
-  } catch(e) {
-    console.error('Track error:', e);
-    document.getElementById('track-table-wrap').innerHTML =
-      '<div style="padding:2rem;color:var(--fail-t);font-size:13px">Error: '+e.message+'</div>';
+  }else if(step===2){
+    for(const row of document.querySelectorAll('.af-member-row')){
+      if(!row.querySelector('.af-m-name')?.value.trim())return afShowErr(2,'Enter name for all members.');
+      if(!row.querySelector('.af-m-dob')?.value)return afShowErr(2,'Enter DOB for all members.');
+      const age=Math.floor((Date.now()-new Date(row.querySelector('.af-m-dob').value))/(365.25*24*3600*1000));
+      if(age<18||age>28)return afShowErr(2,'All members must be 18\u201328.');
+    }
+    afGoStep(3);
+  }else if(step===3){
+    if(!document.getElementById('af-idea-title').value.trim())return afShowErr(3,'Idea title required.');
+    if(document.getElementById('af-problem').value.trim().length<30)return afShowErr(3,'Please describe the problem in more detail (min 30 chars).');
+    if(document.getElementById('af-solution').value.trim().length<30)return afShowErr(3,'Please describe your solution in more detail (min 30 chars).');
+    afGoStep(4);
   }
 }
-
-// Export track to CSV
-function exportTrackCSV() {
-  if(!_trackData.length){ toast('No data to export','','error'); return; }
-  const PHASES = ['DT','FB1','FB2','INC'];
-  const headers = ['Team','Idea','Partner','Member','Role','Gender','Nationality','Age','Governorate',
-    ...PHASES.flatMap(ph=>[ph+' Status',ph+' Att%',ph+' Score']),
-    'Current Phase'];
-  const rows = _trackData.map(r=>[
-    r.teamName, r.ideaTitle, r.partner,
-    r.name, r.role, r.gender, r.nationality, r.age, r.governorate,
-    ...PHASES.flatMap(ph=>[
-      r.phases[ph].status||'—',
-      r.phases[ph].attRate!==null?r.phases[ph].attRate+'%':'—',
-      r.phases[ph].score!==null?r.phases[ph].score:'—',
-    ]),
-    r.currentPhase,
-  ]);
-  const esc=function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';};  const csv=[headers].concat(rows).map(function(r){return r.map(esc).join(',');}).join('\r\n');
-
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download = 'GIL2026-Track-'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
-  toast('CSV exported',''+_trackData.length+' members');
-}
-
-// ── PARTICIPANT: MY TRACK ──
-async function loadParticipantTrack() {
-  const el = document.getElementById('p-track-content');
-  if(!el) return;
-  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>';
-
-  try {
-    // Get team
-    const tmRows = await sb.get('team_members','user_id=eq.'+PROFILE.id+'&select=team_id,role_in_team&limit=1');
-    if(!tmRows.length){
-      el.innerHTML = '<div class="card">'+emptyState('👥','No team yet','You have not been assigned to a team yet.')+'</div>';
-      return;
-    }
-    const teamId = tmRows[0].team_id;
-
-    const [team, allTm, enrollments, assessments, allAtt, allCls] = await Promise.all([
-      sb.get('teams','id=eq.'+teamId+'&select=name,idea_title,current_phase,sector,siyb_track,partner_id'),
-      sb.get('team_members','team_id=eq.'+teamId+'&select=user_id,role_in_team'),
-      sb.get('phase_enrollments','team_id=eq.'+teamId+'&order=phase_code'),
-      sb.get('assessments','team_id=eq.'+teamId+'&is_draft=eq.false&order=submitted_at.desc'),
-      sb.get('attendance','user_id=eq.'+PROFILE.id),
-      sb.get('classes','select=id,phase_code'),
-    ]);
-
-    const t = team[0]||{};
-    const partner = PARTNERS.find(p=>p.id===t.partner_id);
-
-    // Member list
-    const uids = allTm.map(r=>r.user_id);
-    const members = uids.length ? await sb.get('users','id=in.('+uids.join(',')+')'+'&select=id,full_name,gender,nationality,date_of_birth,governorate') : [];
-
-    // Attendance by phase
-    const clsPhase={};
-    allCls.forEach(c=>{ clsPhase[c.id]=c.phase_code; });
-    const attByPhase={};
-    allAtt.forEach(a=>{
-      const ph=clsPhase[a.class_id]; if(!ph) return;
-      if(!attByPhase[ph]) attByPhase[ph]={P:0,A:0,E:0,total:0};
-      attByPhase[ph][a.status]++;
-      attByPhase[ph].total++;
+async function afSubmit(){
+  afHideErr(4);
+  const btn=document.getElementById('af-submit-btn');
+  const label=document.getElementById('af-submit-label');
+  const spin=document.getElementById('af-submit-spin');
+  btn.disabled=true;label.textContent='Submitting...';spin.style.display='block';
+  const v=(id)=>document.getElementById(id)?.value.trim()||'';
+  try{
+    const email=v('af-email');const pw=document.getElementById('af-pw').value;
+    const challenges=Array.from(document.querySelectorAll('input[name=\"af-challenges\"]:checked')).map(c=>c.value);
+    const sdgs=Array.from(document.querySelectorAll('input[name=\"af-sdg\"]:checked')).map(c=>c.value);
+    const members=[{
+      name:v('af-name'),email,dob:v('af-dob'),phone:v('af-phone'),
+      gender:v('af-gender'),nationality:v('af-nationality'),
+      governorate:v('af-gov'),district:v('af-district'),
+      education:v('af-education'),employment:v('af-employment'),
+      facebook:v('af-fb'),instagram:v('af-ig'),linkedin:v('af-linkedin'),
+      role:'lead'
+    }];
+    document.querySelectorAll('.af-member-row').forEach(row=>{
+      const n=row.querySelector('.af-m-name')?.value.trim();
+      if(n)members.push({
+        name:n,
+        email:row.querySelector('.af-m-email')?.value.trim(),
+        dob:row.querySelector('.af-m-dob')?.value,
+        phone:row.querySelector('.af-m-phone')?.value.trim(),
+        gender:row.querySelector('.af-m-gender')?.value,
+        nationality:row.querySelector('.af-m-nationality')?.value,
+        governorate:row.querySelector('.af-m-gov')?.value,
+        district:row.querySelector('.af-m-district')?.value,
+        education:row.querySelector('.af-m-education')?.value,
+        employment:row.querySelector('.af-m-employment')?.value,
+        social:row.querySelector('.af-m-social')?.value.trim(),
+        role:'member'
+      });
     });
-
-    const PHASES = ['DT','FB1','FB2','INC'];
-    const curIdx = PHASES.indexOf(t.current_phase);
-
-    // Build team header card
-    let html = '<div class="card mb15" style="border-left:4px solid var(--or)">'
-      +'<div class="fbet mb12">'
-      +'<div><div style="font-size:18px;font-weight:700;margin-bottom:3px">'+t.name+'</div>'
-      +'<div style="font-size:13px;color:var(--t2)">'+t.idea_title+'</div>'
-      +'<div style="font-size:11px;color:var(--t3);margin-top:4px">'+( partner?.label||'')+(t.sector?' · '+t.sector:'')+'</div>'
-      +'</div>'
-      +phaseTag(t.current_phase)
-      +'</div>';
-
-    // Phase progress strip
-    html += '<div style="display:flex;align-items:center;gap:0;margin:1rem 0">';
-    PHASES.forEach((ph,i)=>{
-      const enroll = enrollments.find(e=>e.phase_code===ph);
-      const assess = assessments.find(a=>a.phase_code===ph);
-      const status = enroll?.status||null;
-      const isCurrent = i===curIdx;
-      const isPast    = i<curIdx;
-
-      const col = isPast?'var(--pass)':isCurrent?'var(--or)':'var(--bdr)';
-      const bg  = isPast?'var(--pass-bg)':isCurrent?'#FFF7ED':'var(--bg)';
-      const icon= isPast?'✓':isCurrent?'●':'○';
-
-      html += '<div style="flex:1;text-align:center;padding:10px 6px;background:'+bg+';border-radius:8px;border:1.5px solid '+col+';margin:0 3px">'
-        +'<div style="font-size:18px;color:'+col+';font-weight:700">'+icon+'</div>'
-        +'<div style="font-size:10px;font-weight:700;color:'+col+';margin:3px 0">'+ph+'</div>'
-        +'<div style="font-size:9px;color:var(--t3)">'+(status?status:'—')+'</div>';
-
-      if(assess?.score!==undefined&&assess?.score!==null)
-        html += '<div style="font-size:11px;font-weight:700;color:'+(assess.score>=60?'var(--pass)':'var(--fail)')+'">'+assess.score+'/100</div>';
-
-      const att = attByPhase[ph];
-      if(att?.total)
-        html += '<div style="font-size:9px;color:var(--t3)">'+Math.round(att.P/att.total*100)+'% att.</div>';
-
-      html += '</div>';
-      if(i<PHASES.length-1) html += '<div style="width:16px;height:2px;background:var(--bdr)"></div>';
+    const authRes=await fetch(SUPA_URL+'/auth/v1/signup',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({email,password:pw})});
+    const authData=await authRes.json();
+    if(authData.error||!authData.user)return afShowErr(4,authData.error?.message||authData.msg||'Sign up failed.');
+    const tok=authData.session?.access_token||authData.access_token||SUPA_KEY;
+    const h={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+tok,'Prefer':'return=minimal'};
+    await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({
+        lead_auth_id:authData.user.id,
+        lead_name:v('af-name'),lead_email:email,lead_dob:v('af-dob'),
+        phone:v('af-phone'),governorate:v('af-gov'),district:v('af-district'),
+        facebook:v('af-fb'),instagram:v('af-ig'),linkedin:v('af-linkedin'),
+        partner:v('af-partner'),
+        applicant_type:document.querySelector('input[name=\"af-type\"]:checked')?.value||'new',
+        team_name:v('af-idea-title').split(' ').slice(0,4).join(' '),
+        idea_title:v('af-idea-title'),
+        idea_description:v('af-problem'),
+        problem_statement:v('af-problem'),
+        solution_description:v('af-solution'),
+        target_customers:v('af-customers'),
+        revenue_model:v('af-revenue'),
+        sector:v('af-sector'),
+        idea_stage:document.querySelector('input[name=\"af-stage\"]:checked')?.value||'idea',
+        has_bmc:document.querySelector('input[name=\"af-bmc\"]:checked')?.value==='yes',
+        challenges,sdgs,
+        expectations:v('af-expectations'),
+        member_count:members.length,members,status:'pending'
+      })});
+    // Update lead profile with full details
+    await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
+      method:'PATCH',
+      headers:h,
+      body:JSON.stringify({
+        full_name:v('af-name'), date_of_birth:v('af-dob'),
+        gender:v('af-gender'), nationality:v('af-nationality'),
+        governorate:v('af-gov'),district:v('af-district'),
+        has_disability:v('af-disability')!=='none',
+        disability_type:v('af-disability')!=='none'?v('af-disability'):null
+      })
     });
-    html += '</div></div>';
-
-    // Members card
-    html += '<div class="card mb15"><div class="clbl mb12">Team members</div>'
-      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
-      +'<thead><tr style="background:var(--bg)">'
-      +'<th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Name</th>'
-      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Role</th>'
-      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Gender</th>'
-      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Nationality</th>'
-      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Age</th>'
-      +'<th style="text-align:center;padding:8px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Governorate</th>'
-      +'</tr></thead><tbody>';
-
-    members.forEach(m=>{
-      const role = allTm.find(r=>r.user_id===m.id)?.role_in_team||'member';
-      const age  = m.date_of_birth?Math.floor((Date.now()-new Date(m.date_of_birth))/(365.25*24*3600*1000)):'-';
-      const isMe = m.id===PROFILE.id;
-      html += '<tr style="'+(isMe?'background:var(--or-l)':'')+'">'
-        +'<td style="padding:10px 12px;border-bottom:0.5px solid var(--bdr)">'
-        +'<span style="font-weight:600">'+m.full_name+(isMe?' <span style="font-size:10px;color:var(--or)">(you)</span>':'')+'</span>'
-        +'</td>'
-        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center">'
-        +(role==='lead'?'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:var(--or-l);color:#993C1D">Lead</span>':'<span style="font-size:11px;color:var(--t3)">Member</span>')
-        +'</td>'
-        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;color:'+(m.gender==='Female'?'#EC4899':'var(--fb1)')+'">'+( m.gender||'—')+'</td>'
-        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;color:var(--t2)">'+(m.nationality||'—')+'</td>'
-        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;font-weight:600">'+age+'</td>'
-        +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:12px;color:var(--t3)">'+(m.governorate||'—')+'</td>'
-        +'</tr>';
-    });
-    html += '</tbody></table></div></div>';
-
-    // Phase detail cards
-    html += '<div style="display:flex;flex-direction:column;gap:12px">';
-    PHASES.forEach(ph=>{
-      const enroll = enrollments.find(e=>e.phase_code===ph);
-      if(!enroll) return; // only show phases team was enrolled in
-      const assess = assessments.find(a=>a.phase_code===ph);
-      const att = attByPhase[ph];
-      const attRate = att?.total?Math.round(att.P/att.total*100):null;
-      const score = assess?.score??null;
-      const rec = assess?.rec||null;
-      const status = enroll.status;
-
-      const statusCol = status==='passed'?'var(--pass)':status==='active'?'var(--or)':status==='failed'?'var(--fail)':status==='remediation'?'var(--warn)':'var(--t3)';
-      const statusBg  = status==='passed'?'var(--pass-bg)':status==='active'?'#FFF7ED':status==='failed'?'var(--fail-bg)':status==='remediation'?'var(--warn-bg)':'var(--bg)';
-
-      html += '<div class="card" style="border-left:3px solid '+statusCol+';background:'+statusBg+'">'
-        +'<div class="fbet mb12">'
-        +'<div class="fctr g8">'+phaseTag(ph)
-        +'<span style="font-size:14px;font-weight:600;color:'+statusCol+'">'+{DT:'Design Thinking',FB1:'FB Stage 1',FB2:'FB Stage 2',INC:'Incubation'}[ph]+'</span>'
-        +'</div>'
-        +'<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:white;color:'+statusCol+';text-transform:capitalize">'+status+'</span>'
-        +'</div>'
-        +'<div style="display:flex;gap:24px;flex-wrap:wrap">'
-        // Attendance
-        +'<div style="text-align:center">'
-        +'<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:4px">Attendance</div>'
-        +(attRate!==null
-          ?'<div style="font-size:28px;font-weight:700;color:'+(attRate>=60?'var(--pass)':'var(--fail)')+'">'+attRate+'%</div>'
-          +'<div style="font-size:10px;color:var(--t3)">'+( att?.P||0)+'P · '+(att?.A||0)+'A · '+(att?.E||0)+'E</div>'
-          +'<div style="font-size:10px;font-weight:600;color:'+(attRate>=60?'var(--pass-t)':'var(--fail-t)')+';margin-top:2px">'+(attRate>=60?'✓ Gate met':'✗ Below 60%')+'</div>'
-          :'<div style="font-size:20px;color:var(--t3)">—</div><div style="font-size:10px;color:var(--t3)">No data</div>')
-        +'</div>'
-        // Score
-        +(score!==null
-          ?'<div style="text-align:center">'
-          +'<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:4px">Assessment score</div>'
-          +'<div style="font-size:28px;font-weight:700;color:'+(score>=60?'var(--pass)':'var(--fail)')+'">'+score+'<span style="font-size:14px;color:var(--t3)">/100</span></div>'
-          +'<div style="font-size:11px;color:var(--t3);text-transform:capitalize">'+( rec||'—')+'</div>'
-          +'</div>'
-          :'<div style="text-align:center">'
-          +'<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:4px">Assessment</div>'
-          +'<div style="font-size:20px;color:var(--t3)">Pending</div></div>')
-        +'</div>'
-        +'</div>';
-    });
-    html += '</div>';
-
-    el.innerHTML = html;
-  } catch(e) {
-    el.innerHTML = '<div class="card">'+emptyState('❌','Error',e.message)+'</div>';
-    console.error('Participant track error:', e);
-  }
-}
-
-
-// ── WORKPLAN ──
-let _wpCurrentId = null;
-let _wpActionPoints = [];
-
-const WP_STATUS_CONFIG = {
-  not_started: {label:'Not started', color:'var(--t3)',    bg:'var(--bg)',       icon:'○'},
-  in_progress:  {label:'In progress', color:'var(--fb1)',  bg:'var(--fb1-bg)',   icon:'●'},
-  completed:    {label:'Completed',   color:'var(--pass)', bg:'var(--pass-bg)',  icon:'✓'},
-  delayed:      {label:'Delayed',     color:'#DC2626',     bg:'#FEF2F2',         icon:'⚠'},
-  at_risk:      {label:'At risk',     color:'var(--warn)', bg:'var(--warn-bg)',  icon:'🔴'},
-};
-
-const CAT_COLORS = {
-  'Administration':'#6366F1','Curriculum':'#0EA5E9','Communications':'#EC4899',
-  'Outreach':'#F59E0B','Implementation':'#10B981','M&E':'#8B5CF6',
-  'Reporting':'#EF4444','1.Mobilization':'#F97316','2.Outreach':'#F59E0B',
-  '3.Implementation':'#10B981','4.Partnerships and Stakeholder Engagement':'#0EA5E9',
-  '5.M&E & Reporting':'#8B5CF6','2.Outreach and Communications / Marketing':'#EC4899',
-};
-
-function wpCatColor(cat){ return CAT_COLORS[cat]||'var(--or)'; }
-
-async function loadWorkplan(){
-  const catF    = document.getElementById('wp-cat-filter')?.value||'all';
-  const statusF = document.getElementById('wp-status-filter')?.value||'all';
-  const timeF   = document.getElementById('wp-time-filter')?.value||'all';
-  const wrap    = document.getElementById('wp-table-wrap');
-  if(!wrap) return;
-  wrap.innerHTML = '<div style="padding:2rem;text-align:center"><div class="spin" style="margin:0 auto"></div></div>';
-
-  try {
-    let qs = 'order=from_date,ref_id';
-    const rows = await sb.get('workplan_activities', qs);
-
-    const today = new Date(); today.setHours(0,0,0,0);
-    const todayStr = today.toISOString().slice(0,10);
-
-    // Filter
-    const filtered = rows.filter(r=>{
-      if(catF!=='all' && r.category!==catF) return false;
-      if(statusF!=='all' && r.status!==statusF) return false;
-      if(timeF!=='all'){
-        const due = r.to_date||r.from_date;
-        if(!due) return timeF==='all';
-        const d = new Date(due);
-        if(timeF==='overdue')     return r.status!=='completed' && d<today;
-        if(timeF==='this_month')  return d.getFullYear()===today.getFullYear()&&d.getMonth()===today.getMonth();
-        if(timeF==='next_month')  { const n=new Date(today.getFullYear(),today.getMonth()+1,1); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth(); }
-        if(timeF==='q2_2026')     return d>= new Date('2026-04-01') && d<=new Date('2026-06-30');
-        if(timeF==='q3_2026')     return d>= new Date('2026-07-01') && d<=new Date('2026-09-30');
-        if(timeF==='q4_2026')     return d>= new Date('2026-10-01') && d<=new Date('2026-12-31');
-        if(timeF==='2027')        return d.getFullYear()===2027;
+    // Create pending user rows for co-founders (no auth yet)
+    // They will be linked when they sign up using the same email
+    for(const m of members.filter(m=>m.role!=='lead' && m.email && m.name)){
+      // Check if user already exists
+      const existing = await sb.get('users','email=eq.'+encodeURIComponent(m.email)+'&limit=1').catch(()=>[]);
+      if(!existing.length){
+        await fetch(SUPA_URL+'/rest/v1/users',{
+          method:'POST',
+          headers:h,
+          body:JSON.stringify({
+            email:m.email, full_name:m.name, role:'participant',
+            date_of_birth:m.dob||null, gender:m.gender||null,
+            nationality:m.nationality||null, governorate:m.governorate||null,
+            // auth_id is null until they sign up \u2014 trigger will link them
+          })
+        }).catch(()=>{});
       }
-      return true;
-    });
-
-    // KPIs from ALL rows
-    const total      = rows.length;
-    const completed  = rows.filter(r=>r.status==='completed').length;
-    const delayed    = rows.filter(r=>r.status==='delayed').length;
-    const atRisk     = rows.filter(r=>r.status==='at_risk').length;
-    const overdue    = rows.filter(r=>r.status!=='completed'&&r.to_date&&new Date(r.to_date)<today).length;
-    const inProgress = rows.filter(r=>r.status==='in_progress').length;
-    const pct        = total?Math.round(completed/total*100):0;
-
-    document.getElementById('wp-kpis').innerHTML =
-      '<div class="stat"><div class="slbl">Total activities</div><div class="sval">'+total+'</div><div class="ssub">'+pct+'% completed</div></div>'+
-      '<div class="stat"><div class="slbl">Completed</div><div class="sval" style="color:var(--pass)">'+completed+'</div><div class="ssub">'+inProgress+' in progress</div></div>'+
-      '<div class="stat"><div class="slbl">Delayed</div><div class="sval" style="color:#DC2626">'+delayed+'</div><div class="ssub">'+atRisk+' at risk</div></div>'+
-      '<div class="stat"><div class="slbl">Overdue</div><div class="sval" style="color:var(--fail)">'+overdue+'</div><div class="ssub">Past due date</div></div>';
-
-    // Alert banner
-    const alertBanner = document.getElementById('wp-alert-banner');
-    const alertCount  = document.getElementById('wp-alert-count');
-    const alertDetail = document.getElementById('wp-alert-details');
-    const issues = delayed+atRisk+overdue;
-    if(issues>0){
-      alertBanner.style.display='block';
-      alertCount.textContent  = issues+' activities need attention';
-      const names = rows.filter(r=>(r.status==='delayed'||r.status==='at_risk'||(r.status!=='completed'&&r.to_date&&new Date(r.to_date)<today))).slice(0,3).map(r=>r.activity);
-      alertDetail.textContent = names.join(' · ')+(issues>3?' · and '+(issues-3)+' more':'');
-    } else {
-      alertBanner.style.display='none';
     }
-
-    if(!filtered.length){
-      wrap.innerHTML='<div style="padding:3rem;text-align:center;color:var(--t3)">No activities match the selected filters.</div>';
-      return;
-    }
-
-    // Group by category
-    const byCategory = {};
-    filtered.forEach(r=>{
-      const cat = r.category||'General';
-      if(!byCategory[cat]) byCategory[cat]=[];
-      byCategory[cat].push(r);
-    });
-
-    let html = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
-    html += '<thead><tr style="background:var(--bg)">'
-      +'<th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;width:36%">Activity</th>'
-      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Planned dates</th>'
-      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Status</th>'
-      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Progress</th>'
-      +'<th style="text-align:left;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Notes / Delay</th>'
-      +'<th style="text-align:center;padding:10px 8px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Action</th>'
-      +'</tr></thead><tbody>';
-
-    Object.entries(byCategory).forEach(([cat, items])=>{
-      const catCol = wpCatColor(cat);
-      const catCompleted = items.filter(r=>r.status==='completed').length;
-      // Category header row
-      html += '<tr style="background:var(--bg)">'
-        +'<td colspan="6" style="padding:8px 12px;border-bottom:0.5px solid var(--bdr)">'
-        +'<div class="fctr g8">'
-        +'<div style="width:3px;height:16px;border-radius:2px;background:'+catCol+'"></div>'
-        +'<span style="font-size:11px;font-weight:700;color:'+catCol+'">'+cat+'</span>'
-        +'<span style="font-size:10px;color:var(--t3)">'+catCompleted+'/'+items.length+' completed</span>'
-        +'</div></td></tr>';
-
-      items.forEach(r=>{
-        const sc   = WP_STATUS_CONFIG[r.status]||WP_STATUS_CONFIG.not_started;
-        const pct  = r.completion_pct||0;
-        const due  = r.to_date||r.from_date;
-        const isOverdue = r.status!=='completed' && due && new Date(due)<today;
-        const rowBg = isOverdue?'rgba(220,38,38,0.03)':r.status==='delayed'?'rgba(220,38,38,0.03)':'';
-        const aps  = Array.isArray(r.action_points)?r.action_points:[];
-        const openAps = aps.filter(a=>!a.done).length;
-
-        // Format dates
-        const fmt = d=>{ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
-        const dateStr = r.from_date===r.to_date||!r.to_date ? fmt(r.from_date) : fmt(r.from_date)+' → '+fmt(r.to_date);
-
-        html += '<tr style="background:'+rowBg+'">'
-          // Activity
-          +'<td style="padding:10px 12px;border-bottom:0.5px solid var(--bdr);vertical-align:top">'
-          +(isOverdue?'<div style="font-size:9px;font-weight:700;color:#DC2626;margin-bottom:2px">⚠ OVERDUE</div>':'')
-          +'<div style="font-weight:500;margin-bottom:3px">'+r.activity+'</div>'
-          +(r.notes_challenges?'<div style="font-size:11px;color:var(--t3);font-style:italic">'+r.notes_challenges.slice(0,80)+(r.notes_challenges.length>80?'...':'')+'</div>':'')
-          +(r.responsible?'<div style="font-size:10px;color:var(--fb1);margin-top:3px">👤 '+r.responsible+'</div>':'')
-          +(openAps>0?'<div style="font-size:10px;color:var(--warn);margin-top:2px">📋 '+openAps+' open action'+(openAps>1?'s':'')+'</div>':'')
-          +'</td>'
-          // Dates
-          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;vertical-align:top">'
-          +'<div style="font-size:11px;color:var(--t2)">'+dateStr+'</div>'
-          +(r.actual_start||r.actual_end?'<div style="font-size:10px;color:var(--pass);margin-top:3px">Actual: '+fmt(r.actual_start)+(r.actual_end?' → '+fmt(r.actual_end):'')+'</div>':'')
-          +'</td>'
-          // Status
-          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;vertical-align:top">'
-          +'<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:'+sc.bg+';border:0.5px solid '+sc.color+'">'
-          +'<span style="font-size:11px">'+sc.icon+'</span>'
-          +'<span style="font-size:10px;font-weight:600;color:'+sc.color+'">'+sc.label+'</span>'
-          +'</div></td>'
-          // Progress bar
-          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);vertical-align:top;min-width:80px">'
-          +'<div style="text-align:center;font-size:11px;font-weight:700;color:'+(pct===100?'var(--pass)':'var(--t)')+';margin-bottom:4px">'+pct+'%</div>'
-          +'<div style="height:6px;background:var(--bdr);border-radius:3px;overflow:hidden">'
-          +'<div style="width:'+pct+'%;height:6px;background:'+(pct===100?'var(--pass)':pct>=50?'var(--fb1)':'var(--warn)')+';border-radius:3px;transition:width .4s"></div>'
-          +'</div></td>'
-          // Notes
-          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);vertical-align:top;max-width:200px">'
-          +(r.is_delayed&&r.delay_reason?'<div style="font-size:11px;color:#DC2626;line-height:1.5">'+r.delay_reason.slice(0,100)+(r.delay_reason.length>100?'...':'')+'</div>':'')
-          +(aps.length?aps.slice(0,2).map(a=>'<div style="font-size:10px;color:'+(a.done?'var(--pass-t)':'var(--t2)')+';margin-top:3px">'+(a.done?'✓ ':'• ')+a.text+(a.due_date?' ('+fmt(a.due_date)+')':'')+'</div>').join(''):'<span style="font-size:11px;color:var(--t3)">—</span>')
-          +'</td>'
-          // Action button
-          +'<td style="padding:10px 8px;border-bottom:0.5px solid var(--bdr);text-align:center;vertical-align:top">'
-          +'<button class="btn btn-sm" data-wpid="'+r.id+'" onclick="openWpModal(this.dataset.wpid)">Update</button>'
-          +'</td>'
-          +'</tr>';
-      });
-    });
-
-    html += '</tbody></table>';
-    wrap.innerHTML = html;
-
-  } catch(e){
-    wrap.innerHTML = '<div style="padding:2rem;color:var(--fail-t);font-size:13px">Error loading workplan: '+e.message+'<br><span style="color:var(--t3)">Make sure you have run create_workplan_table.sql in Supabase.</span></div>';
-    console.error('Workplan error:',e);
-  }
+    document.getElementById('af-success-email').textContent=email;
+    afGoStep('success');
+  }catch(e){afShowErr(4,e.message||'Something went wrong.');}
+  finally{btn.disabled=false;label.textContent='Submit application';spin.style.display='none';}
 }
 
-async function openWpModal(id){
-  _wpCurrentId = id;
-  _wpActionPoints = [];
-  const errEl = document.getElementById('wp-m-err');
-  if(errEl) errEl.style.display='none';
-
-  try {
-    const rows = await sb.get('workplan_activities','id=eq.'+id);
-    const r = rows[0]; if(!r) return;
-
-    document.getElementById('wp-modal-title').textContent = 'Update — '+r.category;
-    document.getElementById('wp-modal-activity').innerHTML =
-      '<strong>'+r.activity+'</strong>'
-      +(r.notes_challenges?'<br><span style="color:var(--t3);font-size:12px">'+r.notes_challenges+'</span>':'')
-      +(r.from_date?'<br><span style="font-size:11px;color:var(--t3)">Planned: '+r.from_date+(r.to_date&&r.to_date!==r.from_date?' → '+r.to_date:'')+'</span>':'');
-
-    document.getElementById('wp-m-status').value       = r.status||'not_started';
-    document.getElementById('wp-m-pct').value          = r.completion_pct||0;
-    document.getElementById('wp-m-actual-start').value = r.actual_start||'';
-    document.getElementById('wp-m-actual-end').value   = r.actual_end||'';
-    document.getElementById('wp-m-responsible').value  = r.responsible||'';
-    document.getElementById('wp-m-delay-reason').value = r.delay_reason||'';
-    toggleDelaySection();
-
-    _wpActionPoints = Array.isArray(r.action_points)?JSON.parse(JSON.stringify(r.action_points)):[];
-    renderWpActions();
-
-    document.getElementById('wp-modal').style.display='flex';
-  } catch(e){ toast('Error loading activity', e.message, 'error'); }
-}
-
-function closeWpModal(){
-  document.getElementById('wp-modal').style.display='none';
-  _wpCurrentId=null; _wpActionPoints=[];
-}
-
-function toggleDelaySection(){
-  const s = document.getElementById('wp-m-status')?.value;
-  const sec = document.getElementById('wp-m-delay-section');
-  if(sec) sec.style.display = (s==='delayed'||s==='at_risk')?'block':'none';
-}
-
-function addWpActionPoint(){
-  _wpActionPoints.push({text:'',due_date:'',assignee:'',done:false});
-  renderWpActions();
-}
-
-function wpToggleAP(el){
-  const i=parseInt(el.dataset.idx);
-  _wpActionPoints[i].done=el.checked;
-  const row=el.closest('div');
-  const txt=row.querySelector('.ap-text');
-  if(txt) txt.style.textDecoration=el.checked?'line-through':'';
-}
-function renderWpActions(){
-  const container = document.getElementById('wp-m-actions');
-  if(!container) return;
-  container.innerHTML = _wpActionPoints.map((a,i)=>
-    '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
-    +'<input type="checkbox" '+(a.done?'checked':'')+' data-idx="'+i+'" onchange="wpToggleAP(this)" style="margin:0">'
-    +'<input class="inp ap-text" style="flex:2;font-size:12px;padding:5px 8px;'+(a.done?'text-decoration:line-through;color:var(--t3)':'')+'" value="'+a.text+'" placeholder="Action point..." '
-      +'oninput="_wpActionPoints['+i+'].text=this.value">'
-    +'<input type="date" class="inp" style="width:130px;font-size:11px;padding:5px 8px" value="'+(a.due_date||'')+'" '
-      +'oninput="_wpActionPoints['+i+'].due_date=this.value">'
-    +'<input class="inp" style="width:100px;font-size:11px;padding:5px 8px" value="'+(a.assignee||'')+'" placeholder="Who?" '
-      +'oninput="_wpActionPoints['+i+'].assignee=this.value">'
-    +'<button onclick="_wpActionPoints.splice('+i+',1);renderWpActions()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;padding:0 4px">×</button>'
-    +'</div>'
-  ).join('') || '<p style="font-size:12px;color:var(--t3)">No action points yet. Add one above.</p>';
-}
-
-async function saveWpActivity(){
-  const errEl = document.getElementById('wp-m-err');
-  if(errEl) errEl.style.display='none';
-
-  const status    = document.getElementById('wp-m-status').value;
-  const pct       = parseInt(document.getElementById('wp-m-pct').value)||0;
-  const actStart  = document.getElementById('wp-m-actual-start').value||null;
-  const actEnd    = document.getElementById('wp-m-actual-end').value||null;
-  const responsible = document.getElementById('wp-m-responsible').value.trim()||null;
-  const delayReason = document.getElementById('wp-m-delay-reason').value.trim()||null;
-
-  // Validate delay reason required
-  if((status==='delayed'||status==='at_risk') && !delayReason){
-    if(errEl){ errEl.textContent='Please provide a delay/risk justification.'; errEl.style.display='block'; }
-    return;
-  }
-  // Validate action points text
-  for(const ap of _wpActionPoints){
-    if(!ap.text.trim()){
-      if(errEl){ errEl.textContent='Please fill in all action point descriptions.'; errEl.style.display='block'; }
-      return;
-    }
-  }
-
-  try {
-    await sb.patch('workplan_activities','id=eq.'+_wpCurrentId,{
-      status, completion_pct:pct,
-      actual_start:actStart, actual_end:actEnd,
-      responsible,
-      is_delayed: status==='delayed'||status==='at_risk',
-      delay_reason: (status==='delayed'||status==='at_risk')?delayReason:null,
-      delay_updated_at: (status==='delayed'||status==='at_risk')?new Date().toISOString():null,
-      delay_updated_by: PROFILE?.id||null,
-      action_points: _wpActionPoints,
-      updated_at: new Date().toISOString(),
-    });
-    toast('Activity updated','Workplan saved');
-    closeWpModal();
-    loadWorkplan();
-  } catch(e){
-    if(errEl){ errEl.textContent=e.message; errEl.style.display='block'; }
-  }
-}
-
-// Add status change listener
-document.addEventListener('change', e=>{
-  if(e.target.id==='wp-m-status') toggleDelaySection();
-});
-
-
-
-
-// ── QPR REPORTING CALENDAR ──
-const QPR_SCHEDULE = [
-  {id:'QPR1', label:'QPR 1', period:'02 Mar 2026 – 31 May 2026', due:'2026-06-15', start:'2026-03-02', end:'2026-05-31', portalId:'462136', type:'quarterly'},
-  {id:'QPR2', label:'QPR 2', period:'01 Jun 2026 – 31 Aug 2026', due:'2026-09-15', start:'2026-06-01', end:'2026-08-31', portalId:'529729', type:'quarterly'},
-  {id:'QPR3', label:'QPR 3', period:'01 Sep 2026 – 30 Nov 2026', due:'2026-12-15', start:'2026-09-01', end:'2026-11-30', portalId:'529730', type:'quarterly'},
-  {id:'QPR4', label:'QPR 4', period:'01 Dec 2026 – 28 Feb 2027', due:'2027-03-15', start:'2026-12-01', end:'2027-02-28', portalId:'529731', type:'quarterly'},
-  {id:'QPR5', label:'QPR 5', period:'01 Mar 2027 – 31 May 2027', due:'2027-06-15', start:'2027-03-01', end:'2027-05-31', portalId:'529732', type:'quarterly'},
-  {id:'QPR6', label:'QPR 6', period:'01 Jun 2027 – 31 Aug 2027', due:'2027-09-15', start:'2027-06-01', end:'2027-08-31', portalId:'529733', type:'quarterly'},
-  {id:'QPR7', label:'QPR 7', period:'01 Sep 2027 – 30 Nov 2027', due:'2027-12-15', start:'2027-09-01', end:'2027-11-30', portalId:'529734', type:'quarterly'},
-  {id:'QPR8', label:'QPR 8 (Final)', period:'01 Dec 2027 – 02 Mar 2028', due:'2028-03-31', start:'2027-12-01', end:'2028-03-02', portalId:'529735', type:'final'},
-];
-
-const QPR_URL_BASE = 'https://www.partnerreportingportal.org/ip/LEBA/ip-reporting/pd/31816/report/';
-
-async function renderQprCalendar() {
-  const el = document.getElementById('qpr-calendar');
-  const badge = document.getElementById('qpr-next-badge');
-  if(!el) return;
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const todayStr = today.toISOString().slice(0,10);
-
-  // Load saved QPR statuses from DB
-  let qprStatuses = {};
-  try {
-    const rows = await sb.get('monthly_reports',
-      'report_month=like.QPR%&order=report_month').catch(()=>[]);
-    rows.forEach(r=>{ qprStatuses[r.report_month] = r; });
-  } catch(e){}
-
-  // Find next/current QPR
-  let nextQpr = null;
-  QPR_SCHEDULE.forEach(q=>{
-    const due = new Date(q.due);
-    if(!nextQpr && due >= today) nextQpr = q;
-  });
-
-  if(nextQpr && badge) {
-    const daysLeft = Math.ceil((new Date(nextQpr.due)-today)/(1000*60*60*24));
-    const isUrgent = daysLeft <= 30;
-    const isOverdue = daysLeft < 0;
-    badge.textContent = isOverdue
-      ? nextQpr.label+' OVERDUE by '+Math.abs(daysLeft)+'d'
-      : isUrgent
-        ? nextQpr.label+' due in '+daysLeft+' days'
-        : 'Next: '+nextQpr.label+' due '+new Date(nextQpr.due).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-    badge.style.background = isOverdue?'#FEF2F2':isUrgent?'var(--warn-bg)':'var(--pass-bg)';
-    badge.style.color = isOverdue?'#DC2626':isUrgent?'var(--warn-t)':'var(--pass-t)';
-  }
-
-  el.innerHTML = QPR_SCHEDULE.map(q=>{
-    const due     = new Date(q.due);
-    const start   = new Date(q.start);
-    const end2    = new Date(q.end);
-    const daysLeft= Math.ceil((due-today)/(1000*60*60*24));
-    const isCurrent = today >= start && today <= end2;
-    const isOverdue = daysLeft < 0 && !qprStatuses[q.id];
-    const isPast  = due < today && !isCurrent;
-    const saved   = qprStatuses[q.id];
-    const submitted = saved?.status === 'submitted' || saved?.status === 'archived';
-
-    // Status
-    let sc;
-    if(submitted)       sc={l:'Submitted ✓', bg:'var(--pass-bg)',  col:'var(--pass-t)',  icon:'✓'};
-    else if(isOverdue)  sc={l:'Overdue!',    bg:'#FEF2F2',         col:'#DC2626',         icon:'⚠'};
-    else if(isCurrent)  sc={l:'Period open', bg:'var(--fb1-bg)',   col:'var(--fb1-t)',   icon:'●'};
-    else if(daysLeft<=30&&daysLeft>=0) sc={l:'Due soon',   bg:'var(--warn-bg)', col:'var(--warn-t)', icon:'!'};
-    else if(isPast&&!submitted) sc={l:'Past',      bg:'var(--bg)',      col:'var(--t3)',       icon:'○'};
-    else               sc={l:'Upcoming',    bg:'var(--bg)',      col:'var(--t3)',       icon:'○'};
-
-    const fmtDate = d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-    const portalUrl = QPR_URL_BASE+q.portalId+'/edit';
-
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--bdr)">'
-      // Timeline dot
-      +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'
-      +'<div style="width:32px;height:32px;border-radius:50%;background:'+sc.bg+';border:2px solid '+sc.col+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+sc.col+'">'+sc.icon+'</div>'
-      +(q===QPR_SCHEDULE[QPR_SCHEDULE.length-1]?'':'<div style="width:2px;flex:1;min-height:12px;background:var(--bdr);margin-top:4px"></div>')
-      +'</div>'
-      // Content
-      +'<div style="flex:1;min-width:0">'
-      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
-      +'<span style="font-size:13px;font-weight:700">'+(q.type==='final'?'📋 ':'📊 ')+q.label+'</span>'
-      +'<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:10px;background:'+sc.bg+';color:'+sc.col+'">'+sc.l+'</span>'
-      +(isCurrent?'<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--or-l);color:var(--or);animation:pulse 2s infinite">◉ Current period</span>':'')
-      +'</div>'
-      +'<div style="font-size:11px;color:var(--t3);margin-bottom:2px">📅 Period: '+q.period+'</div>'
-      +'<div style="font-size:11px;color:var(--t2)">'
-      +'<span style="font-weight:600;color:'+sc.col+'">Due: '+fmtDate(q.due)+'</span>'
-      +(daysLeft>=0&&!submitted?' <span style="color:var(--t3)">· '+daysLeft+' days remaining</span>':'')
-      +(submitted?' <span style="color:var(--pass-t)">· Submitted '+fmtDate(saved.submitted_at)+'</span>':'')
-      +'</div>'
-      +'</div>'
-      // Actions
-      +'<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'
-      +'<a href="'+portalUrl+'" target="_blank" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;background:var(--fb1-bg);color:var(--fb1-t);text-decoration:none;text-align:center;white-space:nowrap">Open portal ↗</a>'
-      +(submitted
-        ?'<button class="btn btn-sm" data-qid="'+q.id+'" onclick="openQprReport(this.dataset.qid)">View report</button>'
-        :isCurrent||isOverdue||daysLeft<=30
-          ?'<button class="btn-p" style="font-size:11px;padding:5px 10px" data-qid="'+q.id+'" data-qlbl="'+q.label+'" data-qdue="'+q.due+'" data-qperiod="'+q.period+'" onclick="startQprReport(this.dataset.qid,this.dataset.qlbl,this.dataset.qdue,this.dataset.qperiod)">'+(saved?'Continue →':'Start report')+'</button>'
-          :'<span style="font-size:10px;color:var(--t3);text-align:center">Not yet due</span>'
-      )
-      +'</div></div>';
-  }).join('');
-}
-
-async function startQprReport(qid, label, due, period){
-  // Check if draft already exists
-  try {
-    const existing = await sb.get('monthly_reports','report_month=eq.'+qid+'&limit=1').catch(()=>[]);
-    if(existing.length){ openReport(existing[0].id); return; }
-
-    const snap = await autoSnap();
-    const wpActs = await sb.get('workplan_activities','order=from_date').catch(()=>[]);
-    const [s,e] = [new Date(QPR_SCHEDULE.find(q=>q.id===qid)?.start), new Date(QPR_SCHEDULE.find(q=>q.id===qid)?.end)];
-    const periodActs = wpActs.filter(a=>{
-      const d=new Date(a.to_date||a.from_date);
-      return d>=s && d<=e;
-    }).map(a=>({id:a.id,title:a.activity,category:a.category,status:a.status,notes:''}));
-
-    const report = await sb.post('monthly_reports',{
-      report_month: qid,
-      report_label: label+' — '+period,
-      status:'draft',
-      snap_participants:   snap.participants,
-      snap_teams:          snap.teams,
-      snap_female_pct:     snap.femalePct,
-      snap_phases:         snap.phases,
-      snap_nat_counts:     snap.natCounts,
-      snap_partner_phase:  snap.partnerPhase,
-      snap_disabled_pct:   snap.disabledPct,
-      snap_disabled_count: snap.disabledCount,
-      snap_male_pct:       snap.malePct,
-      activities_completed: periodActs,
-      prepared_by: PROFILE.full_name||PROFILE.email,
-      preparation_date: new Date().toISOString().slice(0,10),
-    });
-    const id = Array.isArray(report)?report[0]?.id:report?.id;
-    if(id) openReport(id);
-  } catch(e){ toast('Error',e.message,'error'); }
-}
-
-async function openQprReport(qid){
-  const rows = await sb.get('monthly_reports','report_month=eq.'+qid+'&limit=1').catch(()=>[]);
-  if(rows.length) openReport(rows[0].id);
+// \u2500\u2500 JOURNEY: application status for unassigned participants \u2500\u2500
+async function checkApplicationStatus(){
+  try{
+    const apps=await sb.get('applications','lead_auth_id=eq.'+PROFILE.auth_id+'&order=created_at.desc&limit=1');
+    if(!apps.length)return emptyState('\ud83d\udccb','No application yet','You have not submitted an application yet.');
+    const app=apps[0];
+    const s={pending:{icon:'\u23f3',title:'Application under review',color:'var(--warn)',bg:'var(--warn-bg)',msg:'The INJAZ Lebanon team is reviewing your application and will contact you soon.'},approved_dt:{icon:'\u2705',title:'Approved \u2014 Design Thinking',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to the Design Thinking phase. A coordinator will contact you.'},approved_fb1:{icon:'\u2705',title:'Approved \u2014 FB Stage 1',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to Financial Bootcamp Stage 1.'},ineligible:{icon:'\u274c',title:'Application not approved',color:'var(--fail)',bg:'var(--fail-bg)',msg:'Unfortunately your application did not meet eligibility criteria. Contact your coordinator.'}}[app.status]||{icon:'\u23f3',title:'Application submitted',color:'var(--warn)',bg:'var(--warn-bg)',msg:'Your application is being processed.'};
+    return `<div style=\"border-radius:var(--rl);padding:1.5rem;background:${s.bg};border:1px solid ${s.color};margin-bottom:1rem\"><div style=\"display:flex;align-items:center;gap:12px;margin-bottom:8px\"><span style=\"font-size:1.5rem\">${s.icon}</span><p style=\"font-size:15px;font-weight:600;color:${s.color}\">${s.title}</p></div><p style=\"font-size:13px;color:${s.color};line-height:1.6\">${s.msg}</p></div>
+      <div class=\"card\"><div class=\"clbl mb12\">Your application</div><div style=\"display:flex;flex-direction:column;gap:6px;font-size:13px\">
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Idea</span><strong>${app.idea_title||'\u2014'}</strong></div>
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Team members</span><span>${app.member_count||1}</span></div>
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Partner</span><span>${app.partner||'\u2014'}</span></div>
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Submitted</span><span>${app.created_at?new Date(app.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):''}</span></div>
+      </div></div>`;
+  }catch(e){return emptyState('\ud83c\udfc1','No team yet','You have not been assigned to a team yet. Contact your INJAZ coordinator.');}
 }
 
 
-// ── MONTHLY REPORTS ──
-let _currentReportId = null;
-let _reportDraft = {};
-
-const MONTHS = ['January','February','March','April','May','June',
-  'July','August','September','October','November','December'];
-const SEV_CONFIG = {
-  low:    {l:'Low',    bg:'var(--pass-bg)',  col:'var(--pass-t)'},
-  medium: {l:'Medium', bg:'var(--warn-bg)',  col:'var(--warn-t)'},
-  high:   {l:'High',   bg:'#FEF2F2',         col:'#DC2626'},
-};
-const PSTATUS = {
-  on_track: {l:'On track', bg:'var(--pass-bg)', col:'var(--pass-t)'},
-  delayed:  {l:'Delayed',  bg:'var(--warn-bg)', col:'var(--warn-t)'},
-  at_risk:  {l:'At risk',  bg:'#FEF2F2',        col:'#DC2626'},
-};
-
-async function loadReports() {
-  const el = document.getElementById('report-list');
-  const kpi = document.getElementById('report-kpis');
-  if(!el) return;
-  renderQprCalendar(); // always refresh QPR calendar
-  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>';
-
-  try {
-    const reports = await sb.get('monthly_reports','order=report_month.desc');
-
-    // Overdue check: if we're past day 5 and no report for last month
-    const now = new Date();
-    const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
-    const lastMonthKey = lastMonth.getFullYear()+'-'+String(lastMonth.getMonth()+1).padStart(2,'0');
-    const hasLastMonth = reports.some(r=>r.report_month===lastMonthKey&&r.status!=='draft');
-    if(now.getDate()>5 && !hasLastMonth) {
-      document.getElementById('report-overdue-banner').style.display='block';
-      document.getElementById('report-overdue-text').textContent =
-        'Monthly report for '+MONTHS[lastMonth.getMonth()]+' '+lastMonth.getFullYear()+' has not been submitted yet.';
-    }
-
-    // KPIs
-    const total     = reports.length;
-    const submitted = reports.filter(r=>r.status==='submitted').length;
-    const drafts    = reports.filter(r=>r.status==='draft').length;
-    const archived  = reports.filter(r=>r.status==='archived').length;
-    if(kpi) kpi.innerHTML =
-      '<div class="stat"><div class="slbl">Total reports</div><div class="sval">'+total+'</div></div>'+
-      '<div class="stat"><div class="slbl">Submitted</div><div class="sval" style="color:var(--pass)">'+submitted+'</div></div>'+
-      '<div class="stat"><div class="slbl">Drafts</div><div class="sval" style="color:var(--warn)">'+drafts+'</div></div>'+
-      '<div class="stat"><div class="slbl">Archived</div><div class="sval" style="color:var(--t3)">'+archived+'</div></div>';
-
-    if(!reports.length) {
-      el.innerHTML = '<div class="card">'+emptyState('📋','No reports yet','Create your first monthly report using the button above')+'</div>';
-      return;
-    }
-
-    el.innerHTML = reports.map(r=>{
-      const sc = r.status==='submitted'?{l:'Submitted',bg:'var(--pass-bg)',col:'var(--pass-t)',icon:'✓'}
-               : r.status==='archived' ?{l:'Archived', bg:'var(--bg)',    col:'var(--t3)',   icon:'📁'}
-               :                        {l:'Draft',    bg:'var(--warn-bg)',col:'var(--warn-t)',icon:'✏'};
-      const challenges = Array.isArray(r.challenges)?r.challenges:[];
-      const highRisk = challenges.filter(c=>c.severity==='high').length;
-      const achievements = Array.isArray(r.achievements)?r.achievements:[];
-      const parts = Array.isArray(r.partner_updates)?r.partner_updates:[];
-      const subDate = r.submitted_at?new Date(r.submitted_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
-
-      return '<div class="card mb1" style="cursor:pointer;border:0.5px solid var(--bdr)" data-rid="'+r.id+'" onclick="openReport(this.dataset.rid)">'
-        +'<div class="fbet mb10">'
-        +'<div class="fctr g8">'
-        +'<span style="font-size:1.5rem">📊</span>'
-        +'<div><p style="font-size:15px;font-weight:700">'+r.report_label+'</p>'
-        +(subDate?'<p style="font-size:11px;color:var(--t3)">Submitted '+subDate+(r.prepared_by?' by '+r.prepared_by:'')+'</p>':'<p style="font-size:11px;color:var(--t3)">Last updated '+new Date(r.updated_at).toLocaleDateString('en-GB')+'</p>')
-        +'</div></div>'
-        +'<div class="fctr g8">'
-        +(highRisk>0?'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#FEF2F2;color:#DC2626">'+highRisk+' high risk</span>':'')
-        +'<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:'+sc.bg+';color:'+sc.col+'">'+sc.icon+' '+sc.l+'</span>'
-        +'</div></div>'
-        +'<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--t3)">'
-        +(r.snap_participants!=null?'<span>👥 '+r.snap_participants+' participants</span>':'')
-        +(r.snap_teams!=null?'<span>🏢 '+r.snap_teams+' teams</span>':'')
-        +(achievements.length?'<span>🏆 '+achievements.length+' achievement'+(achievements.length>1?'s':'')+'</span>':'')
-        +(challenges.length?'<span>⚠ '+challenges.length+' challenge'+(challenges.length>1?'s':'')+'</span>':'')
-        +(parts.length?'<span>🤝 '+parts.length+' partner update'+(parts.length>1?'s':'')+'</span>':'')
-        +'</div>'
-        +(r.status==='draft'?'<div class="fctr g8" style="margin-top:10px" onclick="event.stopPropagation()">'
-          +'<button class="btn btn-sm" data-rid="'+r.id+'" onclick="openReport(this.dataset.rid)">Continue editing →</button>'
-          +'<button class="btn btn-sm" data-rid="'+r.id+'" onclick="deleteReport(this.dataset.rid)" style="color:var(--fail-t)">Delete</button>'
-          +'</div>':'')
-        +'</div>';
-    }).join('');
-
-  } catch(e) {
-    const msg = e.message.includes('relation') || e.message.includes('does not exist')
-      ? 'The monthly_reports table has not been created yet. Please run create_reports_table.sql in Supabase first.'
-      : e.message;
-    el.innerHTML = '<div class="card" style="padding:1.5rem">'
-      +'<div style="font-size:14px;font-weight:600;color:var(--fail-t);margin-bottom:8px">⚠ Reports unavailable</div>'
-      +'<p style="font-size:13px;color:var(--t2);margin-bottom:12px">'+msg+'</p>'
-      +'<p style="font-size:12px;color:var(--t3)">Run <code style="background:var(--bg);padding:2px 6px;border-radius:4px">create_reports_table.sql</code> in your Supabase SQL Editor to set up the reports module.</p>'
-      +'</div>';
-    console.error('loadReports:', e);
-  }
+async function checkApplicationStatus(){
+  try{
+    const apps=await sb.get('applications','lead_auth_id=eq.'+PROFILE.auth_id+'&order=created_at.desc&limit=1');
+    if(!apps.length)return emptyState('\ud83d\udccb','No application yet','You have not submitted an application yet.');
+    const app=apps[0];
+    const s={pending:{icon:'\u23f3',title:'Application under review',color:'var(--warn)',bg:'var(--warn-bg)',msg:'The INJAZ Lebanon team is reviewing your application and will contact you soon.'},approved_dt:{icon:'\u2705',title:'Approved \u2014 Design Thinking',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to the Design Thinking phase. A coordinator will contact you.'},approved_fb1:{icon:'\u2705',title:'Approved \u2014 FB Stage 1',color:'var(--pass)',bg:'var(--pass-bg)',msg:'Congratulations! You have been assigned to Financial Bootcamp Stage 1.'},ineligible:{icon:'\u274c',title:'Application not approved',color:'var(--fail)',bg:'var(--fail-bg)',msg:'Unfortunately your application did not meet eligibility criteria. Contact your coordinator.'}}[app.status]||{icon:'\u23f3',title:'Application submitted',color:'var(--warn)',bg:'var(--warn-bg)',msg:'Your application is being processed.'};
+    return `<div style=\"border-radius:var(--rl);padding:1.5rem;background:${s.bg};border:1px solid ${s.color};margin-bottom:1rem\"><div style=\"display:flex;align-items:center;gap:12px;margin-bottom:8px\"><span style=\"font-size:1.5rem\">${s.icon}</span><p style=\"font-size:15px;font-weight:600;color:${s.color}\">${s.title}</p></div><p style=\"font-size:13px;color:${s.color};line-height:1.6\">${s.msg}</p></div>
+      <div class=\"card\"><div class=\"clbl mb12\">Your application</div><div style=\"display:flex;flex-direction:column;gap:6px;font-size:13px\">
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Idea</span><strong>${app.idea_title||'\u2014'}</strong></div>
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Team members</span><span>${app.member_count||1}</span></div>
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Partner</span><span>${app.partner||'\u2014'}</span></div>
+        <div class=\"fbet\"><span style=\"color:var(--t3)\">Submitted</span><span>${app.created_at?new Date(app.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):''}</span></div>
+      </div></div>`;
+  }catch(e){return emptyState('\ud83c\udfc1','No team yet','You have not been assigned to a team yet. Contact your INJAZ coordinator.');}
 }
 
-async function openNewReport() {
-  // Check table exists first
-  try { await sb.get('monthly_reports','limit=0'); } catch(e) {
-    toast('Table not set up','Please run create_reports_table.sql in Supabase first','error');
-    return;
-  }
-  const now = new Date();
-  const key   = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const label = MONTHS[now.getMonth()]+' '+now.getFullYear();
-
-  // Auto-pull live data
-  const snap = await autoSnap();
-
-  // Pull this month's workplan activities
-  const wpActs = await sb.get('workplan_activities',
-    'order=from_date').catch(()=>[]);
-  const monthActs = wpActs.filter(a=>{
-    if(!a.from_date && !a.to_date) return false;
-    const d = new Date(a.to_date||a.from_date);
-    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-  }).map(a=>({id:a.id,title:a.activity,category:a.category,
-    status:a.status,planned_status:a.status,notes:''}));
-
-  const report = await sb.post('monthly_reports',{
-    report_month: key, report_label: label, status:'draft',
-    snap_participants: snap.participants, snap_teams: snap.teams,
-    snap_female_pct: snap.femalePct, snap_phases: snap.phases,
-    snap_partners: snap.partners,
-    activities_completed: monthActs,
-    prepared_by: PROFILE.full_name||PROFILE.email,
-    preparation_date: now.toISOString().slice(0,10),
-  });
-  const id = Array.isArray(report)?report[0]?.id:report?.id;
-  if(id) openReport(id);
-}
-
-function saveDraft(){ saveReport("draft"); }
-function submitReport(){ saveReport("submitted"); }
-async function autoSnap() {
-  try {
-    const [teams, allTm, allUsers, paRows] = await Promise.all([
-      sb.get('teams','select=id,current_phase,partner_id'),
-      sb.get('team_members','select=user_id,team_id'),
-      sb.get('users','select=id,gender&role=eq.participant'),
-      sb.get('partner_achievement','order=partner_code,phase_code').catch(()=>[]),
-    ]);
-    const total   = allUsers.length;
-    const female  = allUsers.filter(u=>u.gender==='Female').length;
-    const phases  = {DT:0,FB1:0,FB2:0,INC:0};
-    teams.forEach(t=>{ if(phases[t.current_phase]!==undefined) phases[t.current_phase]++; });
-    const partners = {};
-    paRows.forEach(r=>{
-      if(!partners[r.partner_code]) partners[r.partner_code]={actual:0,target:0};
-      partners[r.partner_code].actual += r.actual||0;
-      partners[r.partner_code].target += r.target||0;
-    });
-    return {participants:total,teams:teams.length,femalePct:total?Math.round(female/total*100):0,phases,partners};
-  } catch(e){ return {participants:0,teams:0,femalePct:0,phases:{},partners:{}}; }
-}
-
-
-// ── REPORT HELPER FUNCTIONS ──
-
-function updateRepProgress(){
-  const fields=document.querySelectorAll('.rep-field');
-  let filled=0;
-  fields.forEach(f=>{ if((f.value||'').trim()) filled++; });
-  const pct=fields.length?Math.round(filled/fields.length*100):0;
-  const bar=document.getElementById('rep-pct-bar');
-  const lbl=document.getElementById('rep-pct-lbl');
-  if(bar){ bar.style.width=pct+'%'; bar.style.background=pct>=80?'var(--pass)':pct>=50?'var(--or)':'var(--fail)'; }
-  if(lbl) lbl.textContent=pct+'% complete';
-}
-
-function renderActsList(acts,locked){
-  if(!Array.isArray(acts)||!acts.length)
-    return '<p style="font-size:13px;color:var(--t3)">No workplan activities for this period.</p>';
-  const statusOpts = s => ['not_started','in_progress','completed','delayed','at_risk']
-    .map(x=>'<option value="'+x+'"'+(s===x?' selected':'')+'>'+x.replace('_',' ')+'</option>').join('');
-  return acts.map((a,i)=>
-    '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--bdr)">'
-    +'<div style="flex:1"><p style="font-size:12px;font-weight:500">'+esc(a.title||'')+'</p>'
-    +'<p style="font-size:10px;color:var(--t3)">'+esc(a.category||'')+'</p></div>'
-    +(locked
-      ?'<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--bg)">'+esc(a.status||'—')+'</span>'
-      :'<select class="sel" style="font-size:11px;padding:3px 6px;width:130px" onchange="_reportDraft.activities_completed['+i+'].status=this.value">'+statusOpts(a.status)+'</select>'
-      +'<input class="inp" style="font-size:11px;padding:4px 8px;width:160px" placeholder="Notes..." value="'+esc(a.notes||'')+'" oninput="_reportDraft.activities_completed['+i+'].notes=this.value">'
-    )+'</div>'
-  ).join('');
-}
-
-function renderAttSummary(att,assess,locked){
-  const attArr=Array.isArray(att)?att:[];
-  if(!attArr.length) return '<p style="font-size:12px;color:var(--t3);margin-bottom:10px">No attendance data. <button class="btn btn-sm" onclick="refreshAttSummary()">Load from live data</button></p>';
-  return '<div id="rep-att-data" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px">'
-    +'<tr style="background:var(--bg)"><th style="padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:left;font-size:10px;color:var(--t3)">Class</th>'
-    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">Phase</th>'
-    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">P</th>'
-    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">A</th>'
-    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">E</th>'
-    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">Rate</th></tr>'
-    +attArr.map(a=>{
-      const rate=a.total?Math.round(a.P/a.total*100):0;
-      return '<tr><td style="padding:6px 8px;border-bottom:0.5px solid var(--bdr)">'+esc(a.class||'—')+'</td>'
-        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center">'+phaseTag(a.phase||'')+'</td>'
-        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;color:var(--pass-t)">'+( a.P||0)+'</td>'
-        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;color:var(--fail-t)">'+( a.A||0)+'</td>'
-        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;color:var(--warn-t)">'+( a.E||0)+'</td>'
-        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;font-weight:700;color:'+(rate>=60?'var(--pass)':'var(--fail)')+'">'+rate+'%</td></tr>';
-    }).join('')+'</table></div>';
-}
-
-function renderChallengesList(arr,locked){
-  if(!Array.isArray(arr)||!arr.length)
-    return '<p style="font-size:13px;color:var(--t3)">No challenges logged.</p>';
-  const sevBg={high:'#FEF2F2',medium:'var(--warn-bg)',low:'var(--pass-bg)'};
-  const sevCol={high:'#DC2626',medium:'var(--warn-t)',low:'var(--pass-t)'};
-  return arr.map((c,i)=>{
-    const bg=sevBg[c.severity]||sevBg.medium, col=sevCol[c.severity]||sevCol.medium;
-    return '<div style="padding:10px 12px;border-radius:6px;margin-bottom:8px;border-left:3px solid '+col+';background:'+bg+'">'
-      +'<div class="fbet mb6"><span style="font-size:10px;font-weight:700;color:'+col+'">'+esc(c.severity||'medium')+' severity</span>'
-      +(locked?'':'<button onclick="removeChallenge('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>')+'</div>'
-      +(locked
-        ?'<p style="font-size:13px;margin-bottom:4px">'+esc(c.text||'')+'</p>'
-         +'<p style="font-size:11px;color:var(--t3)">Mitigation: '+esc(c.mitigation||'—')+'</p>'
-        :'<textarea class="txa" rows="2" style="margin-bottom:6px" placeholder="Challenge..." oninput="_reportDraft.challenges['+i+'].text=this.value">'+esc(c.text)+'</textarea>'
-         +'<div class="g2"><select class="sel" onchange="_reportDraft.challenges['+i+'].severity=this.value">'
-         +['low','medium','high'].map(s2=>'<option value="'+s2+'"'+(c.severity===s2?' selected':'')+'>'+s2+'</option>').join('')
-         +'</select><input class="inp" placeholder="Mitigation..." value="'+esc(c.mitigation||'')+'" oninput="_reportDraft.challenges['+i+'].mitigation=this.value"></div>'
-      )+'</div>';
-  }).join('');
-}
-
-function renderPartnersList(arr,locked){
-  if(!Array.isArray(arr)||!arr.length)
-    return '<p style="font-size:13px;color:var(--t3)">No partner updates yet.</p>';
-  const psCol={on_track:'var(--pass-t)',delayed:'var(--warn-t)',at_risk:'#DC2626'};
-  const psBg={on_track:'var(--pass-bg)',delayed:'var(--warn-bg)',at_risk:'#FEF2F2'};
-  return arr.map((p,i)=>{
-    const col=psCol[p.status]||psCol.on_track, bg=psBg[p.status]||psBg.on_track;
-    const pObj=PARTNERS.find(x=>x.code===p.partner)||{color:'var(--or)'};
-    return '<div style="background:var(--bg);border-radius:6px;padding:10px 12px;margin-bottom:8px">'
-      +'<div class="fbet mb8"><div class="fctr g8">'
-      +'<div style="width:8px;height:8px;border-radius:50%;background:'+( pObj.color||'var(--or)')+'"></div>'
-      +'<span style="font-weight:600">'+esc(p.partner||'Partner')+'</span>'
-      +'<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:'+bg+';color:'+col+'">'+( p.status||'on_track').replace('_',' ')+'</span>'
-      +'</div>'+(locked?'':'<button onclick="removePartner('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>')+'</div>'
-      +(locked
-        ?'<p style="font-size:13px;line-height:1.6">'+esc(p.narrative||'')+'</p>'
-        :'<div class="g2 mb8"><select class="sel" onchange="_reportDraft.partner_updates['+i+'].partner=this.value">'
-         +PARTNERS.map(x=>'<option value="'+x.code+'"'+(p.partner===x.code?' selected':'')+'>'+x.code+'</option>').join('')
-         +'</select><select class="sel" onchange="_reportDraft.partner_updates['+i+'].status=this.value">'
-         +['on_track','delayed','at_risk'].map(s2=>'<option value="'+s2+'"'+(p.status===s2?' selected':'')+'>'+s2.replace('_',' ')+'</option>').join('')
-         +'</select></div>'
-         +'<textarea class="txa" rows="2" placeholder="Partner narrative..." oninput="_reportDraft.partner_updates['+i+'].narrative=this.value">'+esc(p.narrative||'')+'</textarea>'
-      )+'</div>';
-  }).join('');
-}
-
-function renderProcurementList(arr,locked){
-  if(!Array.isArray(arr)||!arr.length)
-    return '<p style="font-size:13px;color:var(--t3)">No procurement items.</p>';
-  return arr.map((p,i)=>
-    '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
-    +(locked
-      ?'<span style="flex:2;font-size:12px">'+esc(p.item||'')+'</span>'
-       +'<span style="font-size:11px;color:var(--t3)">'+esc(p.status||'')+'</span>'
-       +'<span style="font-size:11px;font-weight:600">$'+(p.amount||0)+'</span>'
-      :'<input class="inp" style="flex:2;font-size:11px;padding:5px 8px" placeholder="Item..." value="'+esc(p.item||'')+'" oninput="_reportDraft.procurement_items['+i+'].item=this.value">'
-       +'<select class="sel" style="font-size:11px;padding:4px" onchange="_reportDraft.procurement_items['+i+'].status=this.value">'
-       +['planned','in_progress','completed','cancelled'].map(s2=>'<option value="'+s2+'"'+(p.status===s2?' selected':'')+'>'+s2+'</option>').join('')+'</select>'
-       +'<input class="inp" type="number" style="width:80px;font-size:11px;padding:5px 8px" placeholder="$" value="'+(p.amount||'')+'" oninput="_reportDraft.procurement_items['+i+'].amount=parseFloat(this.value)||0">'
-       +'<button onclick="removeProcurement('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>'
-    )+'</div>'
-  ).join('');
-}
-
-function renderAchievementsList(arr,locked){
-  if(!Array.isArray(arr)||!arr.length)
-    return '<p style="font-size:13px;color:var(--t3)">No achievements logged yet.</p>';
-  const types=['milestone','event','partnership','media','other'];
-  const typeCol={milestone:'var(--pass)',event:'var(--fb1)',partnership:'#8B5CF6',media:'#EC4899',other:'var(--or)'};
-  return arr.map((a,i)=>{
-    const col=typeCol[a.type]||'var(--or)';
-    return '<div style="border-left:3px solid '+col+';padding:10px 12px;background:var(--bg);border-radius:0 6px 6px 0;margin-bottom:8px">'
-      +'<div class="fbet mb6"><span style="font-size:10px;font-weight:700;color:'+col+';text-transform:capitalize">'+esc(a.type||'achievement')+'</span>'
-      +(locked?'':'<button onclick="removeAchievement('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>')+'</div>'
-      +(locked
-        ?'<p style="font-size:13px;font-weight:500;margin-bottom:3px">'+esc(a.title||'')+'</p>'
-         +'<p style="font-size:12px;color:var(--t2)">'+esc(a.description||'')+'</p>'
-        :'<div class="g2 mb6"><input class="inp" placeholder="Title..." value="'+esc(a.title||'')+'" oninput="_reportDraft.achievements['+i+'].title=this.value">'
-         +'<select class="sel" onchange="_reportDraft.achievements['+i+'].type=this.value">'
-         +types.map(t=>'<option value="'+t+'"'+(a.type===t?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'
-         +'<textarea class="txa" rows="2" placeholder="Description..." oninput="_reportDraft.achievements['+i+'].description=this.value">'+esc(a.description||'')+'</textarea>'
-      )+'</div>';
-  }).join('');
-}
-
-function renderNextList(arr,locked){
-  if(!Array.isArray(arr)||!arr.length)
-    return '<p style="font-size:13px;color:var(--t3)">No items planned yet.</p>';
-  return arr.map((n,i)=>
-    '<div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--bdr)">'
-    +(locked
-      ?'<span style="flex:3;font-size:12px">'+esc(n.activity||'')+'</span>'
-       +'<span style="flex:1;font-size:11px;color:var(--t3)">'+esc(n.target||'—')+'</span>'
-       +'<span style="flex:1;font-size:11px;color:var(--fb1)">'+esc(n.owner||'')+'</span>'
-      :'<input class="inp" style="flex:3;font-size:11px;padding:5px 8px" placeholder="Activity..." value="'+esc(n.activity||'')+'" oninput="_reportDraft.next_month_targets['+i+'].activity=this.value">'
-       +'<input class="inp" style="flex:1;font-size:11px;padding:5px 8px" placeholder="Target..." value="'+esc(n.target||'')+'" oninput="_reportDraft.next_month_targets['+i+'].target=this.value">'
-       +'<input class="inp" style="flex:1;font-size:11px;padding:5px 8px" placeholder="Owner..." value="'+esc(n.owner||'')+'" oninput="_reportDraft.next_month_targets['+i+'].owner=this.value">'
-       +'<button onclick="removeNextItem('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>'
-    )+'</div>'
-  ).join('');
-}
-
-function reRenderSection(id,html){ const el=document.getElementById(id); if(el){el.innerHTML=html; updateRepProgress();} }
-
-function addChallenge(){ _reportDraft.challenges=_reportDraft.challenges||[]; _reportDraft.challenges.push({text:'',severity:'medium',mitigation:''}); reRenderSection('rep-challenges-list',renderChallengesList(_reportDraft.challenges,false)); }
-function removeChallenge(i){ _reportDraft.challenges.splice(i,1); reRenderSection('rep-challenges-list',renderChallengesList(_reportDraft.challenges,false)); }
-function addPartnerUpdate(){ _reportDraft.partner_updates=_reportDraft.partner_updates||[]; _reportDraft.partner_updates.push({partner:PARTNERS[0]?.code||'',narrative:'',status:'on_track'}); reRenderSection('rep-partners-list',renderPartnersList(_reportDraft.partner_updates,false)); }
-function removePartner(i){ _reportDraft.partner_updates.splice(i,1); reRenderSection('rep-partners-list',renderPartnersList(_reportDraft.partner_updates,false)); }
-function addProcurement(){ _reportDraft.procurement_items=_reportDraft.procurement_items||[]; _reportDraft.procurement_items.push({item:'',status:'planned',amount:0}); reRenderSection('rep-procurement-list',renderProcurementList(_reportDraft.procurement_items,false)); }
-function removeProcurement(i){ _reportDraft.procurement_items.splice(i,1); reRenderSection('rep-procurement-list',renderProcurementList(_reportDraft.procurement_items,false)); }
-function addAchievement(){ _reportDraft.achievements=_reportDraft.achievements||[]; _reportDraft.achievements.push({title:'',type:'milestone',description:''}); reRenderSection('rep-achievements-list',renderAchievementsList(_reportDraft.achievements,false)); }
-function removeAchievement(i){ _reportDraft.achievements.splice(i,1); reRenderSection('rep-achievements-list',renderAchievementsList(_reportDraft.achievements,false)); }
-function addNextItem(){ _reportDraft.next_month_targets=_reportDraft.next_month_targets||[]; _reportDraft.next_month_targets.push({activity:'',target:'',owner:''}); reRenderSection('rep-next-list',renderNextList(_reportDraft.next_month_targets,false)); }
-function removeNextItem(i){ _reportDraft.next_month_targets.splice(i,1); reRenderSection('rep-next-list',renderNextList(_reportDraft.next_month_targets,false)); }
-
-function collectReport(){
-  const get=id=>document.getElementById(id)?.value||'';
-  const phases={};
-  ['DT','FB1','FB2','INC'].forEach(ph=>{ phases[ph]=parseInt(document.getElementById('r-ph-'+ph)?.value)||0; });
-  return {
-    snap_participants:   parseInt(get('r-part'))||0,
-    snap_teams:          parseInt(get('r-teams'))||0,
-    snap_female_pct:     parseInt(get('r-fem'))||0,
-    snap_phases:         phases,
-    snap_override_notes: get('r-snap-notes'),
-    activities_notes:    get('r-acts-notes'),
-    att_narrative:       get('r-att-narrative'),
-    fin_budget_spent:    parseFloat(get('r-budget'))||null,
-    fin_notes:           get('r-fin-notes'),
-    success_story:       get('r-story'),
-    next_month_notes:    get('r-next-notes'),
-    prepared_by:         get('r-prep-by'),
-    preparation_date:    get('r-prep-date')||null,
-    reviewed_by_name:    get('r-rev-by'),
-    review_date:         get('r-rev-date')||null,
-    comments:            get('r-comments'),
-    snap_nat_counts:      _reportDraft.snap_nat_counts||{},
-    snap_partner_phase:   _reportDraft.snap_partner_phase||{},
-    snap_disabled_pct:    _reportDraft.snap_disabled_pct||0,
-    snap_disabled_count:  _reportDraft.snap_disabled_count||0,
-    snap_male_pct:        _reportDraft.snap_male_pct||0,
-    activities_completed: _reportDraft.activities_completed||[],
-    challenges:           _reportDraft.challenges||[],
-    partner_updates:      _reportDraft.partner_updates||[],
-    procurement_items:    _reportDraft.procurement_items||[],
-    achievements:         _reportDraft.achievements||[],
-    next_month_targets:   _reportDraft.next_month_targets||[],
-  };
-}
-
-async function saveReport(status){
-  if(!_currentReportId) return;
-  const data=collectReport();
-  data.status=status;
-  data.updated_at=new Date().toISOString();
-  if(status==='submitted') data.submitted_at=new Date().toISOString();
-  try {
-    await sb.patch('monthly_reports','id=eq.'+_currentReportId,data);
-    toast(status==='submitted'?'Report submitted ✓':'Draft saved','');
-    if(status==='submitted') nav('pg-reports');
-    else loadReports();
-  } catch(e){ toast('Save failed',e.message,'error'); }
-}
-function saveDraft(){ saveReport('draft'); }
-function submitReport(){ saveReport('submitted'); }
-
-async function deleteReport(id){
-  if(!confirm('Delete this draft report?')) return;
-  try {
-    await sb.del('monthly_reports','id=eq.'+id);
-    toast('Deleted',''); loadReports();
-  } catch(e){ toast('Error',e.message,'error'); }
-}
-
-async function archiveReport(){
-  if(!_currentReportId) return;
-  await sb.patch('monthly_reports','id=eq.'+_currentReportId,{status:'archived'}).catch(()=>{});
-  toast('Archived',''); nav('pg-reports');
-}
-
-async function refreshSnap(){
-  const snap=await autoSnap();
-  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
-  set('r-part',snap.participants); set('r-teams',snap.teams); set('r-fem',snap.femalePct);
-  set('r-dis', snap.disabledPct);
-  ['DT','FB1','FB2','INC'].forEach(ph=>set('r-ph-'+ph,snap.phases[ph]||0));
-  // Update draft with new rich data
-  _reportDraft.snap_nat_counts    = snap.natCounts;
-  _reportDraft.snap_partner_phase = snap.partnerPhase;
-  _reportDraft.snap_disabled_pct  = snap.disabledPct;
-  _reportDraft.snap_disabled_count= snap.disabledCount;
-  _reportDraft.snap_male_pct      = snap.malePct;
-  // Re-render live sections
-  const natEl = document.getElementById('rep-nat-breakdown');
-  if(natEl) natEl.innerHTML = renderNatBreakdown(snap.natCounts, snap.participants||1);
-  const matEl = document.getElementById('rep-partner-matrix');
-  if(matEl) matEl.innerHTML = renderPartnerMatrix(snap.partnerPhase);
-  toast('Refreshed','Live data loaded'); updateRepProgress();
-}
-
-async function refreshAttSummary(){
-  try {
-    const [attRows,allCls]=await Promise.all([
-      sb.get('attendance','select=class_id,status,user_id'),
-      sb.get('classes','select=id,name,phase_code'),
-    ]);
-    const clsMap={};
-    allCls.forEach(c=>{ clsMap[c.id]={name:c.name,phase:c.phase_code}; });
-    const byClass={};
-    attRows.forEach(a=>{
-      const c=clsMap[a.class_id]; if(!c) return;
-      if(!byClass[a.class_id]) byClass[a.class_id]={class:c.name,phase:c.phase,P:0,A:0,E:0,total:0};
-      byClass[a.class_id][a.status]=(byClass[a.class_id][a.status]||0)+1;
-      byClass[a.class_id].total++;
-    });
-    _reportDraft.att_summary=Object.values(byClass);
-    const el=document.getElementById('rep-att-data');
-    if(el) el.innerHTML=renderAttSummary(_reportDraft.att_summary,[],false);
-    toast('Attendance refreshed','');
-  } catch(e){ toast('Error',e.message,'error'); }
-}
-
-if(!sb.del) sb.del=async(table,qs)=>{
-  const res=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+qs,
-    {method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+sb._token,'Content-Type':'application/json','Prefer':'return=representation'}});
-  if(!res.ok) throw new Error(await res.text());
-};
-
-
-
-function renderMiniBar(label, pct, color){
-  pct = Math.min(Math.max(pct||0, 0), 100);
-  return '<div>'
-    +'<div class="fbet mb4" style="font-size:12px"><span>'+label+'</span><span style="font-weight:600;color:'+color+'">'+pct+'%</span></div>'
-    +'<div class="pb"><div class="pf" style="width:'+pct+'%;background:'+color+'"></div></div>'
-    +'</div>';
-}
-
-function renderNatBreakdown(natCounts, total){
-  const entries = Object.entries(natCounts).sort((a,b)=>b[1]-a[1]);
-  if(!entries.length) return '<p style="font-size:12px;color:var(--t3)">No nationality data</p>';
-  const natColors = {'Lebanese':'#0EA5E9','Syrian':'#7C3AED','Palestinian (PRL)':'#10B981','Palestinian (PRS)':'#F59E0B'};
-  const max = entries[0][1]||1;
-  return entries.map(([nat,count])=>{
-    const pct = total>0 ? Math.round(count/total*100) : 0;
-    const col = natColors[nat]||'#9E9B94';
-    return '<div>'
-      +'<div class="fbet mb4" style="font-size:12px">'
-      +'<div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:'+col+'"></div><span>'+nat+'</span></div>'
-      +'<span style="font-weight:600">'+count+' ('+pct+'%)</span></div>'
-      +'<div class="pb"><div class="pf" style="width:'+Math.round(count/max*100)+'%;background:'+col+'"></div></div>'
-      +'</div>';
-  }).join('');
-}
-
-function renderPartnerMatrix(partnerPhase){
-  const PHASES = ['IE','DT','FB1','FB2','INC'];
-  const partners = Object.keys(partnerPhase);
-  if(!partners.length) return '<p style="font-size:12px;color:var(--t3)">No partner achievement data. Click Refresh.</p>';
-  const pctColor2 = p => p>=80?'#166534':p>=50?'#854d0e':'#991b1b';
-  const pctBg2    = p => p>=80?'#dcfce7':p>=50?'#fef9c3':'#fee2e2';
-  let html = '<table style="width:100%;border-collapse:collapse;font-size:11px">'
-    +'<thead><tr style="background:var(--bg)">'
-    +'<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Partner</th>';
-  PHASES.forEach(ph=>html+='<th style="padding:6px 4px;text-align:center;border-bottom:1px solid var(--bdr);min-width:60px">'+phaseTag(ph)+'</th>');
-  html += '<th style="padding:6px 8px;text-align:center;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Total</th></tr></thead><tbody>';
-  partners.forEach(code=>{
-    const pd = partnerPhase[code]||{};
-    const pObj = PARTNERS.find(x=>x.code===code)||{color:'var(--or)'};
-    html += '<tr><td style="padding:6px 8px;border-bottom:0.5px solid var(--bdr)">'
-      +'<div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:'+(pObj.color||'var(--or)')+'"></div>'
-      +'<span style="font-weight:600">'+code+'</span></div></td>';
-    PHASES.forEach(ph=>{
-      const d = pd[ph]||{a:0,t:0};
-      if(!d.t){ html+='<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;color:var(--bdr)">—</td>'; return; }
-      const pct = Math.round(d.a/d.t*100);
-      html += '<td style="padding:4px;border-bottom:0.5px solid var(--bdr)">'
-        +'<div style="background:'+pctBg2(pct)+';border-radius:4px;padding:4px 3px;text-align:center">'
-        +'<div style="font-size:11px;font-weight:700;color:'+pctColor2(pct)+'">'+d.a+'/'+d.t+'</div>'
-        +'<div style="font-size:9px;font-weight:700;color:'+pctColor2(pct)+'">'+pct+'%</div>'
-        +'</div></td>';
-    });
-    const tot = pd.total||{a:0,t:0};
-    const tp  = tot.t?Math.round(tot.a/tot.t*100):0;
-    html += '<td style="padding:6px 8px;border-bottom:0.5px solid var(--bdr);text-align:center">'
-      +'<div style="font-weight:700;font-size:12px;color:'+pctColor2(tp)+'">'+tot.a+'/'+tot.t+'</div>'
-      +'<div style="font-size:10px;font-weight:700;color:'+pctColor2(tp)+'">'+tp+'%</div>'
-      +'</td></tr>';
-  });
-  html += '</tbody></table>';
-  return html;
-}
-
-async function openReport(id) {
-  _currentReportId = id;
-  nav('pg-report-edit');
-  const el = document.getElementById('report-edit-content');
-  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>';
-  try {
-    const rows = await sb.get('monthly_reports','id=eq.'+id);
-    const r = rows[0]; if(!r) return;
-    _reportDraft = JSON.parse(JSON.stringify(r));
-    const locked = r.status==='submitted'||r.status==='archived';
-    const dis = locked ? ' disabled' : '';
-
-    const scBadge = locked
-      ? '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;background:var(--pass-bg);color:var(--pass-t)">Submitted</span>'
-      : '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;background:var(--warn-bg);color:var(--warn-t)">Draft</span>';
-
-    const phases = r.snap_phases||{};
-    const partners = r.snap_partners||{};
-
-    el.innerHTML =
-      // ── Top bar ──
-      '<div class="fbet mb20" style="flex-wrap:wrap;gap:8px">'
-      +'<div class="fctr g12">'
-      +'<button class="btn btn-sm" onclick="nav(\"pg-reports\")" style="font-size:12px">← Back</button>'
-      +'<div>'
-      +'<h2 style="font-size:17px;font-weight:700;margin-bottom:2px">'+r.report_label+'</h2>'
-      +'<div class="fctr g8">'+scBadge
-      +(r.prepared_by?'<span style="font-size:11px;color:var(--t3)">· Prepared by '+r.prepared_by+'</span>':'')
-      +'</div></div></div>'
-      +'<div class="fctr g8">'
-      +(locked?''
-        :'<button class="btn" style="font-size:12px" onclick="saveDraft()">Save draft</button>')
-      +'<button class="btn" style="font-size:12px" onclick="downloadReportPDF()">⬇ Download PDF</button>'
-      +(locked?''
-        :'<button class="btn-p" style="font-size:12px" onclick="submitReport()">Submit report</button>')
-      +'</div></div>'
-
-      // ── Completeness bar (only in edit mode) ──
-      +(locked?''
-        :'<div style="background:var(--bg);border-radius:6px;padding:8px 12px;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px">'
-        +'<div style="flex:1;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden"><div id="rep-pct-bar" style="height:4px;background:var(--or);border-radius:2px;width:0%;transition:width .4s"></div></div>'
-        +'<span id="rep-pct-lbl" style="font-size:11px;font-weight:600;color:var(--t3);white-space:nowrap">0% complete</span>'
-        +'</div>'
-      )
-
-      // ══ SECTION 1: Program Snapshot ══
-      +rSec('Program Snapshot',
-        '<div class="g4 mb12">'
-        +rStat('Total participants', r.snap_participants||0, 'r-part', 'number', locked)
-        +rStat('Active teams', r.snap_teams||0, 'r-teams', 'number', locked)
-        +rStat('Female', (r.snap_female_pct||0)+'%', 'r-fem', 'number', locked)
-        +rStat('PwD', (r.snap_disabled_pct||0)+'%', 'r-dis', 'number', locked)
-        +'</div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
-        +['DT','FB1','FB2','INC'].map(ph=>'<div style="flex:1;min-width:80px;background:var(--bg);border-radius:6px;padding:8px 10px;border-left:3px solid '+(PHASE_COLORS_PLACEHOLDER[ph])+'">'
-          +'<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:3px">'+ph+'</div>'
-          +(locked
-            ?'<div style="font-size:18px;font-weight:700">'+(phases[ph]||0)+'</div><div style="font-size:10px;color:var(--t3)">teams</div>'
-            :'<input id="r-ph-'+ph+'" type="number" class="inp rep-field" value="'+(phases[ph]||0)+'" style="font-size:16px;font-weight:700;padding:3px 6px;width:100%">'
-          )+'</div>'
-        ).join('')
-        +'</div>'
-        +'<div class="g2 mb14">'
-        +'<div><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Nationality breakdown</div>'
-        +'<div id="rep-nat-breakdown">'+renderNatBreakdown(r.snap_nat_counts||{}, r.snap_participants||1)+'</div></div>'
-        +'<div><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Gender &amp; disability</div>'
-        +'<div style="display:flex;flex-direction:column;gap:6px">'
-        +renderMiniBar('Female', r.snap_female_pct||0, '#EC4899')
-        +renderMiniBar('Male', 100-(r.snap_female_pct||0), 'var(--fb1)')
-        +renderMiniBar('PwD', r.snap_disabled_pct||0, 'var(--warn)')
-        +'</div></div>'
-        +'</div>'
-        +'<div style="margin-bottom:14px;overflow-x:auto">'
-        +'<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Achievement per partner per phase</div>'
-        +'<div id="rep-partner-matrix">'+renderPartnerMatrix(r.snap_partner_phase||{})+'</div>'
-        +'</div>'
-        +rTextarea('Program notes / narrative', 'r-snap-notes', r.snap_override_notes, locked, 2)
-        +(locked?''
-          :'<button class="btn btn-sm" style="margin-top:6px" onclick="refreshSnap()">↺ Refresh from live data</button>')
-      )
-
-      // ══ SECTION 2: Workplan Activities ══
-      +rSec('Workplan Activities',
-        '<div id="rep-acts-list">'+renderActsList(r.activities_completed,locked)+'</div>'
-        +rTextarea('Notes on activities', 'r-acts-notes', r.activities_notes, locked, 2)
-      )
-
-      // ══ SECTION 3: Attendance & Assessments ══
-      +rSec('Attendance & Assessment',
-        '<div id="rep-att-data">'+renderAttSummary(r.att_summary,r.assess_summary,locked)+'</div>'
-        +rTextarea('Narrative', 'r-att-narrative', r.att_narrative, locked, 2)
-        +(locked?'':'<button class="btn btn-sm" style="margin-top:6px" onclick="refreshAttSummary()">↺ Refresh from live data</button>')
-      )
-
-      // ══ SECTION 4: Challenges & Risks ══
-      +rSec('Challenges & Risks',
-        '<div id="rep-challenges-list">'+renderChallengesList(r.challenges,locked)+'</div>'
-        +(locked?''
-          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addChallenge()">+ Add challenge</button>')
-      )
-
-      // ══ SECTION 5: Partner Updates ══
-      +rSec('Partner Updates',
-        '<div id="rep-partners-list">'+renderPartnersList(r.partner_updates,locked)+'</div>'
-        +(locked?''
-          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addPartnerUpdate()">+ Add partner</button>')
-      )
-
-      // ══ SECTION 6: Financial & Procurement ══
-      +rSec('Financial & Procurement',
-        '<div class="g2 mb12">'
-        +(locked
-          ?'<div class="stat"><div class="slbl">Budget spent (USD)</div><div style="font-size:18px;font-weight:700">$'+( r.fin_budget_spent||0).toLocaleString()+'</div></div>'
-          +'<div class="stat"><div class="slbl">Notes</div><div style="font-size:13px">'+( r.fin_notes||'—')+'</div></div>'
-          :'<div><label class="flbl">Budget spent (USD)</label><input class="inp rep-field" id="r-budget" type="number" placeholder="0" value="'+(r.fin_budget_spent||'')+'"></div>'
-          +'<div><label class="flbl">Financial notes</label><input class="inp rep-field" id="r-fin-notes" placeholder="Notes..." value="'+esc(r.fin_notes)+'"></div>'
-        )+'</div>'
-        +'<div id="rep-procurement-list">'+renderProcurementList(r.procurement_items,locked)+'</div>'
-        +(locked?''
-          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addProcurement()">+ Add item</button>')
-      )
-
-      // ══ SECTION 7: Achievements ══
-      +rSec('Key Achievements',
-        '<div id="rep-achievements-list">'+renderAchievementsList(r.achievements,locked)+'</div>'
-        +(locked?''
-          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addAchievement()">+ Add achievement</button>')
-        +rTextarea('Success story or participant case', 'r-story', r.success_story, locked, 3)
-      )
-
-      // ══ SECTION 8: Next Period Plan ══
-      +rSec('Next Period Plan',
-        '<div id="rep-next-list">'+renderNextList(r.next_month_targets,locked)+'</div>'
-        +(locked?''
-          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addNextItem()">+ Add item</button>')
-        +rTextarea('Additional notes', 'r-next-notes', r.next_month_notes, locked, 2)
-      )
-
-      // ══ SECTION 9: Sign-off ══
-      +rSec('Sign-off',
-        '<div class="g2 mb10">'
-        +rField('Prepared by','r-prep-by','text',r.prepared_by,locked)
-        +rField('Preparation date','r-prep-date','date',r.preparation_date,locked)
-        +'</div><div class="g2 mb10">'
-        +rField('Reviewed by','r-rev-by','text',r.reviewed_by_name,locked)
-        +rField('Review date','r-rev-date','date',r.review_date,locked)
-        +'</div>'
-        +rTextarea('Comments / ILO notes','r-comments',r.comments,locked,2)
-      )
-
-      // ── Bottom bar ──
-      +'<div class="fbet" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--bdr)">'
-      +(locked
-        ?'<button class="btn" onclick="archiveReport()" style="font-size:12px">'+( r.status==='archived'?'Archived':'Archive report')+'</button>'
-        :'<button class="btn" onclick="saveDraft()" style="font-size:12px">Save draft</button>'
-      )
-      +'<div class="fctr g8">'
-      +'<button class="btn" onclick="downloadReportPDF()" style="font-size:12px">⬇ Download PDF</button>'
-      +(locked?''
-        :'<button class="btn-p" onclick="submitReport()" style="font-size:12px">Submit report</button>')
-      +'</div></div>';
-
-    updateRepProgress();
-    document.querySelectorAll('.rep-field').forEach(f=>f.addEventListener('input',updateRepProgress));
-
-  } catch(e) {
-    el.innerHTML = '<div class="card">'+emptyState('⚠','Error',e.message)+'</div>';
-    console.error('openReport:',e);
-  }
-}
-
-// placeholder replaced at runtime
-const PHASE_COLORS_PLACEHOLDER = {DT:'var(--dt)',FB1:'var(--fb1)',FB2:'var(--fb2)',INC:'var(--inc)'};
-
-// ── Section & field helpers ──
-function rSec(title, body){
-  return '<div class="card mb15">'
-    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);padding-bottom:10px;margin-bottom:14px;border-bottom:1px solid var(--bdr)">'+title+'</div>'
-    +body+'</div>';
-}
-function rStat(label, val, id, type, locked){
-  return locked
-    ? '<div class="stat"><div class="slbl">'+label+'</div><div style="font-size:18px;font-weight:700">'+val+'</div></div>'
-    : '<div><label class="flbl">'+label+'</label><input class="inp rep-field" id="'+id+'" type="'+type+'" value="'+val+'"></div>';
-}
-function rField(label, id, type, val, locked){
-  return locked
-    ? '<div><div class="flbl">'+label+'</div><p style="font-size:13px;font-weight:500">'+( val||'—')+'</p></div>'
-    : '<div><label class="flbl">'+label+'</label><input class="inp rep-field" id="'+id+'" type="'+type+'" value="'+esc(val)+'"></div>';
-}
-function rTextarea(label, id, val, locked, rows){
-  return locked
-    ? (val?'<div style="margin-top:10px"><div class="flbl">'+label+'</div><p style="font-size:13px;color:var(--t2);line-height:1.6">'+esc(val)+'</p></div>':'')
-    : '<div style="margin-top:10px"><label class="flbl">'+label+'</label>'
-      +'<textarea class="txa rep-field" id="'+id+'" rows="'+rows+'">'+esc(val)+'</textarea></div>';
-}
-
-// ── PDF export ──
-async function downloadReportPDF(){
-  if(!_currentReportId) return;
-  const rows = await sb.get('monthly_reports','id=eq.'+_currentReportId).catch(()=>[]);
-  const r = rows[0]||_reportDraft;
-
-  const phases = r.snap_phases||{};
-  const challenges = Array.isArray(r.challenges)?r.challenges:[];
-  const partners = Array.isArray(r.partner_updates)?r.partner_updates:[];
-  const achievements = Array.isArray(r.achievements)?r.achievements:[];
-  const nextItems = Array.isArray(r.next_month_targets)?r.next_month_targets:[];
-  const acts = Array.isArray(r.activities_completed)?r.activities_completed:[];
-  const procurement = Array.isArray(r.procurement_items)?r.procurement_items:[];
-  const att = Array.isArray(r.att_summary)?r.att_summary:[];
-  const fmtDate = d=>d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'—';
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>${r.report_label} — GIL 2026 Progress Report</title>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;color:#1a1a2e;background:#fff;line-height:1.5}
-  .page{max-width:210mm;margin:0 auto;padding:20mm 18mm}
-  /* Header */
-  .rpt-header{border-bottom:3px solid #1a56db;padding-bottom:14px;margin-bottom:20px}
-  .rpt-logo-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .rpt-org{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1a56db}
-  .rpt-ref{font-size:8pt;color:#6b7280;font-family:monospace}
-  .rpt-title{font-size:18pt;font-weight:700;color:#1a1a2e;margin-bottom:3px}
-  .rpt-sub{font-size:10pt;color:#6b7280}
-  .rpt-meta{display:flex;gap:24px;margin-top:10px;font-size:9pt;color:#6b7280}
-  .rpt-meta span b{color:#1a1a2e}
-  /* Sections */
-  .sec{margin-bottom:18px;page-break-inside:avoid}
-  .sec-title{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px;margin-bottom:10px}
-  /* KPI row */
-  .kpi-row{display:flex;gap:12px;margin-bottom:12px}
-  .kpi{flex:1;background:#f8faff;border:1px solid #e0e7ff;border-radius:6px;padding:10px 12px;text-align:center}
-  .kpi-val{font-size:20pt;font-weight:700;color:#1a56db}
-  .kpi-lbl{font-size:8pt;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
-  /* Phase chips */
-  .phase-row{display:flex;gap:8px;margin-bottom:12px}
-  .phase-chip{flex:1;padding:6px 8px;border-radius:5px;text-align:center;font-size:8pt;font-weight:700}
-  .ph-dt{background:#EFF6FF;color:#1D4ED8;border-left:3px solid #1D4ED8}
-  .ph-fb1{background:#F0FDF4;color:#166534;border-left:3px solid #16A34A}
-  .ph-fb2{background:#FFF7ED;color:#9A3412;border-left:3px solid #EA580C}
-  .ph-inc{background:#F5F3FF;color:#5B21B6;border-left:3px solid #7C3AED}
-  /* Tables */
-  table{width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:8px}
-  th{background:#f3f4f6;padding:6px 8px;text-align:left;font-weight:600;font-size:8pt;text-transform:uppercase;color:#6b7280;border-bottom:2px solid #e5e7eb}
-  td{padding:6px 8px;border-bottom:1px solid #f3f4f6;vertical-align:top}
-  tr:last-child td{border-bottom:none}
-  /* Pills */
-  .pill{display:inline-block;font-size:8pt;font-weight:600;padding:1px 7px;border-radius:10px}
-  .pill-pass{background:#dcfce7;color:#166534}
-  .pill-warn{background:#fef9c3;color:#854d0e}
-  .pill-fail{background:#fee2e2;color:#991b1b}
-  .pill-info{background:#dbeafe;color:#1e40af}
-  /* Challenge cards */
-  .chal{padding:8px 10px;border-radius:5px;margin-bottom:6px;border-left:3px solid}
-  .chal-h{border-color:#dc2626;background:#fef2f2}
-  .chal-m{border-color:#d97706;background:#fffbeb}
-  .chal-l{border-color:#16a34a;background:#f0fdf4}
-  /* Partner */
-  .partner-row{padding:8px 0;border-bottom:1px solid #f3f4f6}
-  /* Achievement */
-  .ach{padding:8px 10px;margin-bottom:6px;background:#f8faff;border-radius:5px;border-left:3px solid #1a56db}
-  /* Next items */
-  .next-item{display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid #f3f4f6;font-size:9pt}
-  /* Narrative */
-  .narrative{font-size:10pt;color:#374151;line-height:1.65;background:#fafafa;border-left:3px solid #e5e7eb;padding:8px 12px;border-radius:0 5px 5px 0;margin-bottom:8px}
-  /* Sign-off table */
-  .signoff{display:flex;gap:40px;margin-top:10px}
-  .signoff-col{flex:1;border-top:1px solid #1a1a2e;padding-top:6px;font-size:8pt}
-  .signoff-col b{display:block;font-size:10pt;margin-bottom:2px}
-  /* Footer */
-  .rpt-footer{margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:8pt;color:#9ca3af;display:flex;justify-content:space-between}
-  @media print{
-    body{font-size:10pt}
-    .page{padding:12mm 14mm}
-    .sec{page-break-inside:avoid}
-  }
-</style></head><body><div class="page">
-
-<!-- HEADER -->
-<div class="rpt-header">
-  <div class="rpt-logo-row">
-    <div class="rpt-org">INJAZ Lebanon · GIL 2026–2027</div>
-    <div class="rpt-ref">LEBA/PCA2023612/PD20261705</div>
-  </div>
-  <div class="rpt-title">${r.report_label}</div>
-  <div class="rpt-sub">Progress Report — Generation of Innovation Leaders</div>
-  <div class="rpt-meta">
-    <span><b>Prepared by:</b> ${r.prepared_by||'—'}</span>
-    <span><b>Date:</b> ${fmtDate(r.preparation_date)}</span>
-    <span><b>Reviewed by:</b> ${r.reviewed_by_name||'—'}</span>
-    <span><b>Status:</b> ${(r.status||'draft').charAt(0).toUpperCase()+(r.status||'draft').slice(1)}</span>
-  </div>
-</div>
-
-<!-- S1: PROGRAM SNAPSHOT -->
-<div class="sec">
-  <div class="sec-title">1. Program Snapshot</div>
-  <div class="kpi-row">
-    <div class="kpi"><div class="kpi-val">${r.snap_participants||0}</div><div class="kpi-lbl">Participants</div></div>
-    <div class="kpi"><div class="kpi-val">${r.snap_teams||0}</div><div class="kpi-lbl">Active Teams</div></div>
-    <div class="kpi"><div class="kpi-val">${r.snap_female_pct||0}%</div><div class="kpi-lbl">Female</div></div>
-    <div class="kpi"><div class="kpi-val">${Object.values(phases).reduce((s,v)=>s+v,0)}</div><div class="kpi-lbl">Total Teams across phases</div></div>
-  </div>
-  <div class="phase-row">
-    <div class="phase-chip ph-dt"><div style="font-size:14pt">${phases.DT||0}</div>Design Thinking</div>
-    <div class="phase-chip ph-fb1"><div style="font-size:14pt">${phases.FB1||0}</div>FB Stage 1</div>
-    <div class="phase-chip ph-fb2"><div style="font-size:14pt">${phases.FB2||0}</div>FB Stage 2</div>
-    <div class="phase-chip ph-inc"><div style="font-size:14pt">${phases.INC||0}</div>Incubation</div>
-  </div>
-  ${r.snap_override_notes?'<div class="narrative">'+r.snap_override_notes+'</div>':''}
-</div>
-
-<!-- S2: WORKPLAN ACTIVITIES -->
-${acts.length?`<div class="sec">
-  <div class="sec-title">2. Workplan Activities</div>
-  <table>
-    <tr><th style="width:50%">Activity</th><th style="width:15%">Category</th><th style="width:15%">Status</th><th>Notes</th></tr>
-    ${acts.map(a=>`<tr>
-      <td>${a.title||''}</td>
-      <td style="color:#6b7280">${a.category||''}</td>
-      <td><span class="pill ${a.status==='completed'?'pill-pass':a.status==='in_progress'?'pill-info':a.status==='delayed'?'pill-fail':'pill-warn'}">${(a.status||'—').replace('_',' ')}</span></td>
-      <td style="color:#6b7280">${a.notes||''}</td>
-    </tr>`).join('')}
-  </table>
-  ${r.activities_notes?'<div class="narrative">'+r.activities_notes+'</div>':''}
-</div>`:''}
-
-<!-- S3: ATTENDANCE & ASSESSMENT -->
-${att.length?`<div class="sec">
-  <div class="sec-title">3. Attendance & Assessment</div>
-  <table>
-    <tr><th>Class</th><th>Phase</th><th style="text-align:center">Present</th><th style="text-align:center">Absent</th><th style="text-align:center">Excused</th><th style="text-align:center">Rate</th></tr>
-    ${att.map(a=>{const rate=a.total?Math.round(a.P/a.total*100):0;return`<tr>
-      <td>${a.class||'—'}</td><td>${a.phase||''}</td>
-      <td style="text-align:center;color:#166534">${a.P||0}</td>
-      <td style="text-align:center;color:#991b1b">${a.A||0}</td>
-      <td style="text-align:center;color:#854d0e">${a.E||0}</td>
-      <td style="text-align:center"><span class="pill ${rate>=60?'pill-pass':'pill-fail'}">${rate}%</span></td>
-    </tr>`}).join('')}
-  </table>
-  ${r.att_narrative?'<div class="narrative">'+r.att_narrative+'</div>':''}
-</div>`:''}
-
-<!-- S4: CHALLENGES & RISKS -->
-${challenges.length?`<div class="sec">
-  <div class="sec-title">4. Challenges & Risks</div>
-  ${challenges.map(c=>`<div class="chal chal-${(c.severity||'m')[0]}">
-    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-      <b>${c.text||''}</b>
-      <span class="pill ${c.severity==='high'?'pill-fail':c.severity==='medium'?'pill-warn':'pill-pass'}">${c.severity||'medium'}</span>
-    </div>
-    ${c.mitigation?'<div style="font-size:9pt;color:#6b7280">Mitigation: '+c.mitigation+'</div>':''}
-  </div>`).join('')}
-</div>`:''}
-
-<!-- S5: PARTNER UPDATES -->
-${partners.length?`<div class="sec">
-  <div class="sec-title">5. Partner Updates</div>
-  ${partners.map(p=>`<div class="partner-row">
-    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-      <b>${p.partner||''}</b>
-      <span class="pill ${p.status==='on_track'?'pill-pass':p.status==='delayed'?'pill-warn':'pill-fail'}">${(p.status||'on_track').replace('_',' ')}</span>
-    </div>
-    <div style="font-size:10pt;color:#374151">${p.narrative||''}</div>
-  </div>`).join('')}
-</div>`:''}
-
-<!-- S6: FINANCIAL -->
-${(r.fin_budget_spent||r.fin_notes||procurement.length)?`<div class="sec">
-  <div class="sec-title">6. Financial & Procurement</div>
-  <table>
-    <tr><th>Item</th><th>Status</th><th style="text-align:right">Amount (USD)</th><th>Notes</th></tr>
-    <tr><td><b>Budget spent this period</b></td><td><span class="pill pill-info">reported</span></td><td style="text-align:right"><b>$${(r.fin_budget_spent||0).toLocaleString()}</b></td><td>${r.fin_notes||''}</td></tr>
-    ${procurement.map(p=>`<tr>
-      <td>${p.item||''}</td>
-      <td><span class="pill pill-info">${p.status||''}</span></td>
-      <td style="text-align:right">$${(p.amount||0).toLocaleString()}</td>
-      <td>${p.notes||''}</td>
-    </tr>`).join('')}
-  </table>
-</div>`:''}
-
-<!-- S7: ACHIEVEMENTS -->
-${achievements.length||r.success_story?`<div class="sec">
-  <div class="sec-title">7. Key Achievements</div>
-  ${achievements.map(a=>`<div class="ach">
-    <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-      <b>${a.title||''}</b>
-      <span style="font-size:8pt;color:#6b7280;text-transform:capitalize">${a.type||''}</span>
-    </div>
-    <div style="font-size:9pt;color:#374151">${a.description||''}</div>
-  </div>`).join('')}
-  ${r.success_story?'<div style="margin-top:8px"><b style="font-size:9pt">Success Story</b><div class="narrative">'+r.success_story+'</div></div>':''}
-</div>`:''}
-
-<!-- S8: NEXT PERIOD PLAN -->
-${nextItems.length||r.next_month_notes?`<div class="sec">
-  <div class="sec-title">8. Next Period Plan</div>
-  ${nextItems.map(n=>`<div class="next-item">
-    <span style="flex:3">${n.activity||''}</span>
-    <span style="flex:1;color:#6b7280">Target: ${n.target||'—'}</span>
-    <span style="flex:1;color:#1a56db;font-weight:500">${n.owner||''}</span>
-  </div>`).join('')}
-  ${r.next_month_notes?'<div class="narrative" style="margin-top:8px">'+r.next_month_notes+'</div>':''}
-</div>`:''}
-
-<!-- S9: SIGN-OFF -->
-<div class="sec" style="margin-top:24px">
-  <div class="sec-title">Sign-off</div>
-  ${r.comments?'<div class="narrative" style="margin-bottom:14px">'+r.comments+'</div>':''}
-  <div class="signoff">
-    <div class="signoff-col"><b>${r.prepared_by||'__________________'}</b>Prepared by<br><span style="color:#6b7280">${fmtDate(r.preparation_date)}</span></div>
-    <div class="signoff-col"><b>${r.reviewed_by_name||'__________________'}</b>Reviewed by<br><span style="color:#6b7280">${fmtDate(r.review_date)}</span></div>
-    <div class="signoff-col"><b>__________________</b>ILO Representative<br><span style="color:#6b7280">Date: ___________</span></div>
-  </div>
-</div>
-
-<!-- FOOTER -->
-<div class="rpt-footer">
-  <span>INJAZ Lebanon · GIL 2026–2027 · LEBA/PCA2023612/PD20261705</span>
-  <span>Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span>
-</div>
-
-</div>`;
-
-  const win = window.open('','_blank');
-  if(!win){ toast('Popup blocked','Please allow popups for this site','error'); return; }
-  win.document.write(html);
-  win.document.close();
-  win.onload = ()=>{ win.focus(); win.print(); };
-  toast('PDF ready','Print dialog opened — save as PDF');
-}
-
-// Catch any top-level errors
-
-document.addEventListener('DOMContentLoaded', function(){
-  tryRestoreSession();
-});
+tryRestoreSession();
 </script>
 </body>
 </html>
