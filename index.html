@@ -4417,6 +4417,63 @@ async function autoSnap() {
   } catch(e){ return {participants:0,teams:0,femalePct:0,phases:{},partners:{}}; }
 }
 
+
+function renderMiniBar(label, pct, color){
+  pct = Math.min(Math.max(pct||0,0),100);
+  return '<div><div class="fbet mb4" style="font-size:12px"><span>'+label+'</span>'
+    +'<span style="font-weight:600;color:'+color+'">'+pct+'%</span></div>'
+    +'<div class="pb"><div class="pf" style="width:'+pct+'%;background:'+color+'"></div></div></div>';
+}
+
+function renderNatBreakdown(natCounts, total){
+  const entries=Object.entries(natCounts||{}).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return '<p style="font-size:12px;color:var(--t3)">No nationality data</p>';
+  const cols={'Lebanese':'#0EA5E9','Syrian':'#7C3AED','Palestinian (PRL)':'#10B981','Palestinian (PRS)':'#F59E0B'};
+  const max=entries[0][1]||1;
+  return entries.map(([nat,count])=>{
+    const pct=total>0?Math.round(count/total*100):0;
+    const col=cols[nat]||'#9E9B94';
+    return '<div><div class="fbet mb4" style="font-size:12px">'
+      +'<div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:'+col+'"></div><span>'+nat+'</span></div>'
+      +'<span style="font-weight:600">'+count+' ('+pct+'%)</span></div>'
+      +'<div class="pb"><div class="pf" style="width:'+Math.round(count/max*100)+'%;background:'+col+'"></div></div></div>';
+  }).join('');
+}
+
+function renderPartnerMatrix(partnerPhase){
+  const PHASES=['IE','DT','FB1','FB2','INC'];
+  const partners=Object.keys(partnerPhase||{});
+  if(!partners.length) return '<p style="font-size:12px;color:var(--t3)">No data. Click Refresh.</p>';
+  const pc=p=>p>=80?'#166534':p>=50?'#854d0e':'#991b1b';
+  const bg=p=>p>=80?'#dcfce7':p>=50?'#fef9c3':'#fee2e2';
+  let h='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--bg)">'
+    +'<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-size:10px;color:var(--t3)">Partner</th>';
+  PHASES.forEach(ph=>h+='<th style="padding:6px 4px;text-align:center;border-bottom:1px solid var(--bdr);min-width:55px">'+phaseTag(ph)+'</th>');
+  h+='<th style="padding:6px 8px;text-align:center;border-bottom:1px solid var(--bdr);font-size:10px;color:var(--t3)">Total</th></tr></thead><tbody>';
+  partners.forEach(code=>{
+    const pd=partnerPhase[code]||{};
+    const pObj=PARTNERS.find(x=>x.code===code)||{color:'var(--or)'};
+    h+='<tr><td style="padding:6px 8px;border-bottom:0.5px solid var(--bdr)">'
+      +'<div class="fctr g6"><div style="width:7px;height:7px;border-radius:50%;background:'+(pObj.color||'var(--or)')+'"></div>'
+      +'<span style="font-weight:600">'+code+'</span></div></td>';
+    PHASES.forEach(ph=>{
+      const d=pd[ph]||{a:0,t:0};
+      if(!d.t){h+='<td style="text-align:center;padding:6px 4px;border-bottom:0.5px solid var(--bdr);color:var(--bdr)">—</td>';return;}
+      const pct=Math.round(d.a/d.t*100);
+      h+='<td style="padding:4px;border-bottom:0.5px solid var(--bdr)"><div style="background:'+bg(pct)+';border-radius:4px;padding:4px 3px;text-align:center">'
+        +'<div style="font-size:11px;font-weight:700;color:'+pc(pct)+'">'+d.a+'/'+d.t+'</div>'
+        +'<div style="font-size:9px;font-weight:700;color:'+pc(pct)+'">'+pct+'%</div></div></td>';
+    });
+    const tot=pd.total||{a:0,t:0};
+    const tp=tot.t?Math.round(tot.a/tot.t*100):0;
+    h+='<td style="text-align:center;padding:6px 8px;border-bottom:0.5px solid var(--bdr)">'
+      +'<div style="font-weight:700;font-size:12px;color:'+pc(tp)+'">'+tot.a+'/'+tot.t+'</div>'
+      +'<div style="font-size:10px;color:'+pc(tp)+'">'+tp+'%</div></td></tr>';
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
 async function openReport(id) {
   _currentReportId = id;
   nav('pg-report-edit');
