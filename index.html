@@ -4405,54 +4405,63 @@ async function autoSnap() {
       sb.get('team_members','select=user_id,team_id').catch(()=>[]),
     ]);
 
-    // Registered = all applications submitted (any status)
-    const regTotal   = appRows.length;
-    const regMembers = appRows.reduce((s,a)=>s+(Array.isArray(a.members)?a.members.length+1:1),0);
-    // Count gender/nat from applications members
-    let regFemale=0, regPRL=0, regPRS=0, regSyrian=0, regLebanese=0, regPwD=0;
+    // ── APPLIED: from applications table (all who submitted)
+    let regFemale=0,regPRL=0,regPRS=0,regSyrian=0,regLebanese=0,regPwD=0,regTotal=0;
     appRows.forEach(a=>{
-      const all=[...(Array.isArray(a.members)?a.members:[])];
-      all.forEach(m=>{
+      const allM=[...(Array.isArray(a.members)?a.members:[])];
+      // count lead too
+      const leadNat = normNat(a.lead_nationality||a.members?.[0]?.nationality||'');
+      const leadGen = (a.lead_gender||a.members?.[0]?.gender||'').toLowerCase();
+      allM.unshift({gender:a.lead_gender||'',nationality:leadNat,disability:a.lead_disability||''});
+      allM.forEach(m=>{
+        regTotal++;
         const g=(m.gender||'').toLowerCase();
-        const n=m.nationality||'';
+        const n=normNat(m.nationality||'');
         if(g==='female'||g==='أنثى'||g==='انثى') regFemale++;
-        if(n.includes('PRL')||n.includes('ف.ت.ل')) regPRL++;
-        else if(n.includes('PRS')||n.includes('ف.ت.س')) regPRS++;
-        else if(n.toLowerCase().includes('syrian')||n.includes('سوري')) regSyrian++;
-        else if(n.toLowerCase().includes('lebanese')||n.includes('لبناني')) regLebanese++;
+        if(n==='Palestinian (PRL)') regPRL++;
+        else if(n==='Palestinian (PRS)') regPRS++;
+        else if(n==='Syrian') regSyrian++;
+        else if(n==='Lebanese') regLebanese++;
         if(m.disability&&m.disability!=='none'&&m.disability!=='') regPwD++;
       });
     });
 
-    // Enrolled = participants in teams (active phase enrollment)
+    // ── ENROLLED: participants who have at least one attendance record (actually attended)
+    const attUserIds = await sb.get('attendance','select=user_id').catch(()=>[]);
+    const attSet = new Set(attUserIds.map(r=>r.user_id));
+    const enrolledUsers = allUsers.filter(u=>attSet.has(u.id));
+    const enrolledFemale = enrolledUsers.filter(u=>u.gender==='Female').length;
+    const enrolledDisabled = enrolledUsers.filter(u=>u.has_disability===true).length;
+    const enrolledNat={};
+    enrolledUsers.forEach(u=>{ if(u.nationality){const k=normNat(u.nationality);enrolledNat[k]=(enrolledNat[k]||0)+1;} });
+
+    // ── COMPLETED: participants whose team passed at least one phase (enrollment status='passed')
+    const passedEnroll = await sb.get('phase_enrollments','select=team_id,status&status=eq.passed').catch(()=>[]);
+    const passedTeamIds = new Set(passedEnroll.map(r=>r.team_id));
+    const completedUsers = allUsers.filter(u=>{
+      const teamId = allTm.find(t=>t.user_id===u.id)?.team_id;
+      return teamId && passedTeamIds.has(teamId);
+    });
+    const completedFemale   = completedUsers.filter(u=>u.gender==='Female').length;
+    const completedDisabled = completedUsers.filter(u=>u.has_disability===true).length;
+    const completedNat={};
+    completedUsers.forEach(u=>{ if(u.nationality){const k=normNat(u.nationality);completedNat[k]=(completedNat[k]||0)+1;} });
+
+    // ── Other calculations
     const total    = allUsers.length;
     const female   = allUsers.filter(u=>u.gender==='Female'||u.gender==='female').length;
     const disabled = allUsers.filter(u=>u.has_disability===true).length;
     const natCounts={};
     allUsers.forEach(u=>{ if(u.nationality){const k=normNat(u.nationality); natCounts[k]=(natCounts[k]||0)+1;} });
-
-    // Completed = teams that have passed at least one phase (have a non-active enrollment)
-    const completedUserIds = new Set();
-    const enrolledUserIds  = new Set(allTm.map(r=>r.user_id));
-    // Phase breakdown
     const phases={DT:0,FB1:0,FB2:0,INC:0};
     teams.forEach(t=>{ if(phases[t.current_phase]!==undefined) phases[t.current_phase]++; });
-
-    // Partner achievement
     const partnerPhase={};
     paRows.forEach(r=>{
       if(!partnerPhase[r.partner_code]) partnerPhase[r.partner_code]={DT:{a:0,t:0},FB1:{a:0,t:0},FB2:{a:0,t:0},INC:{a:0,t:0},IE:{a:0,t:0},total:{a:0,t:0}};
       const ph=r.phase_code;
-      if(partnerPhase[r.partner_code][ph]){
-        partnerPhase[r.partner_code][ph].a+=r.actual||0;
-        partnerPhase[r.partner_code][ph].t+=r.target||0;
-      }
-      partnerPhase[r.partner_code].total.a+=r.actual||0;
-      partnerPhase[r.partner_code].total.t+=r.target||0;
+      if(partnerPhase[r.partner_code][ph]){ partnerPhase[r.partner_code][ph].a+=r.actual||0; partnerPhase[r.partner_code][ph].t+=r.target||0; }
+      partnerPhase[r.partner_code].total.a+=r.actual||0; partnerPhase[r.partner_code].total.t+=r.target||0;
     });
-
-    // INC count = completed/advanced furthest
-    const incTeams = teams.filter(t=>t.current_phase==='INC').length;
 
     return {
       participants: total, teams: teams.length,
@@ -4464,27 +4473,31 @@ async function autoSnap() {
       // Summary table data
       summary: {
         registered: {
-          total:   regMembers,
-          female:  regFemale,
-          lebanese:regLebanese,
-          syrian:  regSyrian,
-          prl:     regPRL,
-          prs:     regPRS,
-          pwd:     regPwD,
+          total:    regTotal,
+          female:   regFemale,
+          lebanese: regLebanese,
+          syrian:   regSyrian,
+          prl:      regPRL,
+          prs:      regPRS,
+          pwd:      regPwD,
         },
         enrolled: {
-          total:   total,
-          female:  female,
-          lebanese:natCounts['Lebanese']||0,
-          syrian:  natCounts['Syrian']||0,
-          prl:     natCounts['Palestinian (PRL)']||0,
-          prs:     natCounts['Palestinian (PRS)']||0,
-          pwd:     disabled,
+          total:    enrolledUsers.length,
+          female:   enrolledFemale,
+          lebanese: enrolledNat['Lebanese']||0,
+          syrian:   enrolledNat['Syrian']||0,
+          prl:      enrolledNat['Palestinian (PRL)']||0,
+          prs:      enrolledNat['Palestinian (PRS)']||0,
+          pwd:      enrolledDisabled,
         },
         completed: {
-          total:   incTeams*3, // approx: INC teams × avg 3 members
-          female:  0, // would need deeper query
-          lebanese:0, syrian:0, prl:0, prs:0, pwd:0,
+          total:    completedUsers.length,
+          female:   completedFemale,
+          lebanese: completedNat['Lebanese']||0,
+          syrian:   completedNat['Syrian']||0,
+          prl:      completedNat['Palestinian (PRL)']||0,
+          prs:      completedNat['Palestinian (PRS)']||0,
+          pwd:      completedDisabled,
         },
       },
     };
