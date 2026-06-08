@@ -1355,6 +1355,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
             <option value="all" selected>All</option><option value="pending">Pending</option><option value="approved_dt">→ DT</option>
             <option value="approved_fb1">→ FB1</option><option value="ineligible">Ineligible</option>
           </select>
+          <button class="btn btn-sm" onclick="exportApplicationsXLS()" style="font-size:12px;padding:5px 10px">⬇ Export XLS</button>
         </div>
       </div>
       <div class="g4 mb15" id="app-kpis"></div>
@@ -3616,6 +3617,110 @@ async function loadMyAttendance(){
 
 // ── APPLICATIONS ──
 let _currentAppId = null;
+
+
+async function exportApplicationsXLS(){
+  try {
+    toast('Preparing export...','Loading all applications');
+    const all = await sb.get('applications',
+      'select=*&order=created_at.desc');
+
+    if(!all.length){ toast('No data','No applications to export','error'); return; }
+
+    // Build rows
+    const rows = [];
+    all.forEach(app=>{
+      const members = Array.isArray(app.members)?app.members:[];
+      // Lead applicant row
+      const base = {
+        'Application ID':   app.id,
+        'Status':           app.status||'',
+        'Submitted':        app.created_at?new Date(app.created_at).toLocaleDateString('en-GB'):'',
+        'Team name':        app.team_name||'',
+        'Idea title':       app.idea_title||'',
+        'Partner':          app.partner||'',
+        'Sector':           app.sector||'',
+        'Idea stage':       app.idea_stage||'',
+        'Problem':          app.problem_statement||'',
+        'Solution':         app.solution_description||'',
+        'Revenue model':    app.revenue_model||'',
+        'Target customers': app.target_customers||'',
+        'Governorate':      app.governorate||'',
+        'District':         app.district||'',
+        'Has BMC':          app.has_bmc?'Yes':'No',
+        'Admin note':       app.admin_note||'',
+        'Decided at':       app.decided_at?new Date(app.decided_at).toLocaleDateString('en-GB'):'',
+        'Role':             'Lead applicant',
+        'Full name':        app.lead_name||'',
+        'Email':            app.lead_email||'',
+        'Phone':            app.lead_phone||'',
+        'Date of birth':    app.lead_dob||'',
+        'Gender':           app.lead_gender||members[0]?.gender||'',
+        'Nationality':      app.lead_nationality||members[0]?.nationality||'',
+        'Education':        app.lead_education||members[0]?.education||'',
+        'Employment':       app.lead_employment||members[0]?.employment||'',
+        'Disability':       app.lead_disability||members[0]?.disability||'none',
+        'Facebook':         app.facebook||'',
+        'Instagram':        app.instagram||'',
+        'LinkedIn':         app.linkedin||'',
+      };
+      rows.push(base);
+
+      // Co-founder rows (members array, skip index 0 which is lead)
+      members.slice(1).forEach((m,i)=>{
+        rows.push({
+          'Application ID':   app.id,
+          'Status':           app.status||'',
+          'Submitted':        '',
+          'Team name':        app.team_name||'',
+          'Idea title':       '',
+          'Partner':          app.partner||'',
+          'Sector':           '',
+          'Idea stage':       '',
+          'Problem':          '',
+          'Solution':         '',
+          'Revenue model':    '',
+          'Target customers': '',
+          'Governorate':      m.governorate||'',
+          'District':         m.district||'',
+          'Has BMC':          '',
+          'Admin note':       '',
+          'Decided at':       '',
+          'Role':             'Co-founder '+(i+2),
+          'Full name':        m.name||'',
+          'Email':            m.email||'',
+          'Phone':            m.phone||'',
+          'Date of birth':    m.dob||'',
+          'Gender':           m.gender||'',
+          'Nationality':      m.nationality||'',
+          'Education':        m.education||'',
+          'Employment':       m.employment||'',
+          'Disability':       m.disability||'none',
+          'Facebook':         m.facebook||'',
+          'Instagram':        m.instagram||'',
+          'LinkedIn':         m.linkedin||'',
+        });
+      });
+    });
+
+    // Build CSV (XLS-compatible)
+    const headers = Object.keys(rows[0]);
+    const esc2 = v => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
+    const csv = [headers.map(esc2).join(','),
+      ...rows.map(r=>headers.map(h=>esc2(r[h]||'')).join(','))
+    ].join('\r\n');
+
+    // Download as .xlsx (actually CSV that Excel opens)
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'GIL2026-Applications-'+new Date().toISOString().slice(0,10)+'.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Exported',''+rows.length+' rows downloaded');
+  } catch(e){ toast('Export failed',e.message,'error'); }
+}
 
 async function loadApplications(){
   const listEl  = document.getElementById('app-list');
