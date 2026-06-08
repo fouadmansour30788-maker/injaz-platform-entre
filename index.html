@@ -4405,26 +4405,12 @@ async function autoSnap() {
       sb.get('team_members','select=user_id,team_id').catch(()=>[]),
     ]);
 
-    // ── APPLIED: from applications table (all who submitted)
-    let regFemale=0,regPRL=0,regPRS=0,regSyrian=0,regLebanese=0,regPwD=0,regTotal=0;
-    appRows.forEach(a=>{
-      const allM=[...(Array.isArray(a.members)?a.members:[])];
-      // count lead too
-      const leadNat = normNat(a.lead_nationality||a.members?.[0]?.nationality||'');
-      const leadGen = (a.lead_gender||a.members?.[0]?.gender||'').toLowerCase();
-      allM.unshift({gender:a.lead_gender||'',nationality:leadNat,disability:a.lead_disability||''});
-      allM.forEach(m=>{
-        regTotal++;
-        const g=(m.gender||'').toLowerCase();
-        const n=normNat(m.nationality||'');
-        if(g==='female'||g==='أنثى'||g==='انثى') regFemale++;
-        if(n==='Palestinian (PRL)') regPRL++;
-        else if(n==='Palestinian (PRS)') regPRS++;
-        else if(n==='Syrian') regSyrian++;
-        else if(n==='Lebanese') regLebanese++;
-        if(m.disability&&m.disability!=='none'&&m.disability!=='') regPwD++;
-      });
-    });
+    // ── APPLIED: all participants in the system (users with role=participant)
+    //    These are people who applied and were registered/accepted
+    const regFemale   = allUsers.filter(u=>u.gender==='Female'||u.gender==='female').length;
+    const regDisabled = allUsers.filter(u=>u.has_disability===true).length;
+    const regNat={};
+    allUsers.forEach(u=>{ if(u.nationality){const k=normNat(u.nationality);regNat[k]=(regNat[k]||0)+1;} });
 
     // ── ENROLLED: participants who have at least one attendance record (actually attended)
     const attUserIds = await sb.get('attendance','select=user_id').catch(()=>[]);
@@ -4473,13 +4459,13 @@ async function autoSnap() {
       // Summary table data
       summary: {
         registered: {
-          total:    regTotal,
+          total:    total,
           female:   regFemale,
-          lebanese: regLebanese,
-          syrian:   regSyrian,
-          prl:      regPRL,
-          prs:      regPRS,
-          pwd:      regPwD,
+          lebanese: regNat['Lebanese']||0,
+          syrian:   regNat['Syrian']||0,
+          prl:      regNat['Palestinian (PRL)']||0,
+          prs:      regNat['Palestinian (PRS)']||0,
+          pwd:      regDisabled,
         },
         enrolled: {
           total:    enrolledUsers.length,
@@ -4507,7 +4493,7 @@ async function autoSnap() {
 function renderSummaryTable(summary){
   if(!summary) return '<p style="font-size:12px;color:var(--t3);padding:1rem 0">No data yet — click Refresh from live data.</p>';
   const rows=[
-    {label:'Applied',              sub:'Submitted applications',      key:'registered', color:'#F59E0B', icon:'📝'},
+    {label:'Applied / Registered', sub:'Participants in the program', key:'registered', color:'#F59E0B', icon:'📝'},
     {label:'Enrolled',             sub:'Active program participants',  key:'enrolled',   color:'var(--fb1)', icon:'✓'},
     {label:'Completed / Advanced', sub:'Reached incubation or beyond',key:'completed',  color:'var(--pass)', icon:'🏆'},
   ];
