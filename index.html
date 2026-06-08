@@ -3722,6 +3722,72 @@ async function exportApplicationsXLS(){
   } catch(e){ toast('Export failed',e.message,'error'); }
 }
 
+
+function appRecalc(){
+  const fields = [
+    {id:'sc-problem',   max:10},
+    {id:'sc-market',    max:10},
+    {id:'sc-innovation',max:5},
+    {id:'sc-solution',  max:10},
+    {id:'sc-revenue',   max:10},
+    {id:'sc-bmc',       max:5},
+    {id:'sc-team',      max:10},
+    {id:'sc-motivation',max:10},
+    {id:'sc-impact',    max:5},
+    {id:'sc-eligibility',max:10},
+    {id:'sc-fit',       max:10},
+    {id:'sc-geography', max:5},
+  ];
+  let total=0, maxTotal=0, allFilled=true;
+  fields.forEach(f=>{
+    const el=document.getElementById(f.id);
+    if(!el) return;
+    const v = el.value===''?null:Math.min(Math.max(parseFloat(el.value)||0,0),f.max);
+    if(v===null){ allFilled=false; return; }
+    total+=v; maxTotal+=f.max;
+    // Color the field
+    const pct=v/f.max;
+    el.style.borderColor=pct>=0.7?'var(--pass)':pct>=0.5?'var(--warn)':'var(--fail)';
+    el.style.background=pct>=0.7?'var(--pass-bg)':pct>=0.5?'var(--warn-bg)':'var(--fail-bg)';
+  });
+
+  const scoreEl   = document.getElementById('app-score-total');
+  const badgeEl   = document.getElementById('app-score-badge');
+  const barEl     = document.getElementById('app-score-bar');
+  const recEl     = document.getElementById('app-recommendation');
+  const recTitle  = document.getElementById('app-rec-title');
+  const recSub    = document.getElementById('app-rec-sub');
+
+  if(maxTotal===0) return;
+  const score = Math.round(total);
+  const pct   = Math.round(total/maxTotal*100);
+
+  if(scoreEl) scoreEl.textContent = score;
+  if(barEl)   { barEl.style.width=Math.min(pct,100)+'%'; barEl.style.background=pct>=70?'var(--pass)':pct>=50?'var(--warn)':'var(--fail)'; }
+  if(badgeEl) { badgeEl.textContent=pct+'%'; badgeEl.style.color=pct>=70?'var(--pass)':pct>=50?'var(--warn)':'var(--fail)'; }
+
+  // Recommendation
+  if(recEl && recTitle && recSub){
+    recEl.style.display='block';
+    if(pct>=70){
+      recEl.style.background='var(--pass-bg)'; recEl.style.borderColor='var(--pass)';
+      recTitle.textContent='✓ Recommended for FB Stage 1';
+      recTitle.style.color='var(--pass-t)';
+      recSub.textContent='Score '+score+'/'+maxTotal+' ('+pct+'%) — meets the ≥70 threshold for FB1 enrollment.';
+    } else if(pct>=50){
+      recEl.style.background='var(--warn-bg)'; recEl.style.borderColor='var(--warn)';
+      recTitle.textContent='→ Recommended for Design Thinking';
+      recTitle.style.color='var(--warn-t)';
+      recSub.textContent='Score '+score+'/'+maxTotal+' ('+pct+'%) — meets the 50–69 threshold for DT enrollment.';
+    } else {
+      recEl.style.background='var(--fail-bg)'; recEl.style.borderColor='var(--fail)';
+      recTitle.textContent='✗ Ineligible';
+      recTitle.style.color='var(--fail-t)';
+      recSub.textContent='Score '+score+'/'+maxTotal+' ('+pct+'%) — below the 50 threshold.';
+    }
+  }
+}
+
 async function loadApplications(){
   const listEl  = document.getElementById('app-list');
   const badgeEl = document.getElementById('app-pending-badge');
