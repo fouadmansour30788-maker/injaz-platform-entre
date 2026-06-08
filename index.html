@@ -1562,7 +1562,10 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 
         <!-- Decision buttons -->
         <div class="card" id="app-decision-card">
-          <div class="clbl mb12">Final decision</div>
+          <div class="fbet mb12">
+            <div class="clbl" style="margin:0">Final decision</div>
+            <button class="btn btn-sm" onclick="openEditApp(_currentAppId)" style="font-size:11px">✏ Edit application</button>
+          </div>
           <p style="font-size:12px;color:var(--t3);margin-bottom:1rem">The scoring above is a guide. You make the final call.</p>
           <div class="fctr g8">
             <button class="btn-p" onclick="decideApp('approved_fb1')" style="background:var(--fb1)">
@@ -3788,6 +3791,61 @@ function appRecalc(){
   }
 }
 
+
+let _editAppId = null;
+
+function openEditApp(id){
+  _editAppId = id;
+  // Reload the application to get fresh data
+  sb.get('applications','id=eq.'+id+'&select=*&limit=1').then(rows=>{
+    const r = rows[0]; if(!r) return;
+    const modal = document.getElementById('edit-app-modal');
+    if(!modal) return;
+    // Fill fields
+    const set = (id2,v) => { const el=document.getElementById(id2); if(el) el.value=v||''; };
+    set('edit-team-name',   r.team_name);
+    set('edit-idea-title',  r.idea_title);
+    set('edit-partner',     r.partner);
+    set('edit-sector',      r.sector);
+    set('edit-idea-stage',  r.idea_stage);
+    set('edit-problem',     r.problem_statement);
+    set('edit-solution',    r.solution_description);
+    set('edit-revenue',     r.revenue_model);
+    set('edit-customers',   r.target_customers);
+    set('edit-gov',         r.governorate);
+    modal.style.display='flex';
+  }).catch(e=>toast('Error',e.message,'error'));
+}
+
+function closeEditApp(){
+  document.getElementById('edit-app-modal').style.display='none';
+  _editAppId=null;
+}
+
+async function saveEditApp(){
+  if(!_editAppId) return;
+  const get = id2 => document.getElementById(id2)?.value||'';
+  try {
+    await sb.patch('applications','id=eq.'+_editAppId,{
+      team_name:         get('edit-team-name'),
+      idea_title:        get('edit-idea-title'),
+      partner:           get('edit-partner'),
+      sector:            get('edit-sector'),
+      idea_stage:        get('edit-idea-stage'),
+      problem_statement: get('edit-problem'),
+      solution_description: get('edit-solution'),
+      revenue_model:     get('edit-revenue'),
+      target_customers:  get('edit-customers'),
+      governorate:       get('edit-gov'),
+      updated_at:        new Date().toISOString(),
+    });
+    toast('Application updated','Changes saved');
+    closeEditApp();
+    // Reload the current application view
+    if(_currentAppId) openApp(_currentAppId);
+  } catch(e){ toast('Save failed',e.message,'error'); }
+}
+
 async function loadApplications(){
   const listEl  = document.getElementById('app-list');
   const badgeEl = document.getElementById('app-pending-badge');
@@ -3936,9 +3994,15 @@ async function decideApp(decision){
     const rows = await sb.get('applications','id=eq.'+_currentAppId+'&select=*&limit=1');
     const app = rows[0]; if(!app) return;
     const note = document.getElementById('app-note')?.value||'';
-    const statusMap = {dt:'approved_dt',fb1:'approved_fb1',ineligible:'ineligible'};
+    // Accept both 'dt'/'fb1' and 'approved_dt'/'approved_fb1'
+    const statusMap = {
+      dt:'approved_dt', fb1:'approved_fb1', ineligible:'ineligible',
+      approved_dt:'approved_dt', approved_fb1:'approved_fb1'
+    };
     const newStatus = statusMap[decision];
     if(!newStatus) return;
+    // Normalize decision key for phase logic
+    const decisionKey = decision.replace('approved_','');
 
     // Update application status
     await sb.patch('applications','id=eq.'+_currentAppId,{
@@ -3951,7 +4015,7 @@ async function decideApp(decision){
     }
 
     // Determine phase
-    const phase = decision==='dt'?'DT':'FB1';
+    const phase = (decisionKey==='dt'||decision==='approved_dt')?'DT':'FB1';
 
     // Find or create partner
     const partnerCode = app.partner||app.lead_partner||'';
@@ -5741,5 +5805,63 @@ if(!sb.del) sb.del=async(table,qs)=>{
 
 tryRestoreSession();
 </script>
+  <!-- Edit Application Modal -->
+  <div id="edit-app-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+    <div style="background:var(--card);border-radius:14px;padding:1.5rem;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div class="fbet mb15">
+        <h3 style="font-size:16px;font-weight:700">Edit application</h3>
+        <button onclick="closeEditApp()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3)">×</button>
+      </div>
+      <div class="g2 mb10">
+        <div><label class="flbl">Team name</label><input class="inp" id="edit-team-name"></div>
+        <div><label class="flbl">Idea title</label><input class="inp" id="edit-idea-title"></div>
+      </div>
+      <div class="g2 mb10">
+        <div><label class="flbl">Partner</label>
+          <select class="sel w100" id="edit-partner">
+            <option value="">Select partner</option>
+            <option value="LU">LU</option><option value="UNRWA">UNRWA</option>
+            <option value="AND">AND</option><option value="Midan">Midan</option>
+            <option value="Lost">Lost</option><option value="MDF">MDF</option>
+          </select>
+        </div>
+        <div><label class="flbl">Sector</label><input class="inp" id="edit-sector"></div>
+      </div>
+      <div class="g2 mb10">
+        <div><label class="flbl">Idea stage</label>
+          <select class="sel w100" id="edit-idea-stage">
+            <option value="idea">💡 Idea stage</option>
+            <option value="validated">✅ Validated</option>
+            <option value="prototype">🔧 Prototype</option>
+            <option value="revenue">💰 Generating revenue</option>
+          </select>
+        </div>
+        <div><label class="flbl">Governorate</label>
+          <select class="sel w100" id="edit-gov">
+            <option value="">Select governorate</option>
+            <option value="Beirut">Beirut</option>
+            <option value="Mount Lebanon">Mount Lebanon</option>
+            <option value="North Lebanon">North Lebanon</option>
+            <option value="South Lebanon">South Lebanon</option>
+            <option value="Bekaa">Bekaa</option>
+            <option value="Nabatieh">Nabatieh</option>
+            <option value="Akkar">Akkar</option>
+            <option value="Baalbek-Hermel">Baalbek-Hermel</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb10"><label class="flbl">Problem statement</label><textarea class="txa" rows="3" id="edit-problem"></textarea></div>
+      <div class="mb10"><label class="flbl">Solution description</label><textarea class="txa" rows="3" id="edit-solution"></textarea></div>
+      <div class="g2 mb10">
+        <div><label class="flbl">Revenue model</label><textarea class="txa" rows="2" id="edit-revenue"></textarea></div>
+        <div><label class="flbl">Target customers</label><textarea class="txa" rows="2" id="edit-customers"></textarea></div>
+      </div>
+      <div class="fbet">
+        <button class="btn" onclick="closeEditApp()">Cancel</button>
+        <button class="btn-p" onclick="saveEditApp()">Save changes</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
