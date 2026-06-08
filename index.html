@@ -3848,6 +3848,19 @@ async function saveEditApp(){
   } catch(e){ toast('Save failed',e.message,'error'); }
 }
 
+
+async function unlockApp(){
+  if(!_currentAppId) return;
+  if(!confirm('Reset this decision and allow re-assessment?')) return;
+  try {
+    await sb.patch('applications','id=eq.'+_currentAppId,{
+      status:'pending', admin_note:'', decided_at:null
+    });
+    toast('Unlocked','Application reset to pending — you can re-score and decide');
+    openApp(_currentAppId);
+  } catch(e){ toast('Error',e.message,'error'); }
+}
+
 async function loadApplications(){
   const listEl  = document.getElementById('app-list');
   const badgeEl = document.getElementById('app-pending-badge');
@@ -3976,8 +3989,9 @@ async function openApp(id){
       const when  = r.decided_at?new Date(r.decided_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
       lockOverlay.innerHTML = '<div style="border-radius:10px;padding:14px 18px;background:'+bg+';border:1.5px solid '+color+';margin-bottom:1rem;display:flex;align-items:center;gap:12px">'
         +'<span style="font-size:1.5rem">🔒</span>'
-        +'<div><p style="font-size:14px;font-weight:700;color:'+color+'">'+(statusLabels[r.status]||r.status)+'</p>'
-        +'<p style="font-size:12px;color:'+color+';opacity:.8">'+(when?'Decided on '+when:'')+(r.admin_note?' · '+r.admin_note:'')+'</p></div></div>';
+        +'<div style="flex:1"><p style="font-size:14px;font-weight:700;color:'+color+'">'+(statusLabels[r.status]||r.status)+'</p>'
+        +'<p style="font-size:12px;color:'+color+';opacity:.8">'+(when?'Decided on '+when:'')+(r.admin_note?' · '+r.admin_note:'')+'</p></div>'
+        +'<button onclick="unlockApp()" style="font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;border:1.5px solid white;background:white;color:'+color+';cursor:pointer;white-space:nowrap">&#8635; Re-assess</button></div>';
       lockOverlay.style.display='block';
       decisionCard.style.display='none';
       document.querySelectorAll('.sc-input-field').forEach(f=>{f.disabled=true;f.style.opacity='0.5';});
