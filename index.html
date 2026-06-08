@@ -4804,10 +4804,22 @@ async function refreshSnap(){
   const snap=await autoSnap();
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
   set('r-part',snap.participants); set('r-teams',snap.teams); set('r-fem',snap.femalePct);
+  set('r-dis', snap.disabledPct);
   ['DT','FB1','FB2','INC'].forEach(ph=>set('r-ph-'+ph,snap.phases[ph]||0));
+  _reportDraft.snap_nat_counts    = snap.natCounts;
+  _reportDraft.snap_partner_phase = snap.partnerPhase;
+  _reportDraft.snap_disabled_pct  = snap.disabledPct;
+  _reportDraft.snap_disabled_count= snap.disabledCount;
+  _reportDraft.snap_male_pct      = snap.malePct;
+  _reportDraft.snap_summary       = snap.summary;
+  const natEl=document.getElementById('rep-nat-breakdown');
+  if(natEl) natEl.innerHTML=renderNatBreakdown(snap.natCounts, snap.participants||1);
+  const matEl=document.getElementById('rep-partner-matrix');
+  if(matEl) matEl.innerHTML=renderPartnerMatrix(snap.partnerPhase);
+  const sumEl=document.getElementById('rep-summary-table');
+  if(sumEl) sumEl.innerHTML=renderSummaryTable(snap.summary);
   toast('Refreshed','Live data loaded'); updateRepProgress();
 }
-
 async function refreshAttSummary(){
   try {
     const [attRows,allCls]=await Promise.all([
@@ -4885,24 +4897,32 @@ async function openReport(id) {
 
       // ══ SECTION 1: Program Snapshot ══
       +rSec('Program Snapshot',
-        '<div class="g4 mb12">'
-        +rStat('Total participants', r.snap_participants||0, 'r-part', 'number', locked)
-        +rStat('Active teams',       r.snap_teams||0,        'r-teams','number', locked)
-        +rStat('Female %',           (r.snap_female_pct||0)+'%', 'r-fem','number', locked)
-        +(locked?'<div class="stat"><div class="slbl">Period</div><div style="font-size:13px;font-weight:600">'+r.report_label+'</div></div>':'<div>')
+        '<div style="margin-bottom:16px;overflow-x:auto">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Participants summary</div>'
+        +'<div id="rep-summary-table">'+renderSummaryTable(r.snap_summary||null)+'</div>'
         +'</div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
-        +['DT','FB1','FB2','INC'].map(ph=>'<div style="flex:1;min-width:80px;background:var(--bg);border-radius:6px;padding:8px 10px;border-left:3px solid '+( PHASE_COLORS_PLACEHOLDER[ph])+'">'
-          +'<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:3px">'+ph+'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+        +['DT','FB1','FB2','INC'].map(function(ph){ return '<div style="flex:1;min-width:80px;background:var(--bg);border-radius:6px;padding:8px 10px;border-left:3px solid '+(PHASE_COLORS[ph]||'var(--or)')+'"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:3px">'+ph+'</div>'
           +(locked
-            ?'<div style="font-size:18px;font-weight:700">'+( phases[ph]||0)+'</div><div style="font-size:10px;color:var(--t3)">teams</div>'
-            :'<input id="r-ph-'+ph+'" type="number" class="inp rep-field" value="'+( phases[ph]||0)+'" style="font-size:16px;font-weight:700;padding:3px 6px;width:100%">'
-          )+'</div>'
-        ).join('')
+            ? '<div style="font-size:18px;font-weight:700">'+(phases[ph]||0)+'</div><div style="font-size:10px;color:var(--t3)">teams</div>'
+            : '<input id="r-ph-'+ph+'" type="number" class="inp rep-field" value="'+(phases[ph]||0)+'" style="font-size:16px;font-weight:700;padding:3px 6px;width:100%">'
+          )+'</div>';}).join('')
+        +'</div>'
+        +'<div class="g2 mb12">'
+        +'<div><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Nationality (enrolled)</div>'
+        +'<div id="rep-nat-breakdown">'+renderNatBreakdown(r.snap_nat_counts||{}, r.snap_participants||1)+'</div></div>'
+        +'<div><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Gender &amp; disability</div>'
+        +'<div style="display:flex;flex-direction:column;gap:6px">'
+        +renderMiniBar('Female', r.snap_female_pct||0, '#EC4899')
+        +renderMiniBar('Male', 100-(r.snap_female_pct||0), 'var(--fb1)')
+        +renderMiniBar('PwD', r.snap_disabled_pct||0, 'var(--warn)')
+        +'</div></div></div>'
+        +'<div style="margin-bottom:12px;overflow-x:auto">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Achievement per partner per phase</div>'
+        +'<div id="rep-partner-matrix">'+renderPartnerMatrix(r.snap_partner_phase||{})+'</div>'
         +'</div>'
         +rTextarea('Program notes / narrative', 'r-snap-notes', r.snap_override_notes, locked, 2)
-        +(locked?''
-          :'<button class="btn btn-sm" style="margin-top:6px" onclick="refreshSnap()">↺ Refresh from live data</button>')
+        +(locked ? '' : '<button class="btn btn-sm" style="margin-top:6px" onclick="refreshSnap()">&#8635; Refresh from live data</button>')
       )
 
       // ══ SECTION 2: Workplan Activities ══
