@@ -3794,27 +3794,26 @@ function appRecalc(){
 
 let _editAppId = null;
 
-function openEditApp(id){
+async function openEditApp(id){
   _editAppId = id;
-  // Reload the application to get fresh data
-  sb.get('applications','id=eq.'+id+'&select=*&limit=1').then(rows=>{
+  try {
+    const rows = await sb.get('applications','id=eq.'+id+'&select=*&limit=1');
     const r = rows[0]; if(!r) return;
     const modal = document.getElementById('edit-app-modal');
-    if(!modal) return;
-    // Fill fields
-    const set = (id2,v) => { const el=document.getElementById(id2); if(el) el.value=v||''; };
-    set('edit-team-name',   r.team_name);
-    set('edit-idea-title',  r.idea_title);
-    set('edit-partner',     r.partner);
-    set('edit-sector',      r.sector);
-    set('edit-idea-stage',  r.idea_stage);
-    set('edit-problem',     r.problem_statement);
-    set('edit-solution',    r.solution_description);
-    set('edit-revenue',     r.revenue_model);
-    set('edit-customers',   r.target_customers);
-    set('edit-gov',         r.governorate);
+    if(!modal){ toast('Error','Edit modal not found','error'); return; }
+    const setVal = (elId,v) => { const el2=document.getElementById(elId); if(el2) el2.value=v||''; };
+    setVal('edit-team-name',   r.team_name);
+    setVal('edit-idea-title',  r.idea_title);
+    setVal('edit-partner',     r.partner);
+    setVal('edit-sector',      r.sector);
+    setVal('edit-idea-stage',  r.idea_stage);
+    setVal('edit-problem',     r.problem_statement);
+    setVal('edit-solution',    r.solution_description);
+    setVal('edit-revenue',     r.revenue_model);
+    setVal('edit-customers',   r.target_customers);
+    setVal('edit-gov',         r.governorate);
     modal.style.display='flex';
-  }).catch(e=>toast('Error',e.message,'error'));
+  } catch(e){ toast('Error',e.message,'error'); }
 }
 
 function closeEditApp(){
@@ -3979,10 +3978,10 @@ async function openApp(id){
       lockOverlay.style.display='block';
       decisionCard.style.display='none';
       document.querySelectorAll('.sc-input-field').forEach(f=>{f.disabled=true;f.style.opacity='0.5';});
-      if(el('app-note')) { el('app-note').disabled=true; el('app-note').style.opacity='0.5'; }
+      if(document.getElementById('app-note')) { document.getElementById('app-note').disabled=true; document.getElementById('app-note').style.opacity='0.5'; }
     } else {
       document.querySelectorAll('.sc-input-field').forEach(f=>{f.disabled=false;f.style.opacity='';});
-      if(el('app-note')) { el('app-note').disabled=false; el('app-note').style.opacity=''; }
+      if(document.getElementById('app-note')) { document.getElementById('app-note').disabled=false; document.getElementById('app-note').style.opacity=''; }
     }
 
   } catch(e){ toast('Error',e.message,'error'); console.error('openApp:',e); }
