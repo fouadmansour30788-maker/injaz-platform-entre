@@ -3675,32 +3675,64 @@ async function openApp(id){
     const rows = await sb.get('applications','id=eq.'+id+'&select=*&limit=1');
     const r = rows[0]; if(!r) return;
 
-    // Fill in header info
-    const el = id => document.getElementById(id);
-    if(el('app-team-name'))    el('app-team-name').textContent    = r.team_name||r.lead_name||'—';
-    if(el('app-idea-title'))   el('app-idea-title').textContent   = r.idea_title||'—';
-    if(el('app-partner'))      el('app-partner').textContent      = r.partner||'—';
-    if(el('app-sector'))       el('app-sector').textContent       = r.sector||'—';
-    if(el('app-lead-name'))    el('app-lead-name').textContent    = r.lead_name||'—';
-    if(el('app-lead-email'))   el('app-lead-email').textContent   = r.lead_email||'—';
-    if(el('app-gov'))          el('app-gov').textContent          = (r.governorate||'—')+(r.district?' · '+r.district:'');
-    if(el('app-members'))      el('app-members').textContent      = (r.member_count||1)+' members';
-    if(el('app-problem'))      el('app-problem').textContent      = r.problem_statement||r.idea_description||'—';
-    if(el('app-solution'))     el('app-solution').textContent     = r.solution_description||'—';
-    if(el('app-revenue'))      el('app-revenue').textContent      = r.revenue_model||'—';
-    if(el('app-note'))         el('app-note').value               = r.admin_note||'';
-    if(el('app-date'))         el('app-date').textContent         = new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-
-    // Members list
-    const membersEl = el('app-members-list');
-    if(membersEl && Array.isArray(r.members) && r.members.length) {
-      membersEl.innerHTML = r.members.map(m=>'<div style="padding:8px 0;border-bottom:0.5px solid var(--bdr);font-size:13px">'
-        +'<span style="font-weight:500">'+(m.name||'—')+'</span>'
-        +'<span style="color:var(--t3);margin-left:8px">'+(m.email||'')+'</span>'
-        +(m.gender?' · <span style="color:var(--t3)">'+m.gender+'</span>':'')
-        +(m.nationality?' · '+m.nationality:'')
-        +'</div>').join('');
+    // Populate lead applicant info
+    const infoEl = document.getElementById('app-detail-info');
+    if(infoEl){
+      const fmtRow = (label,val) => val&&val!='—'
+        ? '<div class="fbet" style="padding:4px 0;border-bottom:0.5px solid var(--bdr)">'
+          +'<span style="color:var(--t3);font-size:12px">'+label+'</span>'
+          +'<span style="font-weight:500;font-size:13px">'+val+'</span></div>' : '';
+      infoEl.innerHTML =
+        fmtRow('Team / Applicant', r.team_name||r.lead_name||'—')
+        +fmtRow('Lead applicant', r.lead_name||'—')
+        +fmtRow('Email', r.lead_email||'—')
+        +fmtRow('Phone', r.lead_phone||'—')
+        +fmtRow('Date of birth', r.lead_dob||'—')
+        +fmtRow('Gender', r.lead_gender||'—')
+        +fmtRow('Nationality', r.lead_nationality||'—')
+        +fmtRow('Governorate', (r.governorate||'—')+(r.district?' · '+r.district:''))
+        +fmtRow('Partner', r.partner||'—')
+        +fmtRow('Education', r.lead_education||'—')
+        +fmtRow('Employment', r.lead_employment||'—')
+        +fmtRow('Members', (r.member_count||1)+' co-founders')
+        +fmtRow('Applied on', new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}));
     }
+
+    // Populate business idea
+    const ideaEl = document.getElementById('app-detail-idea');
+    if(ideaEl){
+      ideaEl.innerHTML =
+        '<p style="font-size:14px;font-weight:600;margin-bottom:8px">'+(r.idea_title||'Untitled idea')+'</p>'
+        +(r.sector?'<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--bg);border:0.5px solid var(--bdr);margin-bottom:10px;display:inline-block">'+r.sector+'</span>':'')
+        +'<div style="margin-top:8px;display:flex;flex-direction:column;gap:10px">'
+        +(r.problem_statement||r.idea_description?'<div><p style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:3px">Problem</p><p style="line-height:1.6">'+(r.problem_statement||r.idea_description)+'</p></div>':'')
+        +(r.solution_description?'<div><p style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:3px">Solution</p><p style="line-height:1.6">'+r.solution_description+'</p></div>':'')
+        +(r.revenue_model?'<div><p style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:3px">Revenue model</p><p style="line-height:1.6">'+r.revenue_model+'</p></div>':'')
+        +(r.target_customers?'<div><p style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:3px">Target customers</p><p style="line-height:1.6">'+r.target_customers+'</p></div>':'')
+        +'</div>';
+    }
+
+    // Populate team members
+    const membersEl = document.getElementById('app-detail-members');
+    if(membersEl){
+      const members = Array.isArray(r.members)?r.members:[];
+      if(members.length){
+        membersEl.innerHTML = members.map((m,i)=>
+          '<div style="padding:10px 0;border-bottom:0.5px solid var(--bdr);display:flex;gap:12px;align-items:flex-start">'
+          +'<div style="width:28px;height:28px;border-radius:50%;background:var(--or-l);color:var(--or);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0">'+(i+1)+'</div>'
+          +'<div style="flex:1"><p style="font-weight:600;font-size:13px">'+(m.name||'—')+'</p>'
+          +'<p style="font-size:12px;color:var(--t3)">'+(m.email||'')+(m.gender?' · '+m.gender:'')+(m.nationality?' · '+m.nationality:'')+(m.governorate?' · '+m.governorate:'')+'</p>'
+          +(m.education?'<p style="font-size:11px;color:var(--t3)">🎓 '+m.education+(m.employment?' · '+m.employment:'')+'</p>':'')
+          +'</div></div>'
+        ).join('');
+      } else {
+        membersEl.innerHTML = '<p style="color:var(--t3);font-size:13px">No co-founder data in application.</p>';
+      }
+    }
+
+    if(document.getElementById('app-note')) document.getElementById('app-note').value = r.admin_note||'';
+
+// members populated above
 
     // Lock if already decided
     const isDecided = r.status !== 'pending';
