@@ -1361,7 +1361,10 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       <div class="g4 mb15" id="app-kpis"></div>
       <div id="app-list" style="display:flex;flex-direction:column;gap:12px"></div>
       <div id="app-detail" style="display:none">
-        <button class="back-btn" onclick="document.getElementById('app-detail').style.display='none';document.getElementById('app-list').style.display='flex'">← Back to applications</button>
+        <div class="fbet mb8">
+          <button class="back-btn" style="margin-bottom:0" onclick="document.getElementById('app-detail').style.display='none';document.getElementById('app-list').style.display='flex'">← Back to applications</button>
+          <button class="btn btn-sm" onclick="openEditApp(_currentAppId)" style="font-size:12px;padding:5px 14px">✏ Edit application</button>
+        </div>
 
         <!-- Application info -->
         <div class="g2 mb15">
