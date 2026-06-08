@@ -1053,7 +1053,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 
     <!-- ════ ADMIN: REPORT EDITOR ════ -->
     <div class="page" id="pg-report-edit">
-      <button class="back-btn" onclick="nav('pg-reports')">← Back to reports</button>
+      <button class="back-btn" onclick="nav("pg-reports")">← Back to reports</button>
       <div id="report-edit-content"></div>
     </div>
 
@@ -4837,42 +4837,694 @@ if(!sb.del) sb.del=async(table,qs)=>{
 };
 
 
-// ══ SECTION 1: Program Snapshot ══
-      +rSec('Program Snapshot',
-        // Summary table: Registered / Enrolled / Completed
-        '<div style="margin-bottom:16px;overflow-x:auto">'
-        +'<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Participants summary</div>'
-        +'<div id="rep-summary-table">'+renderSummaryTable(r.snap_summary||null)+'</div>'
+
+async function openReport(id) {
+  _currentReportId = id;
+  nav('pg-report-edit');
+  const el = document.getElementById('report-edit-content');
+  el.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto"></div></div>';
+  try {
+    const rows = await sb.get('monthly_reports','id=eq.'+id);
+    const r = rows[0]; if(!r) return;
+    _reportDraft = JSON.parse(JSON.stringify(r));
+    const locked = r.status==='submitted'||r.status==='archived';
+    const dis = locked ? ' disabled' : '';
+
+    const scBadge = locked
+      ? '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;background:var(--pass-bg);color:var(--pass-t)">Submitted</span>'
+      : '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;background:var(--warn-bg);color:var(--warn-t)">Draft</span>';
+
+    const phases = r.snap_phases||{};
+    const partners = r.snap_partners||{};
+
+    el.innerHTML =
+      // ── Top bar ──
+      '<div class="fbet mb20" style="flex-wrap:wrap;gap:8px">'
+      +'<div class="fctr g12">'
+      +'<button class="btn btn-sm" onclick="nav(\"pg-reports\")" style="font-size:12px">← Back</button>'
+      +'<div>'
+      +'<h2 style="font-size:17px;font-weight:700;margin-bottom:2px">'+r.report_label+'</h2>'
+      +'<div class="fctr g8">'+scBadge
+      +(r.prepared_by?'<span style="font-size:11px;color:var(--t3)">· Prepared by '+r.prepared_by+'</span>':'')
+      +'</div></div></div>'
+      +'<div class="fctr g8">'
+      +(locked?''
+        :'<button class="btn" style="font-size:12px" onclick="saveDraft()">Save draft</button>')
+      +'<button class="btn" style="font-size:12px" onclick="downloadReportPDF()">⬇ Download PDF</button>'
+      +(locked?''
+        :'<button class="btn-p" style="font-size:12px" onclick="submitReport()">Submit report</button>')
+      +'</div></div>'
+
+      // ── Completeness bar (only in edit mode) ──
+      +(locked?''
+        :'<div style="background:var(--bg);border-radius:6px;padding:8px 12px;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px">'
+        +'<div style="flex:1;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden"><div id="rep-pct-bar" style="height:4px;background:var(--or);border-radius:2px;width:0%;transition:width .4s"></div></div>'
+        +'<span id="rep-pct-lbl" style="font-size:11px;font-weight:600;color:var(--t3);white-space:nowrap">0% complete</span>'
         +'</div>'
-        // Phase pipeline
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
-        +['DT','FB1','FB2','INC'].map(ph=>'<div style="flex:1;min-width:80px;background:var(--bg);border-radius:6px;padding:8px 10px;border-left:3px solid '+(PHASE_COLORS[ph]||'var(--or)')+'"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:3px">'+ph+'</div>'
+      )
+
+      // ══ SECTION 1: Program Snapshot ══
+      +rSec('Program Snapshot',
+        '<div class="g4 mb12">'
+        +rStat('Total participants', r.snap_participants||0, 'r-part', 'number', locked)
+        +rStat('Active teams',       r.snap_teams||0,        'r-teams','number', locked)
+        +rStat('Female %',           (r.snap_female_pct||0)+'%', 'r-fem','number', locked)
+        +(locked?'<div class="stat"><div class="slbl">Period</div><div style="font-size:13px;font-weight:600">'+r.report_label+'</div></div>':'<div>')
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+        +['DT','FB1','FB2','INC'].map(ph=>'<div style="flex:1;min-width:80px;background:var(--bg);border-radius:6px;padding:8px 10px;border-left:3px solid '+( PHASE_COLORS_PLACEHOLDER[ph])+'">'
+          +'<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:3px">'+ph+'</div>'
           +(locked
-            ?'<div style="font-size:18px;font-weight:700">'+(phases[ph]||0)+'</div><div style="font-size:10px;color:var(--t3)">teams</div>'
-            :'<input id="r-ph-'+ph+'" type="number" class="inp rep-field" value="'+(phases[ph]||0)+'" style="font-size:16px;font-weight:700;padding:3px 6px;width:100%">'
+            ?'<div style="font-size:18px;font-weight:700">'+( phases[ph]||0)+'</div><div style="font-size:10px;color:var(--t3)">teams</div>'
+            :'<input id="r-ph-'+ph+'" type="number" class="inp rep-field" value="'+( phases[ph]||0)+'" style="font-size:16px;font-weight:700;padding:3px 6px;width:100%">'
           )+'</div>'
         ).join('')
-        +'</div>'
-        // Gender & nationality
-        +'<div class="g2 mb12">'
-        +'<div><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Nationality (enrolled)</div>'
-        +'<div id="rep-nat-breakdown">'+renderNatBreakdown(r.snap_nat_counts||{}, r.snap_participants||1)+'</div></div>'
-        +'<div><div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Gender &amp; disability</div>'
-        +'<div style="display:flex;flex-direction:column;gap:6px">'
-        +renderMiniBar('Female', r.snap_female_pct||0, '#EC4899')
-        +renderMiniBar('Male', 100-(r.snap_female_pct||0), 'var(--fb1)')
-        +renderMiniBar('PwD', r.snap_disabled_pct||0, 'var(--warn)')
-        +'</div></div>'
-        +'</div>'
-        // Achievement matrix
-        +'<div style="margin-bottom:12px;overflow-x:auto">'
-        +'<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Achievement per partner per phase</div>'
-        +'<div id="rep-partner-matrix">'+renderPartnerMatrix(r.snap_partner_phase||{})+'</div>'
         +'</div>'
         +rTextarea('Program notes / narrative', 'r-snap-notes', r.snap_override_notes, locked, 2)
         +(locked?''
           :'<button class="btn btn-sm" style="margin-top:6px" onclick="refreshSnap()">↺ Refresh from live data</button>')
       )
+
+      // ══ SECTION 2: Workplan Activities ══
+      +rSec('Workplan Activities',
+        '<div id="rep-acts-list">'+renderActsList(r.activities_completed,locked)+'</div>'
+        +rTextarea('Notes on activities', 'r-acts-notes', r.activities_notes, locked, 2)
+      )
+
+      // ══ SECTION 3: Attendance & Assessments ══
+      +rSec('Attendance & Assessment',
+        '<div id="rep-att-data">'+renderAttSummary(r.att_summary,r.assess_summary,locked)+'</div>'
+        +rTextarea('Narrative', 'r-att-narrative', r.att_narrative, locked, 2)
+        +(locked?'':'<button class="btn btn-sm" style="margin-top:6px" onclick="refreshAttSummary()">↺ Refresh from live data</button>')
+      )
+
+      // ══ SECTION 4: Challenges & Risks ══
+      +rSec('Challenges & Risks',
+        '<div id="rep-challenges-list">'+renderChallengesList(r.challenges,locked)+'</div>'
+        +(locked?''
+          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addChallenge()">+ Add challenge</button>')
+      )
+
+      // ══ SECTION 5: Partner Updates ══
+      +rSec('Partner Updates',
+        '<div id="rep-partners-list">'+renderPartnersList(r.partner_updates,locked)+'</div>'
+        +(locked?''
+          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addPartnerUpdate()">+ Add partner</button>')
+      )
+
+      // ══ SECTION 6: Financial & Procurement ══
+      +rSec('Financial & Procurement',
+        '<div class="g2 mb12">'
+        +(locked
+          ?'<div class="stat"><div class="slbl">Budget spent (USD)</div><div style="font-size:18px;font-weight:700">$'+( r.fin_budget_spent||0).toLocaleString()+'</div></div>'
+          +'<div class="stat"><div class="slbl">Notes</div><div style="font-size:13px">'+( r.fin_notes||'—')+'</div></div>'
+          :'<div><label class="flbl">Budget spent (USD)</label><input class="inp rep-field" id="r-budget" type="number" placeholder="0" value="'+(r.fin_budget_spent||'')+'"></div>'
+          +'<div><label class="flbl">Financial notes</label><input class="inp rep-field" id="r-fin-notes" placeholder="Notes..." value="'+esc(r.fin_notes)+'"></div>'
+        )+'</div>'
+        +'<div id="rep-procurement-list">'+renderProcurementList(r.procurement_items,locked)+'</div>'
+        +(locked?''
+          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addProcurement()">+ Add item</button>')
+      )
+
+      // ══ SECTION 7: Achievements ══
+      +rSec('Key Achievements',
+        '<div id="rep-achievements-list">'+renderAchievementsList(r.achievements,locked)+'</div>'
+        +(locked?''
+          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addAchievement()">+ Add achievement</button>')
+        +rTextarea('Success story or participant case', 'r-story', r.success_story, locked, 3)
+      )
+
+      // ══ SECTION 8: Next Period Plan ══
+      +rSec('Next Period Plan',
+        '<div id="rep-next-list">'+renderNextList(r.next_month_targets,locked)+'</div>'
+        +(locked?''
+          :'<button class="btn btn-sm" style="margin-top:8px" onclick="addNextItem()">+ Add item</button>')
+        +rTextarea('Additional notes', 'r-next-notes', r.next_month_notes, locked, 2)
+      )
+
+      // ══ SECTION 9: Sign-off ══
+      +rSec('Sign-off',
+        '<div class="g2 mb10">'
+        +rField('Prepared by','r-prep-by','text',r.prepared_by,locked)
+        +rField('Preparation date','r-prep-date','date',r.preparation_date,locked)
+        +'</div><div class="g2 mb10">'
+        +rField('Reviewed by','r-rev-by','text',r.reviewed_by_name,locked)
+        +rField('Review date','r-rev-date','date',r.review_date,locked)
+        +'</div>'
+        +rTextarea('Comments / ILO notes','r-comments',r.comments,locked,2)
+      )
+
+      // ── Bottom bar ──
+      +'<div class="fbet" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--bdr)">'
+      +(locked
+        ?'<button class="btn" onclick="archiveReport()" style="font-size:12px">'+( r.status==='archived'?'Archived':'Archive report')+'</button>'
+        :'<button class="btn" onclick="saveDraft()" style="font-size:12px">Save draft</button>'
+      )
+      +'<div class="fctr g8">'
+      +'<button class="btn" onclick="downloadReportPDF()" style="font-size:12px">⬇ Download PDF</button>'
+      +(locked?''
+        :'<button class="btn-p" onclick="submitReport()" style="font-size:12px">Submit report</button>')
+      +'</div></div>';
+
+    updateRepProgress();
+    document.querySelectorAll('.rep-field').forEach(f=>f.addEventListener('input',updateRepProgress));
+
+  } catch(e) {
+    el.innerHTML = '<div class="card">'+emptyState('⚠','Error',e.message)+'</div>';
+    console.error('openReport:',e);
+  }
+}
+
+// placeholder replaced at runtime
+const PHASE_COLORS_PLACEHOLDER = {DT:'var(--dt)',FB1:'var(--fb1)',FB2:'var(--fb2)',INC:'var(--inc)'};
+
+// ── Section & field helpers ──
+function rSec(title, body){
+  return '<div class="card mb15">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);padding-bottom:10px;margin-bottom:14px;border-bottom:1px solid var(--bdr)">'+title+'</div>'
+    +body+'</div>';
+}
+function rStat(label, val, id, type, locked){
+  return locked
+    ? '<div class="stat"><div class="slbl">'+label+'</div><div style="font-size:18px;font-weight:700">'+val+'</div></div>'
+    : '<div><label class="flbl">'+label+'</label><input class="inp rep-field" id="'+id+'" type="'+type+'" value="'+val+'"></div>';
+}
+function rField(label, id, type, val, locked){
+  return locked
+    ? '<div><div class="flbl">'+label+'</div><p style="font-size:13px;font-weight:500">'+( val||'—')+'</p></div>'
+    : '<div><label class="flbl">'+label+'</label><input class="inp rep-field" id="'+id+'" type="'+type+'" value="'+esc(val)+'"></div>';
+}
+function rTextarea(label, id, val, locked, rows){
+  return locked
+    ? (val?'<div style="margin-top:10px"><div class="flbl">'+label+'</div><p style="font-size:13px;color:var(--t2);line-height:1.6">'+esc(val)+'</p></div>':'')
+    : '<div style="margin-top:10px"><label class="flbl">'+label+'</label>'
+      +'<textarea class="txa rep-field" id="'+id+'" rows="'+rows+'">'+esc(val)+'</textarea></div>';
+}
+
+// ── PDF export ──
+async function downloadReportPDF(){
+  if(!_currentReportId) return;
+  const rows = await sb.get('monthly_reports','id=eq.'+_currentReportId).catch(()=>[]);
+  const r = rows[0]||_reportDraft;
+
+  const phases = r.snap_phases||{};
+  const challenges = Array.isArray(r.challenges)?r.challenges:[];
+  const partners = Array.isArray(r.partner_updates)?r.partner_updates:[];
+  const achievements = Array.isArray(r.achievements)?r.achievements:[];
+  const nextItems = Array.isArray(r.next_month_targets)?r.next_month_targets:[];
+  const acts = Array.isArray(r.activities_completed)?r.activities_completed:[];
+  const procurement = Array.isArray(r.procurement_items)?r.procurement_items:[];
+  const att = Array.isArray(r.att_summary)?r.att_summary:[];
+  const fmtDate = d=>d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'—';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${r.report_label} — GIL 2026 Progress Report</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;color:#1a1a2e;background:#fff;line-height:1.5}
+  .page{max-width:210mm;margin:0 auto;padding:20mm 18mm}
+  /* Header */
+  .rpt-header{border-bottom:3px solid #1a56db;padding-bottom:14px;margin-bottom:20px}
+  .rpt-logo-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .rpt-org{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1a56db}
+  .rpt-ref{font-size:8pt;color:#6b7280;font-family:monospace}
+  .rpt-title{font-size:18pt;font-weight:700;color:#1a1a2e;margin-bottom:3px}
+  .rpt-sub{font-size:10pt;color:#6b7280}
+  .rpt-meta{display:flex;gap:24px;margin-top:10px;font-size:9pt;color:#6b7280}
+  .rpt-meta span b{color:#1a1a2e}
+  /* Sections */
+  .sec{margin-bottom:18px;page-break-inside:avoid}
+  .sec-title{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:5px;margin-bottom:10px}
+  /* KPI row */
+  .kpi-row{display:flex;gap:12px;margin-bottom:12px}
+  .kpi{flex:1;background:#f8faff;border:1px solid #e0e7ff;border-radius:6px;padding:10px 12px;text-align:center}
+  .kpi-val{font-size:20pt;font-weight:700;color:#1a56db}
+  .kpi-lbl{font-size:8pt;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+  /* Phase chips */
+  .phase-row{display:flex;gap:8px;margin-bottom:12px}
+  .phase-chip{flex:1;padding:6px 8px;border-radius:5px;text-align:center;font-size:8pt;font-weight:700}
+  .ph-dt{background:#EFF6FF;color:#1D4ED8;border-left:3px solid #1D4ED8}
+  .ph-fb1{background:#F0FDF4;color:#166534;border-left:3px solid #16A34A}
+  .ph-fb2{background:#FFF7ED;color:#9A3412;border-left:3px solid #EA580C}
+  .ph-inc{background:#F5F3FF;color:#5B21B6;border-left:3px solid #7C3AED}
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:8px}
+  th{background:#f3f4f6;padding:6px 8px;text-align:left;font-weight:600;font-size:8pt;text-transform:uppercase;color:#6b7280;border-bottom:2px solid #e5e7eb}
+  td{padding:6px 8px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  /* Pills */
+  .pill{display:inline-block;font-size:8pt;font-weight:600;padding:1px 7px;border-radius:10px}
+  .pill-pass{background:#dcfce7;color:#166534}
+  .pill-warn{background:#fef9c3;color:#854d0e}
+  .pill-fail{background:#fee2e2;color:#991b1b}
+  .pill-info{background:#dbeafe;color:#1e40af}
+  /* Challenge cards */
+  .chal{padding:8px 10px;border-radius:5px;margin-bottom:6px;border-left:3px solid}
+  .chal-h{border-color:#dc2626;background:#fef2f2}
+  .chal-m{border-color:#d97706;background:#fffbeb}
+  .chal-l{border-color:#16a34a;background:#f0fdf4}
+  /* Partner */
+  .partner-row{padding:8px 0;border-bottom:1px solid #f3f4f6}
+  /* Achievement */
+  .ach{padding:8px 10px;margin-bottom:6px;background:#f8faff;border-radius:5px;border-left:3px solid #1a56db}
+  /* Next items */
+  .next-item{display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid #f3f4f6;font-size:9pt}
+  /* Narrative */
+  .narrative{font-size:10pt;color:#374151;line-height:1.65;background:#fafafa;border-left:3px solid #e5e7eb;padding:8px 12px;border-radius:0 5px 5px 0;margin-bottom:8px}
+  /* Sign-off table */
+  .signoff{display:flex;gap:40px;margin-top:10px}
+  .signoff-col{flex:1;border-top:1px solid #1a1a2e;padding-top:6px;font-size:8pt}
+  .signoff-col b{display:block;font-size:10pt;margin-bottom:2px}
+  /* Footer */
+  .rpt-footer{margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:8pt;color:#9ca3af;display:flex;justify-content:space-between}
+  @media print{
+    body{font-size:10pt}
+    .page{padding:12mm 14mm}
+    .sec{page-break-inside:avoid}
+  }
+</style></head><body><div class="page">
+
+<!-- HEADER -->
+<div class="rpt-header">
+  <div class="rpt-logo-row">
+    <div class="rpt-org">INJAZ Lebanon · GIL 2026–2027</div>
+    <div class="rpt-ref">LEBA/PCA2023612/PD20261705</div>
+  </div>
+  <div class="rpt-title">${r.report_label}</div>
+  <div class="rpt-sub">Progress Report — Generation of Innovation Leaders</div>
+  <div class="rpt-meta">
+    <span><b>Prepared by:</b> ${r.prepared_by||'—'}</span>
+    <span><b>Date:</b> ${fmtDate(r.preparation_date)}</span>
+    <span><b>Reviewed by:</b> ${r.reviewed_by_name||'—'}</span>
+    <span><b>Status:</b> ${(r.status||'draft').charAt(0).toUpperCase()+(r.status||'draft').slice(1)}</span>
+  </div>
+</div>
+
+<!-- S1: PROGRAM SNAPSHOT -->
+<div class="sec">
+  <div class="sec-title">1. Program Snapshot</div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val">${r.snap_participants||0}</div><div class="kpi-lbl">Participants</div></div>
+    <div class="kpi"><div class="kpi-val">${r.snap_teams||0}</div><div class="kpi-lbl">Active Teams</div></div>
+    <div class="kpi"><div class="kpi-val">${r.snap_female_pct||0}%</div><div class="kpi-lbl">Female</div></div>
+    <div class="kpi"><div class="kpi-val">${Object.values(phases).reduce((s,v)=>s+v,0)}</div><div class="kpi-lbl">Total Teams across phases</div></div>
+  </div>
+  <div class="phase-row">
+    <div class="phase-chip ph-dt"><div style="font-size:14pt">${phases.DT||0}</div>Design Thinking</div>
+    <div class="phase-chip ph-fb1"><div style="font-size:14pt">${phases.FB1||0}</div>FB Stage 1</div>
+    <div class="phase-chip ph-fb2"><div style="font-size:14pt">${phases.FB2||0}</div>FB Stage 2</div>
+    <div class="phase-chip ph-inc"><div style="font-size:14pt">${phases.INC||0}</div>Incubation</div>
+  </div>
+  ${r.snap_override_notes?'<div class="narrative">'+r.snap_override_notes+'</div>':''}
+</div>
+
+<!-- S2: WORKPLAN ACTIVITIES -->
+${acts.length?`<div class="sec">
+  <div class="sec-title">2. Workplan Activities</div>
+  <table>
+    <tr><th style="width:50%">Activity</th><th style="width:15%">Category</th><th style="width:15%">Status</th><th>Notes</th></tr>
+    ${acts.map(a=>`<tr>
+      <td>${a.title||''}</td>
+      <td style="color:#6b7280">${a.category||''}</td>
+      <td><span class="pill ${a.status==='completed'?'pill-pass':a.status==='in_progress'?'pill-info':a.status==='delayed'?'pill-fail':'pill-warn'}">${(a.status||'—').replace('_',' ')}</span></td>
+      <td style="color:#6b7280">${a.notes||''}</td>
+    </tr>`).join('')}
+  </table>
+  ${r.activities_notes?'<div class="narrative">'+r.activities_notes+'</div>':''}
+</div>`:''}
+
+<!-- S3: ATTENDANCE & ASSESSMENT -->
+${att.length?`<div class="sec">
+  <div class="sec-title">3. Attendance & Assessment</div>
+  <table>
+    <tr><th>Class</th><th>Phase</th><th style="text-align:center">Present</th><th style="text-align:center">Absent</th><th style="text-align:center">Excused</th><th style="text-align:center">Rate</th></tr>
+    ${att.map(a=>{const rate=a.total?Math.round(a.P/a.total*100):0;return`<tr>
+      <td>${a.class||'—'}</td><td>${a.phase||''}</td>
+      <td style="text-align:center;color:#166534">${a.P||0}</td>
+      <td style="text-align:center;color:#991b1b">${a.A||0}</td>
+      <td style="text-align:center;color:#854d0e">${a.E||0}</td>
+      <td style="text-align:center"><span class="pill ${rate>=60?'pill-pass':'pill-fail'}">${rate}%</span></td>
+    </tr>`}).join('')}
+  </table>
+  ${r.att_narrative?'<div class="narrative">'+r.att_narrative+'</div>':''}
+</div>`:''}
+
+<!-- S4: CHALLENGES & RISKS -->
+${challenges.length?`<div class="sec">
+  <div class="sec-title">4. Challenges & Risks</div>
+  ${challenges.map(c=>`<div class="chal chal-${(c.severity||'m')[0]}">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <b>${c.text||''}</b>
+      <span class="pill ${c.severity==='high'?'pill-fail':c.severity==='medium'?'pill-warn':'pill-pass'}">${c.severity||'medium'}</span>
+    </div>
+    ${c.mitigation?'<div style="font-size:9pt;color:#6b7280">Mitigation: '+c.mitigation+'</div>':''}
+  </div>`).join('')}
+</div>`:''}
+
+<!-- S5: PARTNER UPDATES -->
+${partners.length?`<div class="sec">
+  <div class="sec-title">5. Partner Updates</div>
+  ${partners.map(p=>`<div class="partner-row">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <b>${p.partner||''}</b>
+      <span class="pill ${p.status==='on_track'?'pill-pass':p.status==='delayed'?'pill-warn':'pill-fail'}">${(p.status||'on_track').replace('_',' ')}</span>
+    </div>
+    <div style="font-size:10pt;color:#374151">${p.narrative||''}</div>
+  </div>`).join('')}
+</div>`:''}
+
+<!-- S6: FINANCIAL -->
+${(r.fin_budget_spent||r.fin_notes||procurement.length)?`<div class="sec">
+  <div class="sec-title">6. Financial & Procurement</div>
+  <table>
+    <tr><th>Item</th><th>Status</th><th style="text-align:right">Amount (USD)</th><th>Notes</th></tr>
+    <tr><td><b>Budget spent this period</b></td><td><span class="pill pill-info">reported</span></td><td style="text-align:right"><b>$${(r.fin_budget_spent||0).toLocaleString()}</b></td><td>${r.fin_notes||''}</td></tr>
+    ${procurement.map(p=>`<tr>
+      <td>${p.item||''}</td>
+      <td><span class="pill pill-info">${p.status||''}</span></td>
+      <td style="text-align:right">$${(p.amount||0).toLocaleString()}</td>
+      <td>${p.notes||''}</td>
+    </tr>`).join('')}
+  </table>
+</div>`:''}
+
+<!-- S7: ACHIEVEMENTS -->
+${achievements.length||r.success_story?`<div class="sec">
+  <div class="sec-title">7. Key Achievements</div>
+  ${achievements.map(a=>`<div class="ach">
+    <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+      <b>${a.title||''}</b>
+      <span style="font-size:8pt;color:#6b7280;text-transform:capitalize">${a.type||''}</span>
+    </div>
+    <div style="font-size:9pt;color:#374151">${a.description||''}</div>
+  </div>`).join('')}
+  ${r.success_story?'<div style="margin-top:8px"><b style="font-size:9pt">Success Story</b><div class="narrative">'+r.success_story+'</div></div>':''}
+</div>`:''}
+
+<!-- S8: NEXT PERIOD PLAN -->
+${nextItems.length||r.next_month_notes?`<div class="sec">
+  <div class="sec-title">8. Next Period Plan</div>
+  ${nextItems.map(n=>`<div class="next-item">
+    <span style="flex:3">${n.activity||''}</span>
+    <span style="flex:1;color:#6b7280">Target: ${n.target||'—'}</span>
+    <span style="flex:1;color:#1a56db;font-weight:500">${n.owner||''}</span>
+  </div>`).join('')}
+  ${r.next_month_notes?'<div class="narrative" style="margin-top:8px">'+r.next_month_notes+'</div>':''}
+</div>`:''}
+
+<!-- S9: SIGN-OFF -->
+<div class="sec" style="margin-top:24px">
+  <div class="sec-title">Sign-off</div>
+  ${r.comments?'<div class="narrative" style="margin-bottom:14px">'+r.comments+'</div>':''}
+  <div class="signoff">
+    <div class="signoff-col"><b>${r.prepared_by||'__________________'}</b>Prepared by<br><span style="color:#6b7280">${fmtDate(r.preparation_date)}</span></div>
+    <div class="signoff-col"><b>${r.reviewed_by_name||'__________________'}</b>Reviewed by<br><span style="color:#6b7280">${fmtDate(r.review_date)}</span></div>
+    <div class="signoff-col"><b>__________________</b>ILO Representative<br><span style="color:#6b7280">Date: ___________</span></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="rpt-footer">
+  <span>INJAZ Lebanon · GIL 2026–2027 · LEBA/PCA2023612/PD20261705</span>
+  <span>Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span>
+</div>
+
+</div></html>`;
+
+  const win = window.open('','_blank');
+  if(!win){ toast('Popup blocked','Please allow popups for this site','error'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.onload = ()=>{ win.focus(); win.print(); };
+  toast('PDF ready','Print dialog opened — save as PDF');
+}
+
+
+// ── REPORT HELPER FUNCTIONS ──
+
+function updateRepProgress(){
+  const fields=document.querySelectorAll('.rep-field');
+  let filled=0;
+  fields.forEach(f=>{ if((f.value||'').trim()) filled++; });
+  const pct=fields.length?Math.round(filled/fields.length*100):0;
+  const bar=document.getElementById('rep-pct-bar');
+  const lbl=document.getElementById('rep-pct-lbl');
+  if(bar){ bar.style.width=pct+'%'; bar.style.background=pct>=80?'var(--pass)':pct>=50?'var(--or)':'var(--fail)'; }
+  if(lbl) lbl.textContent=pct+'% complete';
+}
+
+function renderActsList(acts,locked){
+  if(!Array.isArray(acts)||!acts.length)
+    return '<p style="font-size:13px;color:var(--t3)">No workplan activities for this period.</p>';
+  const statusOpts = s => ['not_started','in_progress','completed','delayed','at_risk']
+    .map(x=>'<option value="'+x+'"'+(s===x?' selected':'')+'>'+x.replace('_',' ')+'</option>').join('');
+  return acts.map((a,i)=>
+    '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--bdr)">'
+    +'<div style="flex:1"><p style="font-size:12px;font-weight:500">'+esc(a.title||'')+'</p>'
+    +'<p style="font-size:10px;color:var(--t3)">'+esc(a.category||'')+'</p></div>'
+    +(locked
+      ?'<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--bg)">'+esc(a.status||'—')+'</span>'
+      :'<select class="sel" style="font-size:11px;padding:3px 6px;width:130px" onchange="_reportDraft.activities_completed['+i+'].status=this.value">'+statusOpts(a.status)+'</select>'
+      +'<input class="inp" style="font-size:11px;padding:4px 8px;width:160px" placeholder="Notes..." value="'+esc(a.notes||'')+'" oninput="_reportDraft.activities_completed['+i+'].notes=this.value">'
+    )+'</div>'
+  ).join('');
+}
+
+function renderAttSummary(att,assess,locked){
+  const attArr=Array.isArray(att)?att:[];
+  if(!attArr.length) return '<p style="font-size:12px;color:var(--t3);margin-bottom:10px">No attendance data. <button class="btn btn-sm" onclick="refreshAttSummary()">Load from live data</button></p>';
+  return '<div id="rep-att-data" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px">'
+    +'<tr style="background:var(--bg)"><th style="padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:left;font-size:10px;color:var(--t3)">Class</th>'
+    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">Phase</th>'
+    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">P</th>'
+    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">A</th>'
+    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">E</th>'
+    +'<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-size:10px;color:var(--t3)">Rate</th></tr>'
+    +attArr.map(a=>{
+      const rate=a.total?Math.round(a.P/a.total*100):0;
+      return '<tr><td style="padding:6px 8px;border-bottom:0.5px solid var(--bdr)">'+esc(a.class||'—')+'</td>'
+        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center">'+phaseTag(a.phase||'')+'</td>'
+        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;color:var(--pass-t)">'+( a.P||0)+'</td>'
+        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;color:var(--fail-t)">'+( a.A||0)+'</td>'
+        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;color:var(--warn-t)">'+( a.E||0)+'</td>'
+        +'<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center;font-weight:700;color:'+(rate>=60?'var(--pass)':'var(--fail)')+'">'+rate+'%</td></tr>';
+    }).join('')+'</table></div>';
+}
+
+function renderChallengesList(arr,locked){
+  if(!Array.isArray(arr)||!arr.length)
+    return '<p style="font-size:13px;color:var(--t3)">No challenges logged.</p>';
+  const sevBg={high:'#FEF2F2',medium:'var(--warn-bg)',low:'var(--pass-bg)'};
+  const sevCol={high:'#DC2626',medium:'var(--warn-t)',low:'var(--pass-t)'};
+  return arr.map((c,i)=>{
+    const bg=sevBg[c.severity]||sevBg.medium, col=sevCol[c.severity]||sevCol.medium;
+    return '<div style="padding:10px 12px;border-radius:6px;margin-bottom:8px;border-left:3px solid '+col+';background:'+bg+'">'
+      +'<div class="fbet mb6"><span style="font-size:10px;font-weight:700;color:'+col+'">'+esc(c.severity||'medium')+' severity</span>'
+      +(locked?'':'<button onclick="removeChallenge('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>')+'</div>'
+      +(locked
+        ?'<p style="font-size:13px;margin-bottom:4px">'+esc(c.text||'')+'</p>'
+         +'<p style="font-size:11px;color:var(--t3)">Mitigation: '+esc(c.mitigation||'—')+'</p>'
+        :'<textarea class="txa" rows="2" style="margin-bottom:6px" placeholder="Challenge..." oninput="_reportDraft.challenges['+i+'].text=this.value">'+esc(c.text)+'</textarea>'
+         +'<div class="g2"><select class="sel" onchange="_reportDraft.challenges['+i+'].severity=this.value">'
+         +['low','medium','high'].map(s2=>'<option value="'+s2+'"'+(c.severity===s2?' selected':'')+'>'+s2+'</option>').join('')
+         +'</select><input class="inp" placeholder="Mitigation..." value="'+esc(c.mitigation||'')+'" oninput="_reportDraft.challenges['+i+'].mitigation=this.value"></div>'
+      )+'</div>';
+  }).join('');
+}
+
+function renderPartnersList(arr,locked){
+  if(!Array.isArray(arr)||!arr.length)
+    return '<p style="font-size:13px;color:var(--t3)">No partner updates yet.</p>';
+  const psCol={on_track:'var(--pass-t)',delayed:'var(--warn-t)',at_risk:'#DC2626'};
+  const psBg={on_track:'var(--pass-bg)',delayed:'var(--warn-bg)',at_risk:'#FEF2F2'};
+  return arr.map((p,i)=>{
+    const col=psCol[p.status]||psCol.on_track, bg=psBg[p.status]||psBg.on_track;
+    const pObj=PARTNERS.find(x=>x.code===p.partner)||{color:'var(--or)'};
+    return '<div style="background:var(--bg);border-radius:6px;padding:10px 12px;margin-bottom:8px">'
+      +'<div class="fbet mb8"><div class="fctr g8">'
+      +'<div style="width:8px;height:8px;border-radius:50%;background:'+( pObj.color||'var(--or)')+'"></div>'
+      +'<span style="font-weight:600">'+esc(p.partner||'Partner')+'</span>'
+      +'<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:'+bg+';color:'+col+'">'+( p.status||'on_track').replace('_',' ')+'</span>'
+      +'</div>'+(locked?'':'<button onclick="removePartner('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>')+'</div>'
+      +(locked
+        ?'<p style="font-size:13px;line-height:1.6">'+esc(p.narrative||'')+'</p>'
+        :'<div class="g2 mb8"><select class="sel" onchange="_reportDraft.partner_updates['+i+'].partner=this.value">'
+         +PARTNERS.map(x=>'<option value="'+x.code+'"'+(p.partner===x.code?' selected':'')+'>'+x.code+'</option>').join('')
+         +'</select><select class="sel" onchange="_reportDraft.partner_updates['+i+'].status=this.value">'
+         +['on_track','delayed','at_risk'].map(s2=>'<option value="'+s2+'"'+(p.status===s2?' selected':'')+'>'+s2.replace('_',' ')+'</option>').join('')
+         +'</select></div>'
+         +'<textarea class="txa" rows="2" placeholder="Partner narrative..." oninput="_reportDraft.partner_updates['+i+'].narrative=this.value">'+esc(p.narrative||'')+'</textarea>'
+      )+'</div>';
+  }).join('');
+}
+
+function renderProcurementList(arr,locked){
+  if(!Array.isArray(arr)||!arr.length)
+    return '<p style="font-size:13px;color:var(--t3)">No procurement items.</p>';
+  return arr.map((p,i)=>
+    '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
+    +(locked
+      ?'<span style="flex:2;font-size:12px">'+esc(p.item||'')+'</span>'
+       +'<span style="font-size:11px;color:var(--t3)">'+esc(p.status||'')+'</span>'
+       +'<span style="font-size:11px;font-weight:600">$'+(p.amount||0)+'</span>'
+      :'<input class="inp" style="flex:2;font-size:11px;padding:5px 8px" placeholder="Item..." value="'+esc(p.item||'')+'" oninput="_reportDraft.procurement_items['+i+'].item=this.value">'
+       +'<select class="sel" style="font-size:11px;padding:4px" onchange="_reportDraft.procurement_items['+i+'].status=this.value">'
+       +['planned','in_progress','completed','cancelled'].map(s2=>'<option value="'+s2+'"'+(p.status===s2?' selected':'')+'>'+s2+'</option>').join('')+'</select>'
+       +'<input class="inp" type="number" style="width:80px;font-size:11px;padding:5px 8px" placeholder="$" value="'+(p.amount||'')+'" oninput="_reportDraft.procurement_items['+i+'].amount=parseFloat(this.value)||0">'
+       +'<button onclick="removeProcurement('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>'
+    )+'</div>'
+  ).join('');
+}
+
+function renderAchievementsList(arr,locked){
+  if(!Array.isArray(arr)||!arr.length)
+    return '<p style="font-size:13px;color:var(--t3)">No achievements logged yet.</p>';
+  const types=['milestone','event','partnership','media','other'];
+  const typeCol={milestone:'var(--pass)',event:'var(--fb1)',partnership:'#8B5CF6',media:'#EC4899',other:'var(--or)'};
+  return arr.map((a,i)=>{
+    const col=typeCol[a.type]||'var(--or)';
+    return '<div style="border-left:3px solid '+col+';padding:10px 12px;background:var(--bg);border-radius:0 6px 6px 0;margin-bottom:8px">'
+      +'<div class="fbet mb6"><span style="font-size:10px;font-weight:700;color:'+col+';text-transform:capitalize">'+esc(a.type||'achievement')+'</span>'
+      +(locked?'':'<button onclick="removeAchievement('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>')+'</div>'
+      +(locked
+        ?'<p style="font-size:13px;font-weight:500;margin-bottom:3px">'+esc(a.title||'')+'</p>'
+         +'<p style="font-size:12px;color:var(--t2)">'+esc(a.description||'')+'</p>'
+        :'<div class="g2 mb6"><input class="inp" placeholder="Title..." value="'+esc(a.title||'')+'" oninput="_reportDraft.achievements['+i+'].title=this.value">'
+         +'<select class="sel" onchange="_reportDraft.achievements['+i+'].type=this.value">'
+         +types.map(t=>'<option value="'+t+'"'+(a.type===t?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'
+         +'<textarea class="txa" rows="2" placeholder="Description..." oninput="_reportDraft.achievements['+i+'].description=this.value">'+esc(a.description||'')+'</textarea>'
+      )+'</div>';
+  }).join('');
+}
+
+function renderNextList(arr,locked){
+  if(!Array.isArray(arr)||!arr.length)
+    return '<p style="font-size:13px;color:var(--t3)">No items planned yet.</p>';
+  return arr.map((n,i)=>
+    '<div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--bdr)">'
+    +(locked
+      ?'<span style="flex:3;font-size:12px">'+esc(n.activity||'')+'</span>'
+       +'<span style="flex:1;font-size:11px;color:var(--t3)">'+esc(n.target||'—')+'</span>'
+       +'<span style="flex:1;font-size:11px;color:var(--fb1)">'+esc(n.owner||'')+'</span>'
+      :'<input class="inp" style="flex:3;font-size:11px;padding:5px 8px" placeholder="Activity..." value="'+esc(n.activity||'')+'" oninput="_reportDraft.next_month_targets['+i+'].activity=this.value">'
+       +'<input class="inp" style="flex:1;font-size:11px;padding:5px 8px" placeholder="Target..." value="'+esc(n.target||'')+'" oninput="_reportDraft.next_month_targets['+i+'].target=this.value">'
+       +'<input class="inp" style="flex:1;font-size:11px;padding:5px 8px" placeholder="Owner..." value="'+esc(n.owner||'')+'" oninput="_reportDraft.next_month_targets['+i+'].owner=this.value">'
+       +'<button onclick="removeNextItem('+i+')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px">×</button>'
+    )+'</div>'
+  ).join('');
+}
+
+function reRenderSection(id,html){ const el=document.getElementById(id); if(el){el.innerHTML=html; updateRepProgress();} }
+
+function addChallenge(){ _reportDraft.challenges=_reportDraft.challenges||[]; _reportDraft.challenges.push({text:'',severity:'medium',mitigation:''}); reRenderSection('rep-challenges-list',renderChallengesList(_reportDraft.challenges,false)); }
+function removeChallenge(i){ _reportDraft.challenges.splice(i,1); reRenderSection('rep-challenges-list',renderChallengesList(_reportDraft.challenges,false)); }
+function addPartnerUpdate(){ _reportDraft.partner_updates=_reportDraft.partner_updates||[]; _reportDraft.partner_updates.push({partner:PARTNERS[0]?.code||'',narrative:'',status:'on_track'}); reRenderSection('rep-partners-list',renderPartnersList(_reportDraft.partner_updates,false)); }
+function removePartner(i){ _reportDraft.partner_updates.splice(i,1); reRenderSection('rep-partners-list',renderPartnersList(_reportDraft.partner_updates,false)); }
+function addProcurement(){ _reportDraft.procurement_items=_reportDraft.procurement_items||[]; _reportDraft.procurement_items.push({item:'',status:'planned',amount:0}); reRenderSection('rep-procurement-list',renderProcurementList(_reportDraft.procurement_items,false)); }
+function removeProcurement(i){ _reportDraft.procurement_items.splice(i,1); reRenderSection('rep-procurement-list',renderProcurementList(_reportDraft.procurement_items,false)); }
+function addAchievement(){ _reportDraft.achievements=_reportDraft.achievements||[]; _reportDraft.achievements.push({title:'',type:'milestone',description:''}); reRenderSection('rep-achievements-list',renderAchievementsList(_reportDraft.achievements,false)); }
+function removeAchievement(i){ _reportDraft.achievements.splice(i,1); reRenderSection('rep-achievements-list',renderAchievementsList(_reportDraft.achievements,false)); }
+function addNextItem(){ _reportDraft.next_month_targets=_reportDraft.next_month_targets||[]; _reportDraft.next_month_targets.push({activity:'',target:'',owner:''}); reRenderSection('rep-next-list',renderNextList(_reportDraft.next_month_targets,false)); }
+function removeNextItem(i){ _reportDraft.next_month_targets.splice(i,1); reRenderSection('rep-next-list',renderNextList(_reportDraft.next_month_targets,false)); }
+
+function collectReport(){
+  const get=id=>document.getElementById(id)?.value||'';
+  const phases={};
+  ['DT','FB1','FB2','INC'].forEach(ph=>{ phases[ph]=parseInt(document.getElementById('r-ph-'+ph)?.value)||0; });
+  return {
+    snap_participants:   parseInt(get('r-part'))||0,
+    snap_teams:          parseInt(get('r-teams'))||0,
+    snap_female_pct:     parseInt(get('r-fem'))||0,
+    snap_phases:         phases,
+    snap_override_notes: get('r-snap-notes'),
+    activities_notes:    get('r-acts-notes'),
+    att_narrative:       get('r-att-narrative'),
+    fin_budget_spent:    parseFloat(get('r-budget'))||null,
+    fin_notes:           get('r-fin-notes'),
+    success_story:       get('r-story'),
+    next_month_notes:    get('r-next-notes'),
+    prepared_by:         get('r-prep-by'),
+    preparation_date:    get('r-prep-date')||null,
+    reviewed_by_name:    get('r-rev-by'),
+    review_date:         get('r-rev-date')||null,
+    comments:            get('r-comments'),
+    activities_completed: _reportDraft.activities_completed||[],
+    challenges:           _reportDraft.challenges||[],
+    partner_updates:      _reportDraft.partner_updates||[],
+    procurement_items:    _reportDraft.procurement_items||[],
+    achievements:         _reportDraft.achievements||[],
+    next_month_targets:   _reportDraft.next_month_targets||[],
+  };
+}
+
+async function saveReport(status){
+  if(!_currentReportId) return;
+  const data=collectReport();
+  data.status=status;
+  data.updated_at=new Date().toISOString();
+  if(status==='submitted') data.submitted_at=new Date().toISOString();
+  try {
+    await sb.patch('monthly_reports','id=eq.'+_currentReportId,data);
+    toast(status==='submitted'?'Report submitted ✓':'Draft saved','');
+    if(status==='submitted') nav('pg-reports');
+    else loadReports();
+  } catch(e){ toast('Save failed',e.message,'error'); }
+}
+function saveDraft(){ saveReport('draft'); }
+function submitReport(){ saveReport('submitted'); }
+
+async function deleteReport(id){
+  if(!confirm('Delete this draft report?')) return;
+  try {
+    await sb.del('monthly_reports','id=eq.'+id);
+    toast('Deleted',''); loadReports();
+  } catch(e){ toast('Error',e.message,'error'); }
+}
+
+async function archiveReport(){
+  if(!_currentReportId) return;
+  await sb.patch('monthly_reports','id=eq.'+_currentReportId,{status:'archived'}).catch(()=>{});
+  toast('Archived',''); nav('pg-reports');
+}
+
+async function refreshSnap(){
+  const snap=await autoSnap();
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  set('r-part',snap.participants); set('r-teams',snap.teams); set('r-fem',snap.femalePct);
+  ['DT','FB1','FB2','INC'].forEach(ph=>set('r-ph-'+ph,snap.phases[ph]||0));
+  toast('Refreshed','Live data loaded'); updateRepProgress();
+}
+
+async function refreshAttSummary(){
+  try {
+    const [attRows,allCls]=await Promise.all([
+      sb.get('attendance','select=class_id,status,user_id'),
+      sb.get('classes','select=id,name,phase_code'),
+    ]);
+    const clsMap={};
+    allCls.forEach(c=>{ clsMap[c.id]={name:c.name,phase:c.phase_code}; });
+    const byClass={};
+    attRows.forEach(a=>{
+      const c=clsMap[a.class_id]; if(!c) return;
+      if(!byClass[a.class_id]) byClass[a.class_id]={class:c.name,phase:c.phase,P:0,A:0,E:0,total:0};
+      byClass[a.class_id][a.status]=(byClass[a.class_id][a.status]||0)+1;
+      byClass[a.class_id].total++;
+    });
+    _reportDraft.att_summary=Object.values(byClass);
+    const el=document.getElementById('rep-att-data');
+    if(el) el.innerHTML=renderAttSummary(_reportDraft.att_summary,[],false);
+    toast('Attendance refreshed','');
+  } catch(e){ toast('Error',e.message,'error'); }
+}
+
+if(!sb.del) sb.del=async(table,qs)=>{
+  const res=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+qs,
+    {method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+sb._token,'Content-Type':'application/json','Prefer':'return=representation'}});
+  if(!res.ok) throw new Error(await res.text());
+};
+
+
+tryRestoreSession();
 </script>
 </body>
 </html>
