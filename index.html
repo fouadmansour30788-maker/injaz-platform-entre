@@ -3950,7 +3950,7 @@ async function loadAppStatus(){
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr>';
   try {
     _APPST = await sb.get('applications',
-      'select=id,status,team_name,lead_name,lead_email,lead_phone,partner,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
+      'select=id,status,team_name,lead_name,lead_email,phone,partner,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
     // KPI counts
     const count = s => _APPST.filter(r=>r.status===s).length;
     document.getElementById('appst-kpis').innerHTML =
@@ -3992,7 +3992,7 @@ function renderAppStatus(){
   }
   tbody.innerHTML = rows.map(r=>{
     const contact = (r.lead_email?'<div style="font-size:12px">✉ '+esc(r.lead_email)+'</div>':'')
-                  + (r.lead_phone?'<div style="font-size:12px;color:var(--t2)">☎ '+esc(r.lead_phone)+'</div>':'')
+                  + (r.phone?'<div style="font-size:12px;color:var(--t2)">☎ '+esc(r.phone)+'</div>':'')
                   || '<span style="color:var(--t3)">—</span>';
     const idea = r.idea_title
       ? '<div style="font-weight:500">'+esc(r.idea_title)+'</div>'+(r.sector?'<div style="font-size:11px;color:var(--t3)">'+esc(r.sector)+'</div>':'')
