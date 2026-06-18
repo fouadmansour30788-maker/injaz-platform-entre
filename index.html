@@ -1584,6 +1584,41 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         </div>
       </div>
     </div>
+
+    <!-- ════ ADMIN: APPLICATIONS STATUS ════ -->
+    <div class="page" id="pg-app-status">
+      <div class="fbet mb15">
+        <div class="sh" style="margin:0"><h2>Applications status</h2><p id="appst-count">Loading applications...</p></div>
+        <div class="fctr g8">
+          <input class="inp" style="width:200px" placeholder="Search team, lead, idea..." id="appst-search" oninput="renderAppStatus()">
+          <select class="sel" id="appst-status-filter" onchange="renderAppStatus()" style="font-size:12px">
+            <option value="">All statuses</option>
+            <option value="pending">Pending review</option>
+            <option value="approved_dt">Enrolled in DT</option>
+            <option value="approved_fb1">Enrolled in FB1</option>
+            <option value="ineligible">Rejected</option>
+          </select>
+          <select class="sel" id="appst-partner-filter" onchange="renderAppStatus()" style="font-size:12px">
+            <option value="">All partners</option>
+          </select>
+          <button class="btn btn-sm" onclick="exportApplicationsXLS()" style="font-size:12px;padding:5px 10px">⬇ Export XLS</button>
+        </div>
+      </div>
+      <div class="g4 mb15" id="appst-kpis"></div>
+      <div class="card">
+        <table class="dtbl">
+          <thead><tr>
+            <th style="width:18%">Team / Lead</th>
+            <th style="width:13%">Partner</th>
+            <th style="width:22%">Contact</th>
+            <th style="width:22%">Business idea</th>
+            <th style="width:8%">Members</th>
+            <th style="width:17%">Status</th>
+          </tr></thead>
+          <tbody id="appst-tbody"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -1776,6 +1811,7 @@ const ADMIN_TABS=[
   {l:'Attendance',p:'pg-attendance'},{l:'Track',p:'pg-track'},
   {l:'Workplan',p:'pg-workplan'},{l:'Reports',p:'pg-reports'},
   {l:'Map',p:'pg-map'},{l:'Applications',p:'pg-applications'},
+  {l:'Status',p:'pg-app-status'},
   {l:'Rubric',p:'pg-rubric'},{l:'Notifications',p:'pg-notifications'},
   {l:'Register team',p:'pg-register'},
 ];
@@ -1808,6 +1844,7 @@ function nav(id){
   if(id==='pg-map') loadMap();
   if(id==='pg-analytics') loadAnalytics();
   if(id==='pg-applications') loadApplications();
+  if(id==='pg-app-status') loadAppStatus();
   if(id==='pg-notifications') loadNotifications();
   if(id==='pg-p-notifications') loadParticipantNotifications();
   if(id==='pg-track') loadTrack();
@@ -3900,6 +3937,82 @@ async function loadApplications(){
     if(badgeEl) badgeEl.textContent='—';
     console.error('loadApplications:',e);
   }
+}
+
+// ── Applications status (read-only overview list) ──
+let _APPST = [];
+const APPST_LABEL = {pending:'Pending review', approved_dt:'Enrolled in DT', approved_fb1:'Enrolled in FB1', ineligible:'Rejected'};
+const APPST_TAG   = {pending:'twarn', approved_dt:'tdt', approved_fb1:'tfb1', ineligible:'terr'};
+
+async function loadAppStatus(){
+  const tbody = document.getElementById('appst-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr>';
+  try {
+    _APPST = await sb.get('applications',
+      'select=id,status,team_name,lead_name,lead_email,lead_phone,partner,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
+    // KPI counts
+    const count = s => _APPST.filter(r=>r.status===s).length;
+    document.getElementById('appst-kpis').innerHTML =
+      '<div class="stat"><div class="slbl">Pending</div><div class="sval" style="color:var(--warn)">'+count('pending')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Enrolled in DT</div><div class="sval" style="color:var(--dt)">'+count('approved_dt')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Enrolled in FB1</div><div class="sval" style="color:var(--fb1)">'+count('approved_fb1')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Rejected</div><div class="sval" style="color:var(--fail)">'+count('ineligible')+'</div></div>';
+    // Partner filter options
+    const partners = [...new Set(_APPST.map(r=>r.partner).filter(Boolean))].sort();
+    const psel = document.getElementById('appst-partner-filter');
+    if(psel){
+      const cur = psel.value;
+      psel.innerHTML = '<option value="">All partners</option>'+partners.map(p=>'<option value="'+p.replace(/"/g,'&quot;')+'">'+p+'</option>').join('');
+      psel.value = cur;
+    }
+    renderAppStatus();
+  } catch(e){
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--fail-t)">Error loading applications: '+e.message+'</td></tr>';
+    console.error('loadAppStatus:',e);
+  }
+}
+
+function renderAppStatus(){
+  const tbody = document.getElementById('appst-tbody');
+  if(!tbody) return;
+  const q  = (document.getElementById('appst-search')?.value||'').toLowerCase().trim();
+  const st = document.getElementById('appst-status-filter')?.value||'';
+  const pt = document.getElementById('appst-partner-filter')?.value||'';
+  const esc = s => (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows = _APPST.filter(r=>
+    (!st || r.status===st) &&
+    (!pt || r.partner===pt) &&
+    (!q || [r.team_name,r.lead_name,r.idea_title,r.lead_email,r.partner,r.sector].some(v=>(v||'').toLowerCase().includes(q)))
+  );
+  document.getElementById('appst-count').textContent = rows.length+' application'+(rows.length!==1?'s':'')+(rows.length!==_APPST.length?' of '+_APPST.length:'');
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="6">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r=>{
+    const contact = (r.lead_email?'<div style="font-size:12px">✉ '+esc(r.lead_email)+'</div>':'')
+                  + (r.lead_phone?'<div style="font-size:12px;color:var(--t2)">☎ '+esc(r.lead_phone)+'</div>':'')
+                  || '<span style="color:var(--t3)">—</span>';
+    const idea = r.idea_title
+      ? '<div style="font-weight:500">'+esc(r.idea_title)+'</div>'+(r.sector?'<div style="font-size:11px;color:var(--t3)">'+esc(r.sector)+'</div>':'')
+      : '<span style="color:var(--t3)">—</span>';
+    return '<tr class="clk" onclick="viewAppStatus(\''+r.id+'\')">'
+      + '<td><div style="font-weight:600">'+esc(r.team_name||r.lead_name||'—')+'</div>'
+        + (r.team_name&&r.lead_name?'<div style="font-size:11px;color:var(--t3)">'+esc(r.lead_name)+'</div>':'')
+        + (r.governorate?'<div style="font-size:11px;color:var(--t3)">📍 '+esc(r.governorate)+'</div>':'')+'</td>'
+      + '<td>'+(r.partner?'<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--bg);border:0.5px solid var(--bdr)">'+esc(r.partner)+'</span>':'<span style="color:var(--t3)">—</span>')+'</td>'
+      + '<td>'+contact+'</td>'
+      + '<td>'+idea+'</td>'
+      + '<td>'+(r.member_count||1)+'</td>'
+      + '<td><span class="tag '+(APPST_TAG[r.status]||'tpend')+'">'+(APPST_LABEL[r.status]||r.status||'—')+'</span></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function viewAppStatus(id){
+  nav('pg-applications');
+  openApp(id);
 }
 
 async function openApp(id){
