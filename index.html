@@ -231,6 +231,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:640px){.g2,.g3,.g4,.outcome-grid{grid-template-columns:1fr}.main{padding:1rem}.score-row{grid-template-columns:1fr 80px 80px 55px}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1636,6 +1637,12 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         </div>
       </div>
       <div class="g4 mb15" id="pa-kpis"></div>
+      <div class="mb15" style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="pa-charts">
+        <div class="card"><div class="clbl mb12">By status</div><div style="height:240px;position:relative"><canvas id="pa-chart-status"></canvas></div></div>
+        <div class="card"><div class="clbl mb12">Submissions over time</div><div style="height:240px;position:relative"><canvas id="pa-chart-time"></canvas></div></div>
+        <div class="card"><div class="clbl mb12">By sector</div><div style="height:240px;position:relative"><canvas id="pa-chart-sector"></canvas></div></div>
+        <div class="card"><div class="clbl mb12">By governorate</div><div style="height:240px;position:relative"><canvas id="pa-chart-gov"></canvas></div></div>
+      </div>
       <div class="card">
         <table class="dtbl">
           <thead><tr>
@@ -4076,11 +4083,71 @@ async function loadPartnerApps(){
       '<div class="stat"><div class="slbl">Enrolled in DT</div><div class="sval" style="color:var(--dt)">'+count('approved_dt')+'</div></div>'+
       '<div class="stat"><div class="slbl">Enrolled in FB1</div><div class="sval" style="color:var(--fb1)">'+count('approved_fb1')+'</div></div>'+
       '<div class="stat"><div class="slbl">Rejected</div><div class="sval" style="color:var(--fail)">'+count('ineligible')+'</div></div>';
+    renderPartnerCharts();
     renderPartnerApps();
   } catch(e){
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--fail-t)">Error loading applications: '+e.message+'</td></tr>';
     console.error('loadPartnerApps:',e);
   }
+}
+
+let _paCharts = {};
+function renderPartnerCharts(){
+  if(typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = "'Plus Jakarta Sans',system-ui,sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#4B5A72';
+  const PALETTE = ['#1A56DB','#7C3AED','#0EA5E9','#10B981','#F59E0B','#E24B4A','#94A3B8','#EC4899','#14B8A6'];
+  const mk = (key, cfg) => {
+    if(_paCharts[key]) _paCharts[key].destroy();
+    const el = document.getElementById('pa-chart-'+key);
+    if(!el) return;
+    _paCharts[key] = new Chart(el.getContext('2d'), cfg);
+  };
+  const groupCount = (field) => {
+    const m = {};
+    _PA.forEach(r=>{ const k = r[field]||'—'; m[k] = (m[k]||0)+1; });
+    return m;
+  };
+
+  // 1) Status doughnut
+  const stOrder = ['pending','approved_dt','approved_fb1','ineligible'];
+  const stColor = {pending:'#F59E0B', approved_dt:'#7C3AED', approved_fb1:'#0EA5E9', ineligible:'#E24B4A'};
+  const stData = stOrder.map(s=>_PA.filter(r=>r.status===s).length);
+  mk('status', {
+    type:'doughnut',
+    data:{ labels:stOrder.map(s=>APPST_LABEL[s]||s), datasets:[{ data:stData, backgroundColor:stOrder.map(s=>stColor[s]), borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{ position:'bottom', labels:{ usePointStyle:true, padding:12, boxWidth:8 } } } }
+  });
+
+  // 2) Submissions over time (line, by month)
+  const byMonth = {};
+  _PA.forEach(r=>{ if(!r.created_at) return; const d=new Date(r.created_at); const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); byMonth[k]=(byMonth[k]||0)+1; });
+  const months = Object.keys(byMonth).sort();
+  const monthLabels = months.map(k=>{ const [y,m]=k.split('-'); return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'}); });
+  mk('time', {
+    type:'line',
+    data:{ labels:monthLabels, datasets:[{ label:'Applications', data:months.map(k=>byMonth[k]), borderColor:'#1A56DB', backgroundColor:'rgba(26,86,219,0.12)', fill:true, tension:0.35, pointRadius:3, pointBackgroundColor:'#1A56DB' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(0,0,0,0.05)' } }, x:{ grid:{ display:false } } } }
+  });
+
+  // 3) Sector doughnut
+  const sec = groupCount('sector');
+  const secKeys = Object.keys(sec).sort((a,b)=>sec[b]-sec[a]);
+  mk('sector', {
+    type:'doughnut',
+    data:{ labels:secKeys, datasets:[{ data:secKeys.map(k=>sec[k]), backgroundColor:secKeys.map((_,i)=>PALETTE[i%PALETTE.length]), borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{ position:'bottom', labels:{ usePointStyle:true, padding:10, boxWidth:8 } } } }
+  });
+
+  // 4) Governorate bar
+  const gov = groupCount('governorate');
+  const govKeys = Object.keys(gov).sort((a,b)=>gov[b]-gov[a]);
+  mk('gov', {
+    type:'bar',
+    data:{ labels:govKeys, datasets:[{ label:'Applications', data:govKeys.map(k=>gov[k]), backgroundColor:'#0EA5E9', borderRadius:4, maxBarThickness:34 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(0,0,0,0.05)' } }, x:{ grid:{ display:false } } } }
+  });
 }
 
 function renderPartnerApps(){
