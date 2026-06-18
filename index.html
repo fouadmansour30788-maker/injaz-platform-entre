@@ -1619,6 +1619,36 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         </table>
       </div>
     </div>
+
+    <!-- ════ PARTNER: MY APPLICATIONS ════ -->
+    <div class="page" id="pg-partner-apps">
+      <div class="fbet mb15">
+        <div class="sh" style="margin:0"><h2 id="pa-title">My applications</h2><p id="pa-count">Loading applications...</p></div>
+        <div class="fctr g8">
+          <input class="inp" style="width:200px" placeholder="Search team, lead, idea..." id="pa-search" oninput="renderPartnerApps()">
+          <select class="sel" id="pa-status-filter" onchange="renderPartnerApps()" style="font-size:12px">
+            <option value="">All statuses</option>
+            <option value="pending">Pending review</option>
+            <option value="approved_dt">Enrolled in DT</option>
+            <option value="approved_fb1">Enrolled in FB1</option>
+            <option value="ineligible">Rejected</option>
+          </select>
+        </div>
+      </div>
+      <div class="g4 mb15" id="pa-kpis"></div>
+      <div class="card">
+        <table class="dtbl">
+          <thead><tr>
+            <th style="width:20%">Team / Lead</th>
+            <th style="width:24%">Contact</th>
+            <th style="width:26%">Business idea</th>
+            <th style="width:10%">Members</th>
+            <th style="width:20%">Status</th>
+          </tr></thead>
+          <tbody id="pa-tbody"><tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -1820,8 +1850,11 @@ const PARTICIPANT_TABS=[
   {l:'My track',p:'pg-p-track'},{l:'My team',p:'pg-my-team'},
   {l:'My attendance',p:'pg-p-attendance'},{l:'Notifications',p:'pg-p-notifications'},
 ];
+const PARTNER_TABS=[
+  {l:'Applications',p:'pg-partner-apps'},
+];
 function buildNav(){
-  const tabs=ROLE==='admin'?ADMIN_TABS:PARTICIPANT_TABS;
+  const tabs=ROLE==='admin'?ADMIN_TABS:(ROLE==='partner'?PARTNER_TABS:PARTICIPANT_TABS);
   document.getElementById('nav-bar').innerHTML=tabs.map((t,i)=>
     `<button class="ntab${i===0?' active':''}" data-page="${t.p}" onclick="nav('${t.p}')">${t.l}</button>`
   ).join('');
@@ -1845,6 +1878,7 @@ function nav(id){
   if(id==='pg-analytics') loadAnalytics();
   if(id==='pg-applications') loadApplications();
   if(id==='pg-app-status') loadAppStatus();
+  if(id==='pg-partner-apps') loadPartnerApps();
   if(id==='pg-notifications') loadNotifications();
   if(id==='pg-p-notifications') loadParticipantNotifications();
   if(id==='pg-track') loadTrack();
@@ -1905,7 +1939,7 @@ async function afterLogin(){
     return;
   }
   PROFILE=profiles[0];
-  ROLE=PROFILE.role==='admin'?'admin':'participant';
+  ROLE=PROFILE.role==='admin'?'admin':(PROFILE.role==='partner'?'partner':'participant');
   try { PARTNERS=await sb.get('partners','order=label'); } catch(e){ PARTNERS=[]; }
 
   // If participant: check if they have a team_members row
@@ -1957,7 +1991,7 @@ async function tryRestoreSession(){
     const profiles=await sb.get('users','auth_id=eq.'+sb._uid+'&limit=1');
     if(!profiles.length){ showAuth(); return; }
     PROFILE=profiles[0];
-    ROLE=PROFILE.role==='admin'?'admin':'participant';
+    ROLE=PROFILE.role==='admin'?'admin':(PROFILE.role==='partner'?'partner':'participant');
     PARTNERS=await sb.get('partners','order=label');
     showApp();
   } catch(e){ showAuth(); }
@@ -1975,9 +2009,9 @@ function showApp(){
   document.getElementById('u-av').textContent=initials;
   document.getElementById('u-av').style.background=ROLE==='admin'?'#1A56DB':'var(--pass)';
   document.getElementById('u-name').textContent=PROFILE.full_name||PROFILE.email;
-  document.getElementById('u-role').textContent=ROLE==='admin'?'Admin':'Participant';
+  document.getElementById('u-role').textContent=ROLE==='admin'?'Admin':(ROLE==='partner'?'Partner':'Participant');
   document.getElementById('u-role').className='rpill '+(ROLE==='admin'?'a':'p');
-  document.getElementById('tb-sub').textContent=ROLE==='admin'?'Program Manager':'Participant';
+  document.getElementById('tb-sub').textContent=ROLE==='admin'?'Program Manager':(ROLE==='partner'?(PROFILE.partner_code?PROFILE.partner_code+' — Partner':'Partner'):'Participant');
   // Populate partner dropdowns
   const pOpts=PARTNERS.map(p=>`<option value="${p.code}">${p.label}</option>`).join('');
   ['dash-partner-filter','pt-partner-filter','cls-partner-f','partner-filter-cohort','map-partner-filter','track-partner-f'].forEach(id=>{
@@ -4013,6 +4047,74 @@ function renderAppStatus(){
 function viewAppStatus(id){
   nav('pg-applications');
   openApp(id);
+}
+
+// ── Partner portal: their applications only ──
+let _PA = [];
+async function loadPartnerApps(){
+  const tbody = document.getElementById('pa-tbody');
+  if(!tbody) return;
+  const code = PROFILE?.partner_code;
+  const titleEl = document.getElementById('pa-title');
+  if(titleEl){
+    const label = (PARTNERS.find(p=>p.code===code)?.label)||code;
+    titleEl.textContent = label ? label+' — applications' : 'My applications';
+  }
+  if(!code){
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--fail-t)">No partner assigned to your account. Contact your INJAZ administrator.</td></tr>';
+    document.getElementById('pa-count').textContent = '';
+    document.getElementById('pa-kpis').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr>';
+  try {
+    _PA = await sb.get('applications',
+      'partner=eq.'+encodeURIComponent(code)+'&select=id,status,team_name,lead_name,lead_email,phone,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
+    const count = s => _PA.filter(r=>r.status===s).length;
+    document.getElementById('pa-kpis').innerHTML =
+      '<div class="stat"><div class="slbl">Pending</div><div class="sval" style="color:var(--warn)">'+count('pending')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Enrolled in DT</div><div class="sval" style="color:var(--dt)">'+count('approved_dt')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Enrolled in FB1</div><div class="sval" style="color:var(--fb1)">'+count('approved_fb1')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Rejected</div><div class="sval" style="color:var(--fail)">'+count('ineligible')+'</div></div>';
+    renderPartnerApps();
+  } catch(e){
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--fail-t)">Error loading applications: '+e.message+'</td></tr>';
+    console.error('loadPartnerApps:',e);
+  }
+}
+
+function renderPartnerApps(){
+  const tbody = document.getElementById('pa-tbody');
+  if(!tbody) return;
+  const q  = (document.getElementById('pa-search')?.value||'').toLowerCase().trim();
+  const st = document.getElementById('pa-status-filter')?.value||'';
+  const esc = s => (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows = _PA.filter(r=>
+    (!st || r.status===st) &&
+    (!q || [r.team_name,r.lead_name,r.idea_title,r.lead_email,r.sector].some(v=>(v||'').toLowerCase().includes(q)))
+  );
+  document.getElementById('pa-count').textContent = rows.length+' application'+(rows.length!==1?'s':'')+(rows.length!==_PA.length?' of '+_PA.length:'');
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="5">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r=>{
+    const contact = (r.lead_email?'<div style="font-size:12px">✉ '+esc(r.lead_email)+'</div>':'')
+                  + (r.phone?'<div style="font-size:12px;color:var(--t2)">☎ '+esc(r.phone)+'</div>':'')
+                  || '<span style="color:var(--t3)">—</span>';
+    const idea = r.idea_title
+      ? '<div style="font-weight:500">'+esc(r.idea_title)+'</div>'+(r.sector?'<div style="font-size:11px;color:var(--t3)">'+esc(r.sector)+'</div>':'')
+      : '<span style="color:var(--t3)">—</span>';
+    return '<tr>'
+      + '<td><div style="font-weight:600">'+esc(r.team_name||r.lead_name||'—')+'</div>'
+        + (r.team_name&&r.lead_name?'<div style="font-size:11px;color:var(--t3)">'+esc(r.lead_name)+'</div>':'')
+        + (r.governorate?'<div style="font-size:11px;color:var(--t3)">📍 '+esc(r.governorate)+'</div>':'')+'</td>'
+      + '<td>'+contact+'</td>'
+      + '<td>'+idea+'</td>'
+      + '<td>'+(r.member_count||1)+'</td>'
+      + '<td><span class="tag '+(APPST_TAG[r.status]||'tpend')+'">'+(APPST_LABEL[r.status]||r.status||'—')+'</span></td>'
+      + '</tr>';
+  }).join('');
 }
 
 async function openApp(id){
