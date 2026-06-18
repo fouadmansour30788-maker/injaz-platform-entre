@@ -4651,6 +4651,187 @@ const PSTATUS = {
   at_risk:  {l:'At risk',  bg:'#FEF2F2',        col:'#DC2626'},
 };
 
+// ── Workplan ──
+let _WP = [];
+let _wpCurrentId = null;
+const WP_STATUS = {
+  not_started: {l:'Not started', tag:'tpend'},
+  in_progress: {l:'In progress', tag:'tfb1'},
+  completed:   {l:'Completed',   tag:'tok'},
+  delayed:     {l:'Delayed',     tag:'twarn'},
+  at_risk:     {l:'At risk',     tag:'terr'},
+};
+
+function wpIsOverdue(a){
+  if(a.status==='completed') return false;
+  const end = a.to_date || a.from_date;
+  if(!end) return false;
+  return new Date(end) < new Date(new Date().toDateString());
+}
+
+function wpInPeriod(a, period){
+  if(period==='all') return true;
+  if(period==='overdue') return wpIsOverdue(a);
+  const d = a.to_date || a.from_date;
+  if(!d) return false;
+  const dt = new Date(d), now = new Date();
+  if(period==='this_month') return dt.getFullYear()===now.getFullYear() && dt.getMonth()===now.getMonth();
+  if(period==='next_month'){ const n=new Date(now.getFullYear(),now.getMonth()+1,1); return dt.getFullYear()===n.getFullYear() && dt.getMonth()===n.getMonth(); }
+  if(period==='q2_2026') return dt.getFullYear()===2026 && dt.getMonth()>=3 && dt.getMonth()<=5;
+  if(period==='q3_2026') return dt.getFullYear()===2026 && dt.getMonth()>=6 && dt.getMonth()<=8;
+  if(period==='q4_2026') return dt.getFullYear()===2026 && dt.getMonth()>=9 && dt.getMonth()<=11;
+  if(period==='2027')    return dt.getFullYear()===2027;
+  return true;
+}
+
+async function loadWorkplan(){
+  const wrap = document.getElementById('wp-table-wrap');
+  if(!wrap) return;
+  if(!_WP.length){
+    wrap.innerHTML = '<div style="padding:2rem;text-align:center"><div class="spin" style="margin:0 auto"></div></div>';
+    try { _WP = await sb.get('workplan_activities','order=from_date'); }
+    catch(e){ wrap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--fail-t)">Error loading workplan: '+e.message+'</div>'; return; }
+  }
+  const cat    = document.getElementById('wp-cat-filter')?.value||'all';
+  const status = document.getElementById('wp-status-filter')?.value||'all';
+  const period = document.getElementById('wp-time-filter')?.value||'all';
+  const esc = s => (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // KPIs over the full set
+  const total = _WP.length;
+  const done  = _WP.filter(a=>a.status==='completed').length;
+  const prog  = _WP.filter(a=>a.status==='in_progress').length;
+  const overdue = _WP.filter(wpIsOverdue);
+  document.getElementById('wp-kpis').innerHTML =
+    '<div class="stat"><div class="slbl">Total activities</div><div class="sval">'+total+'</div></div>'+
+    '<div class="stat"><div class="slbl">Completed</div><div class="sval" style="color:var(--pass)">'+done+'</div></div>'+
+    '<div class="stat"><div class="slbl">In progress</div><div class="sval" style="color:var(--fb1)">'+prog+'</div></div>'+
+    '<div class="stat"><div class="slbl">Overdue</div><div class="sval" style="color:var(--fail)">'+overdue.length+'</div></div>';
+
+  // Alert banner
+  const banner = document.getElementById('wp-alert-banner');
+  if(banner){
+    if(overdue.length){
+      banner.style.display='block';
+      document.getElementById('wp-alert-count').textContent = overdue.length+' activit'+(overdue.length===1?'y is':'ies are')+' overdue';
+      document.getElementById('wp-alert-details').textContent = overdue.slice(0,4).map(a=>a.activity).join(' · ')+(overdue.length>4?' …':'');
+    } else { banner.style.display='none'; }
+  }
+
+  // Filter + render
+  const rows = _WP.filter(a=>
+    (cat==='all'    || a.category===cat) &&
+    (status==='all' || a.status===status) &&
+    wpInPeriod(a, period)
+  );
+  const fmtD = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—';
+  wrap.innerHTML = rows.length ? (
+    '<table class="dtbl"><thead><tr>'+
+    '<th style="width:6%">#</th><th style="width:32%">Activity</th><th style="width:13%">Category</th>'+
+    '<th style="width:13%">Timeline</th><th style="width:12%">Status</th><th style="width:14%">Progress</th><th style="width:10%"></th>'+
+    '</tr></thead><tbody>'+
+    rows.map(a=>{
+      const st = WP_STATUS[a.status]||{l:a.status,tag:'tpend'};
+      const od = wpIsOverdue(a);
+      const pct = a.completion_pct||0;
+      return '<tr class="clk" onclick="openWpModal(\''+a.id+'\')">'+
+        '<td style="color:var(--t3)">'+(a.ref_id!=null?a.ref_id:'—')+'</td>'+
+        '<td><div style="font-weight:500">'+esc(a.activity)+'</div>'+(a.notes_challenges?'<div style="font-size:11px;color:var(--t3)">'+esc(a.notes_challenges)+'</div>':'')+'</td>'+
+        '<td><span style="font-size:11px;padding:2px 6px;border-radius:4px;background:var(--bg);border:0.5px solid var(--bdr)">'+esc(a.category||'—')+'</span></td>'+
+        '<td style="font-size:12px">'+fmtD(a.from_date)+(a.to_date&&a.to_date!==a.from_date?' – '+fmtD(a.to_date):'')+(od?'<div style="font-size:10px;color:var(--fail-t);font-weight:600">⚠ overdue</div>':'')+'</td>'+
+        '<td><span class="tag '+st.tag+'">'+st.l+'</span></td>'+
+        '<td><div class="pb-lg" style="margin-bottom:3px"><div class="pf-lg" style="width:'+pct+'%;background:'+(pct>=100?'var(--pass)':'var(--fb1)')+'"></div></div><span style="font-size:11px;color:var(--t3)">'+pct+'%</span></td>'+
+        '<td><button class="btn btn-sm" onclick="event.stopPropagation();openWpModal(\''+a.id+'\')" style="font-size:11px">Update</button></td>'+
+        '</tr>';
+    }).join('')+
+    '</tbody></table>'
+  ) : '<div style="padding:2rem">'+emptyState('🗂️','No activities','No workplan activities match these filters')+'</div>';
+}
+
+function openWpModal(id){
+  const a = _WP.find(x=>x.id===id); if(!a) return;
+  _wpCurrentId = id;
+  document.getElementById('wp-modal-title').textContent = 'Update activity';
+  document.getElementById('wp-modal-activity').innerHTML =
+    '<strong>'+(a.activity||'')+'</strong>'+(a.category?' · '+a.category:'')+(a.from_date?'<br>Planned: '+a.from_date+(a.to_date&&a.to_date!==a.from_date?' → '+a.to_date:''):'');
+  document.getElementById('wp-m-status').value = a.status||'not_started';
+  document.getElementById('wp-m-pct').value = a.completion_pct!=null?a.completion_pct:'';
+  document.getElementById('wp-m-actual-start').value = a.actual_start||'';
+  document.getElementById('wp-m-actual-end').value = a.actual_end||'';
+  document.getElementById('wp-m-responsible').value = a.responsible||'';
+  document.getElementById('wp-m-delay-reason').value = a.delay_reason||'';
+  document.getElementById('wp-m-status').onchange = wpToggleDelay;
+  wpToggleDelay();
+  const actsEl = document.getElementById('wp-m-actions');
+  actsEl.innerHTML = '';
+  (Array.isArray(a.action_points)?a.action_points:[]).forEach(p=>addWpActionPoint(typeof p==='string'?p:p.text, typeof p==='object'?p.done:false));
+  const errEl = document.getElementById('wp-m-err'); if(errEl) errEl.style.display='none';
+  document.getElementById('wp-modal').style.display='flex';
+}
+
+function wpToggleDelay(){
+  const s = document.getElementById('wp-m-status').value;
+  document.getElementById('wp-m-delay-section').style.display = (s==='delayed'||s==='at_risk') ? 'block' : 'none';
+}
+
+function closeWpModal(){
+  document.getElementById('wp-modal').style.display='none';
+  _wpCurrentId = null;
+}
+
+function addWpActionPoint(text='', done=false){
+  const list = document.getElementById('wp-m-actions');
+  const row = document.createElement('div');
+  row.className = 'wp-ap-row';
+  row.style.cssText = 'display:flex;align-items:center;gap:8px';
+  row.innerHTML =
+    '<input type="checkbox" class="wp-ap-done" '+(done?'checked':'')+' style="flex-shrink:0;width:16px;height:16px;cursor:pointer">'+
+    '<input class="inp wp-ap-text" style="flex:1" placeholder="Action point...">'+
+    '<button class="btn btn-sm" onclick="this.closest(\'.wp-ap-row\').remove()" style="flex-shrink:0;color:var(--fail-t)">×</button>';
+  list.appendChild(row);
+  row.querySelector('.wp-ap-text').value = text||'';
+}
+
+async function saveWpActivity(){
+  if(!_wpCurrentId) return;
+  const errEl = document.getElementById('wp-m-err');
+  const status = document.getElementById('wp-m-status').value;
+  const delayReason = document.getElementById('wp-m-delay-reason').value.trim();
+  if((status==='delayed'||status==='at_risk') && !delayReason){
+    if(errEl){ errEl.textContent='Please provide a delay/risk justification.'; errEl.style.display='block'; }
+    return;
+  }
+  const pctRaw = document.getElementById('wp-m-pct').value;
+  let pct = pctRaw===''?null:Math.max(0,Math.min(100,parseInt(pctRaw,10)||0));
+  if(status==='completed' && (pct==null)) pct = 100;
+  const actionPoints = [...document.querySelectorAll('#wp-m-actions .wp-ap-row')]
+    .map(r=>({text:r.querySelector('.wp-ap-text').value.trim(), done:r.querySelector('.wp-ap-done').checked}))
+    .filter(p=>p.text);
+  const isDelayed = (status==='delayed'||status==='at_risk');
+  const patch = {
+    status,
+    completion_pct: pct==null?0:pct,
+    actual_start: document.getElementById('wp-m-actual-start').value||null,
+    actual_end: document.getElementById('wp-m-actual-end').value||null,
+    responsible: document.getElementById('wp-m-responsible').value.trim()||null,
+    is_delayed: isDelayed,
+    delay_reason: isDelayed?delayReason:null,
+    action_points: actionPoints,
+    updated_at: new Date().toISOString(),
+  };
+  if(isDelayed){ patch.delay_updated_at = new Date().toISOString(); patch.delay_updated_by = PROFILE?.full_name||PROFILE?.email||null; }
+  try {
+    await sb.patch('workplan_activities','id=eq.'+_wpCurrentId, patch);
+    const a = _WP.find(x=>x.id===_wpCurrentId); if(a) Object.assign(a, patch);
+    toast('Saved','Activity updated','success');
+    closeWpModal();
+    loadWorkplan();
+  } catch(e){
+    if(errEl){ errEl.textContent='Error saving: '+e.message; errEl.style.display='block'; }
+    console.error('saveWpActivity:',e);
+  }
+}
+
 async function loadReports() {
   const el = document.getElementById('report-list');
   const kpi = document.getElementById('report-kpis');
