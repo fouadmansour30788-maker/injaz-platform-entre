@@ -482,6 +482,10 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem">
         <div><h2 style="font-size:18px;font-weight:700">Dashboard</h2><p style="font-size:12px;color:var(--t3)">GIL 2026 · Live program overview</p></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="sel" id="dash-stage-filter" onchange="loadDashboard()" style="font-size:12px;padding:5px 9px">
+            <option value="all">All stages</option><option value="applied">Applied</option>
+            <option value="approved">Approved</option><option value="enrolled">Enrolled</option><option value="completed">Completed</option>
+          </select>
           <select class="sel" id="dash-partner-filter" onchange="loadDashboard()" style="font-size:12px;padding:5px 9px"><option value="all">All partners</option></select>
           <select class="sel" id="dash-phase-filter"   onchange="loadDashboard()" style="font-size:12px;padding:5px 9px">
             <option value="all">All phases</option><option value="DT">Design Thinking</option>
@@ -503,6 +507,12 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <div class="stat"><div class="slbl">Active teams</div><div class="sval" id="kpi-teams" style="color:var(--fb1)">—</div><div class="ssub" id="kpi-teams-sub"></div></div>
         <div class="stat"><div class="slbl">Female participants</div><div class="sval" id="kpi-female" style="color:#EC4899">—</div><div class="ssub" id="kpi-female-sub"></div></div>
         <div class="stat"><div class="slbl">With disability</div><div class="sval" id="kpi-disability" style="color:var(--warn)">—</div></div>
+      </div>
+
+      <!-- Application → completion funnel -->
+      <div class="card mb15">
+        <div class="fbet mb12"><div class="clbl" style="margin:0">Participant funnel</div><span style="font-size:11px;color:var(--t3)">Applied → Approved → Enrolled → Completed</span></div>
+        <div id="dash-funnel" style="display:flex;gap:8px;flex-wrap:wrap"><p style="color:var(--t3);font-size:13px">Loading...</p></div>
       </div>
 
       <!-- KPI row 2: program & applications -->
@@ -1595,8 +1605,8 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           <select class="sel" id="appst-status-filter" onchange="renderAppStatus()" style="font-size:12px">
             <option value="">All statuses</option>
             <option value="pending">Pending review</option>
-            <option value="approved_dt">Enrolled in DT</option>
-            <option value="approved_fb1">Enrolled in FB1</option>
+            <option value="approved_dt">Approved → DT</option>
+            <option value="approved_fb1">Approved → FB1</option>
             <option value="ineligible">Rejected</option>
           </select>
           <select class="sel" id="appst-partner-filter" onchange="renderAppStatus()" style="font-size:12px">
@@ -1630,8 +1640,8 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           <select class="sel" id="pa-status-filter" onchange="renderPartnerApps()" style="font-size:12px">
             <option value="">All statuses</option>
             <option value="pending">Pending review</option>
-            <option value="approved_dt">Enrolled in DT</option>
-            <option value="approved_fb1">Enrolled in FB1</option>
+            <option value="approved_dt">Approved → DT</option>
+            <option value="approved_fb1">Approved → FB1</option>
             <option value="ineligible">Rejected</option>
           </select>
         </div>
@@ -2059,6 +2069,7 @@ async function loadDashboard(){
   const phaseF   = document.getElementById('dash-phase-filter')?.value||'all';
   const genderF  = document.getElementById('dash-gender-filter')?.value||'all';
   const natF     = document.getElementById('dash-nat-filter')?.value||'all';
+  const stageF   = document.getElementById('dash-stage-filter')?.value||'all';
 
   // Auto-sync partner actuals from team members
   try {
@@ -2069,24 +2080,45 @@ async function loadDashboard(){
   } catch(e){ console.warn('QPR status load failed:', e.message); }
 
   try {
-    const [paRows,allTeams,allUsers,appRows,attRows,tmRows] = await Promise.all([
+    const [paRows,allTeams,allUsers,appRows,attRows,tmRows,peRows] = await Promise.all([
       sb.get('partner_achievement','order=partner_code,phase_code'),
-      sb.get('teams','select=id,current_phase,partner_id,sector'),
+      sb.get('teams','select=id,name,current_phase,partner_id,sector'),
       sb.get('users','select=id,gender,nationality,governorate,date_of_birth,has_disability&role=eq.participant'),
-      sb.get('applications','select=status,sector,idea_stage,challenges,sdgs,governorate,members,has_bmc').catch(()=>[]),
-      sb.get('attendance','select=class_id,status,classes(name,phase_code)').catch(()=>[]),
+      sb.get('applications','select=status,partner,team_name,lead_name,member_count,sector,idea_stage,challenges,sdgs,governorate,members,has_bmc').catch(()=>[]),
+      sb.get('attendance','select=user_id,class_id,status,classes(name,phase_code)').catch(()=>[]),
       sb.get('team_members','select=user_id,team_id').catch(()=>[]),
+      sb.get('phase_enrollments','select=team_id,status&status=eq.passed').catch(()=>[]),
     ]);
 
     // Apply filters
     let filtTeams=allTeams;
     if(partner!=='all') filtTeams=filtTeams.filter(t=>PARTNERS.find(p=>p.code===partner&&p.id===t.partner_id));
     if(phaseF!=='all')  filtTeams=filtTeams.filter(t=>t.current_phase===phaseF);
-    const filtTmUserIds=new Set(tmRows.filter(r=>filtTeams.find(t=>t.id===r.team_id)).map(r=>r.user_id));
+
+    // ── Funnel stage sets: applied → approved → enrolled (attending) → completed (passed a phase) ──
+    const appTeamName=r=>r.team_name||((r.lead_name||'')+' Team');
+    const appMembers=r=>Array.isArray(r.members)&&r.members.length?r.members.length:(r.member_count||1);
+    const filtTeamIds=new Set(filtTeams.map(t=>t.id));
+    const nameToTeamId={}; filtTeams.forEach(t=>{if(t.name)nameToTeamId[t.name]=t.id;});
+    const userTeam={}; tmRows.forEach(r=>{userTeam[r.user_id]=r.team_id;});
+    const attUserIds=new Set(attRows.map(r=>r.user_id).filter(Boolean));
+    const attTeamIds=new Set(tmRows.filter(r=>attUserIds.has(r.user_id)).map(r=>r.team_id));
+    const passedTeamIds=new Set(peRows.map(r=>r.team_id));
+    const appsBase=(partner==='all')?appRows:appRows.filter(r=>r.partner===partner);
+    const approvedApps=appsBase.filter(r=>r.status==='approved_dt'||r.status==='approved_fb1');
+    const enrolledApps=approvedApps.filter(r=>attTeamIds.has(nameToTeamId[appTeamName(r)]));
+    const completedApps=approvedApps.filter(r=>passedTeamIds.has(nameToTeamId[appTeamName(r)]));
+
+    const filtTmUserIds=new Set(tmRows.filter(r=>filtTeamIds.has(r.team_id)).map(r=>r.user_id));
     let filtUsers=allUsers.filter(u=>filtTmUserIds.size===0||filtTmUserIds.has(u.id));
     if(genderF!=='all') filtUsers=filtUsers.filter(u=>u.gender===genderF);
     if(natF!=='all')    filtUsers=filtUsers.filter(u=>u.nationality===natF);
-    const total=filtUsers.length||allUsers.length;
+    if(stageF==='enrolled')  filtUsers=filtUsers.filter(u=>attUserIds.has(u.id));
+    if(stageF==='completed') filtUsers=filtUsers.filter(u=>passedTeamIds.has(userTeam[u.id]));
+    // Application-based charts follow the stage filter too
+    const stageApps= stageF==='applied'?appsBase : stageF==='approved'?approvedApps
+                   : stageF==='enrolled'?enrolledApps : stageF==='completed'?completedApps : appsBase;
+    const total=filtUsers.length||(stageF==='all'?allUsers.length:0);
 
     // ── KPI 1 ──
     const female=filtUsers.filter(u=>u.gender==='Female'||u.gender==='female').length;
@@ -2099,16 +2131,43 @@ async function loadDashboard(){
     document.getElementById('kpi-female-sub').textContent=total?Math.round(female/total*100)+'% of total':'';
     document.getElementById('kpi-disability').textContent=disabled||'0';
 
+    // ── Participant funnel: applied → approved → enrolled → completed ──
+    const enrolledUserIds=new Set(tmRows.filter(r=>attUserIds.has(r.user_id)&&filtTeamIds.has(r.team_id)).map(r=>r.user_id));
+    const completedUserIds=new Set(tmRows.filter(r=>passedTeamIds.has(r.team_id)&&filtTeamIds.has(r.team_id)).map(r=>r.user_id));
+    const enrolledTeamsN=filtTeams.filter(t=>attTeamIds.has(t.id)).length;
+    const completedTeamsN=filtTeams.filter(t=>passedTeamIds.has(t.id)).length;
+    const FUNNEL=[
+      {l:'Applied',   n:appsBase.reduce((s,r)=>s+appMembers(r),0),    sub:appsBase.length+' applications',      col:'#F59E0B', hint:'Submitted an application'},
+      {l:'Approved',  n:approvedApps.reduce((s,r)=>s+appMembers(r),0),sub:approvedApps.length+' applications',  col:'#7C3AED', hint:'Application accepted (DT / FB1)'},
+      {l:'Enrolled',  n:enrolledUserIds.size,                         sub:enrolledTeamsN+' teams attending',    col:'#0EA5E9', hint:'Attending classes'},
+      {l:'Completed', n:completedUserIds.size,                        sub:completedTeamsN+' teams passed',      col:'#10B981', hint:'Team passed a phase'},
+    ];
+    const fMax=FUNNEL[0].n||1;
+    document.getElementById('dash-funnel').innerHTML=FUNNEL.map((f,i)=>{
+      const conv=i===0?null:(FUNNEL[i-1].n?Math.round((f.n/FUNNEL[i-1].n)*100):0);
+      const w=Math.round((f.n/fMax)*100);
+      return (i?`<div style="align-self:center;color:var(--t3);font-size:14px;flex-shrink:0">→</div>`:'')+
+        `<div style="flex:1;min-width:130px;background:var(--bg);border-radius:10px;padding:12px;border:0.5px solid var(--bdr);text-align:center">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:${f.col}">${f.l}</div>
+        <div style="font-size:30px;font-weight:700;color:${f.col};margin:6px 0">${f.n}</div>
+        <div style="font-size:10px;color:var(--t3)">${f.sub}</div>
+        <div style="height:4px;background:var(--bdr);border-radius:2px;margin-top:8px;overflow:hidden">
+          <div style="width:${w}%;height:4px;background:${f.col}"></div>
+        </div>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px">${conv===null?f.hint:conv+'% of '+FUNNEL[i-1].l.toLowerCase()}</div>
+      </div>`;
+    }).join('');
+
     // ── KPI 2 ──
-    const appsTotal=appRows.length;
-    const appsPend=appRows.filter(r=>r.status==='pending').length;
+    const appsTotal=appsBase.length;
+    const appsPend=appsBase.filter(r=>r.status==='pending').length;
     const partnerTotals={};
     paRows.forEach(r=>{if(!partnerTotals[r.partner_code])partnerTotals[r.partner_code]={t:0,a:0};partnerTotals[r.partner_code].t+=r.target||0;partnerTotals[r.partner_code].a+=r.actual||0;});
     const grandT=Object.values(partnerTotals).reduce((s,v)=>s+v.t,0);
     const grandA=Object.values(partnerTotals).reduce((s,v)=>s+v.a,0);
     const grandPct=grandT?Math.round((grandA/grandT)*100):0;
     document.getElementById('kpi-apps-total').textContent=appsTotal||'—';
-    document.getElementById('kpi-apps-sub').textContent=`${appRows.filter(r=>r.status==='approved_dt'||r.status==='approved_fb1').length} enrolled`;
+    document.getElementById('kpi-apps-sub').textContent=`${approvedApps.length} approved · ${enrolledApps.length} enrolled`;
     document.getElementById('kpi-apps-pending').textContent=appsPend||'0';
     document.getElementById('kpi-total-target').textContent=grandT.toLocaleString()||'—';
     const pctEl=document.getElementById('kpi-overall-pct');
@@ -2240,7 +2299,7 @@ async function loadDashboard(){
     const govCounts={};
     filtUsers.forEach(u=>{const g=normGov(u.governorate);if(g&&g.trim()!=='NULL')govCounts[g]=(govCounts[g]||0)+1;});
     // Also pull from apps
-    appRows.forEach(r=>{if(r.governorate&&!filtUsers.find(u=>u.governorate===r.governorate))govCounts[r.governorate]=(govCounts[r.governorate]||0)+0;});
+    stageApps.forEach(r=>{if(r.governorate&&!filtUsers.find(u=>u.governorate===r.governorate))govCounts[r.governorate]=(govCounts[r.governorate]||0)+0;});
     const govSorted=Object.entries(govCounts).sort((a,b)=>b[1]-a[1]);
     const govMax=govSorted[0]?.[1]||1;
     document.getElementById('dash-gov').innerHTML=govSorted.length?govSorted.map(([g,v])=>{
@@ -2268,7 +2327,7 @@ async function loadDashboard(){
 
     // ── Education — from applications members array ──
     const eduMap={};
-    appRows.forEach(r=>{
+    stageApps.forEach(r=>{
       (r.members||[]).forEach(m=>{if(m.education){const k=normEdu(m.education);eduMap[k]=(eduMap[k]||0)+1;}});
     });
     const eduTotal=Object.values(eduMap).reduce((s,v)=>s+v,0)||1;
@@ -2280,7 +2339,7 @@ async function loadDashboard(){
 
     // ── Employment — from applications members array ──
     const empMap={};
-    appRows.forEach(r=>{
+    stageApps.forEach(r=>{
       (r.members||[]).forEach(m=>{if(m.employment){const k=normEmp(m.employment);empMap[k]=(empMap[k]||0)+1;}});
     });
     const empTotal=Object.values(empMap).reduce((s,v)=>s+v,0)||1;
@@ -2292,7 +2351,7 @@ async function loadDashboard(){
 
     // ── Business sectors ──
     const sectorMap={};
-    appRows.forEach(r=>{if(r.sector)sectorMap[r.sector]=(sectorMap[r.sector]||0)+1;});
+    stageApps.forEach(r=>{if(r.sector)sectorMap[r.sector]=(sectorMap[r.sector]||0)+1;});
     allTeams.forEach(t=>{if(t.sector&&!sectorMap[t.sector])sectorMap[t.sector]=(sectorMap[t.sector]||0)+1;});
     const sectorTotal=Object.values(sectorMap).reduce((s,v)=>s+v,0)||1;
     const sColors=['#6366F1','#0EA5E9','#10B981','#F59E0B','#EC4899','#EF4444','#8B5CF6','#14B8A6','#F97316','#84CC16'];
@@ -2303,7 +2362,7 @@ async function loadDashboard(){
 
     // ── Idea stage ──
     const stageMap={};
-    appRows.forEach(r=>{if(r.idea_stage)stageMap[r.idea_stage]=(stageMap[r.idea_stage]||0)+1;});
+    stageApps.forEach(r=>{if(r.idea_stage)stageMap[r.idea_stage]=(stageMap[r.idea_stage]||0)+1;});
     const stageLabels={idea:'💡 Idea stage',validated:'✅ Validated',prototype:'🔧 Prototype',revenue:'💰 Generating revenue'};
     const stageColors={idea:'#6366F1',validated:'#0EA5E9',prototype:'#10B981',revenue:'#F59E0B'};
     const stageTotal=Object.values(stageMap).reduce((s,v)=>s+v,0)||1;
@@ -2314,7 +2373,7 @@ async function loadDashboard(){
 
     // ── SDGs ──
     const sdgCounts={};
-    appRows.forEach(r=>{(r.sdgs||[]).forEach(s=>{sdgCounts[s]=(sdgCounts[s]||0)+1;});});
+    stageApps.forEach(r=>{(r.sdgs||[]).forEach(s=>{sdgCounts[s]=(sdgCounts[s]||0)+1;});});
     const sdgLabels={'no_poverty':'No Poverty','zero_hunger':'Zero Hunger','good_health':'Good Health','quality_edu':'Quality Education',
       'gender_eq':'Gender Equality','clean_water':'Clean Water','affordable_energy':'Affordable Energy','decent_work':'Decent Work',
       'industry':'Industry & Innovation','reduced_inequality':'Reduced Inequalities','sustainable_cities':'Sustainable Cities',
@@ -3982,7 +4041,7 @@ async function loadApplications(){
 
 // ── Applications status (read-only overview list) ──
 let _APPST = [];
-const APPST_LABEL = {pending:'Pending review', approved_dt:'Enrolled in DT', approved_fb1:'Enrolled in FB1', ineligible:'Rejected'};
+const APPST_LABEL = {pending:'Pending review', approved_dt:'Approved → DT', approved_fb1:'Approved → FB1', ineligible:'Rejected'};
 const APPST_TAG   = {pending:'twarn', approved_dt:'tdt', approved_fb1:'tfb1', ineligible:'terr'};
 
 async function loadAppStatus(){
@@ -3996,8 +4055,8 @@ async function loadAppStatus(){
     const count = s => _APPST.filter(r=>r.status===s).length;
     document.getElementById('appst-kpis').innerHTML =
       '<div class="stat"><div class="slbl">Pending</div><div class="sval" style="color:var(--warn)">'+count('pending')+'</div></div>'+
-      '<div class="stat"><div class="slbl">Enrolled in DT</div><div class="sval" style="color:var(--dt)">'+count('approved_dt')+'</div></div>'+
-      '<div class="stat"><div class="slbl">Enrolled in FB1</div><div class="sval" style="color:var(--fb1)">'+count('approved_fb1')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Approved → DT</div><div class="sval" style="color:var(--dt)">'+count('approved_dt')+'</div></div>'+
+      '<div class="stat"><div class="slbl">Approved → FB1</div><div class="sval" style="color:var(--fb1)">'+count('approved_fb1')+'</div></div>'+
       '<div class="stat"><div class="slbl">Rejected</div><div class="sval" style="color:var(--fail)">'+count('ineligible')+'</div></div>';
     // Partner filter options
     const partners = [...new Set(_APPST.map(r=>r.partner).filter(Boolean))].sort();
@@ -4078,11 +4137,30 @@ async function loadPartnerApps(){
     _PA = await sb.get('applications',
       'partner=eq.'+encodeURIComponent(code)+'&select=id,status,team_name,lead_name,lead_email,phone,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
     const count = s => _PA.filter(r=>r.status===s).length;
+    const approvedApps = _PA.filter(r=>r.status==='approved_dt'||r.status==='approved_fb1');
+    // Enrolled / Completed: match this partner's approved apps to their teams
+    let enrolledN = '—', completedN = '—';
+    try {
+      const pid = PARTNERS.find(p=>p.code===code)?.id;
+      const [pTeams, peRows, tmRows, attRows] = await Promise.all([
+        pid ? sb.get('teams','select=id,name&partner_id=eq.'+pid) : [],
+        sb.get('phase_enrollments','select=team_id,status&status=eq.passed'),
+        sb.get('team_members','select=user_id,team_id'),
+        sb.get('attendance','select=user_id'),
+      ]);
+      const attU = new Set(attRows.map(r=>r.user_id).filter(Boolean));
+      const attT = new Set(tmRows.filter(r=>attU.has(r.user_id)).map(r=>r.team_id));
+      const passT = new Set(peRows.map(r=>r.team_id));
+      const nameToId = {}; pTeams.forEach(t=>{ if(t.name) nameToId[t.name]=t.id; });
+      const appName = r => r.team_name||((r.lead_name||'')+' Team');
+      enrolledN  = approvedApps.filter(r=>attT.has(nameToId[appName(r)])).length;
+      completedN = approvedApps.filter(r=>passT.has(nameToId[appName(r)])).length;
+    } catch(e){ console.warn('partner funnel:', e.message); }
     document.getElementById('pa-kpis').innerHTML =
-      '<div class="stat"><div class="slbl">Pending</div><div class="sval" style="color:var(--warn)">'+count('pending')+'</div></div>'+
-      '<div class="stat"><div class="slbl">Enrolled in DT</div><div class="sval" style="color:var(--dt)">'+count('approved_dt')+'</div></div>'+
-      '<div class="stat"><div class="slbl">Enrolled in FB1</div><div class="sval" style="color:var(--fb1)">'+count('approved_fb1')+'</div></div>'+
-      '<div class="stat"><div class="slbl">Rejected</div><div class="sval" style="color:var(--fail)">'+count('ineligible')+'</div></div>';
+      '<div class="stat"><div class="slbl">Applied</div><div class="sval" style="color:var(--warn)">'+_PA.length+'</div><div class="ssub">'+count('pending')+' pending · '+count('ineligible')+' rejected</div></div>'+
+      '<div class="stat"><div class="slbl">Approved</div><div class="sval" style="color:var(--dt)">'+approvedApps.length+'</div><div class="ssub">'+count('approved_dt')+' DT · '+count('approved_fb1')+' FB1</div></div>'+
+      '<div class="stat"><div class="slbl">Enrolled</div><div class="sval" style="color:var(--fb1)">'+enrolledN+'</div><div class="ssub">attending classes</div></div>'+
+      '<div class="stat"><div class="slbl">Completed</div><div class="sval" style="color:var(--pass)">'+completedN+'</div><div class="ssub">passed a phase</div></div>';
     renderPartnerCharts();
     renderPartnerApps();
   } catch(e){
@@ -4263,7 +4341,7 @@ async function openApp(id){
     // Lock if already decided
     const isDecided = r.status !== 'pending';
     if(isDecided && lockOverlay && decisionCard){
-      const statusLabels = {approved_dt:'✓ Enrolled in Design Thinking',approved_fb1:'✓ Enrolled in FB Stage 1',ineligible:'✗ Marked ineligible'};
+      const statusLabels = {approved_dt:'✓ Approved → Design Thinking',approved_fb1:'✓ Approved → FB Stage 1',ineligible:'✗ Marked ineligible'};
       const statusColors = {approved_dt:'var(--dt)',approved_fb1:'var(--fb1)',ineligible:'var(--fail)'};
       const statusBgs    = {approved_dt:'var(--dt-bg)',approved_fb1:'var(--fb1-bg)',ineligible:'var(--fail-bg)'};
       const color = statusColors[r.status]||'var(--t2)';
