@@ -531,7 +531,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 
       <!-- Achievement matrix -->
       <div class="card mb15" style="overflow-x:auto">
-        <div class="fbet mb12"><div class="clbl" style="margin:0">Achievement per partner per phase</div><span style="font-size:11px;color:var(--t3)">actual / target</span></div>
+        <div class="fbet mb12"><div class="clbl" style="margin:0">Achievement per partner per phase</div><span style="font-size:11px;color:var(--t3)">completed / target</span></div>
         <div id="dash-achievement-matrix"></div>
       </div>
 
@@ -542,7 +542,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           <div id="dash-attendance-chart" style="display:flex;flex-direction:column;gap:10px"><p style="color:var(--t3);font-size:13px">Loading...</p></div>
         </div>
         <div class="card">
-          <div class="clbl mb12">Phase target vs actual</div>
+          <div class="clbl mb12">Phase target vs completed</div>
           <div id="dash-phase-rows" style="display:flex;flex-direction:column;gap:14px"><div class="empty"><div class="spin" style="margin:0 auto"></div></div></div>
         </div>
       </div>
@@ -945,7 +945,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
     <!-- ════ ADMIN: PARTNERS ════ -->
     <div class="page" id="pg-partners">
       <div class="fbet mb15">
-        <div class="sh" style="margin:0"><h2>Partner achievement</h2><p>2-year targets vs actuals — all partners</p></div>
+        <div class="sh" style="margin:0"><h2>Partner achievement</h2><p>2-year targets vs completed participants — all partners</p></div>
         <div class="fctr g8">
           <select class="sel" id="pt-partner-filter" onchange="loadPartnerPage()" style="font-size:12px;padding:5px 9px">
             <option value="all">All partners</option>
@@ -2071,13 +2071,11 @@ async function loadDashboard(){
   const natF     = document.getElementById('dash-nat-filter')?.value||'all';
   const stageF   = document.getElementById('dash-stage-filter')?.value||'all';
 
-  // Auto-sync partner actuals from team members
+  // Auto-sync partner actuals from COMPLETED phases (participants whose team passed each phase)
   try {
-    const tmSync=await sb.get('team_members','select=user_id,teams(partner_id,current_phase)');
-    const sc={};
-    tmSync.forEach(r=>{const pid=r.teams?.partner_id,ph=r.teams?.current_phase;if(!pid||!ph)return;const k=pid+'|'+ph;sc[k]=(sc[k]||0)+1;});
+    const sc=await computeCompletionActuals();
     await Promise.all(Object.entries(sc).map(([k,v])=>{const[pid,ph]=k.split('|');return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:v},'partner_id,phase_code').catch(()=>{});}));
-  } catch(e){ console.warn('QPR status load failed:', e.message); }
+  } catch(e){ console.warn('Actuals sync failed:', e.message); }
 
   try {
     const [paRows,allTeams,allUsers,appRows,attRows,tmRows,peRows] = await Promise.all([
@@ -3383,26 +3381,43 @@ function ptUpdate(inp){
   if(!partnerActuals[code]) partnerActuals[code]={};
   partnerActuals[code][ph]=val;
 }
+// Achievement = COMPLETION: count participants whose team PASSED each phase (not just applied/enrolled).
+// Returns { 'partnerId|phaseCode': count }. Program phases (DT/FB1/FB2/INC) are zero-filled for every
+// partner with teams so stale enrollment-based actuals get reset; IE is left for manual entry.
+async function computeCompletionActuals(){
+  const [peRows,tmRows,teams] = await Promise.all([
+    sb.get('phase_enrollments','select=team_id,phase_code,status&status=eq.passed'),
+    sb.get('team_members','select=user_id,team_id'),
+    sb.get('teams','select=id,partner_id'),
+  ]);
+  const memCount={}; tmRows.forEach(r=>{memCount[r.team_id]=(memCount[r.team_id]||0)+1;});
+  const teamPartner={}; teams.forEach(t=>{teamPartner[t.id]=t.partner_id;});
+  const counts={};
+  const PH_SYNC=['DT','FB1','FB2','INC'];
+  teams.forEach(t=>{ if(t.partner_id) PH_SYNC.forEach(ph=>{ counts[t.partner_id+'|'+ph]=counts[t.partner_id+'|'+ph]||0; }); });
+  const seen=new Set();
+  peRows.forEach(r=>{
+    const pid=teamPartner[r.team_id], ph=r.phase_code;
+    if(!pid||!ph) return;
+    const dk=r.team_id+'|'+ph;
+    if(seen.has(dk)) return;
+    seen.add(dk);
+    const k=pid+'|'+ph;
+    counts[k]=(counts[k]||0)+(memCount[r.team_id]||0);
+  });
+  return counts;
+}
+
 async function syncActualsFromTeams(){
-  // Count participants (team members) per partner+phase
+  // Count participants whose team COMPLETED (passed) each phase
   try {
-    const tmRows = await sb.get('team_members',
-      'select=user_id,teams(partner_id,current_phase)'
-    );
-    const counts = {};
-    tmRows.forEach(r=>{
-      const pid = r.teams?.partner_id;
-      const ph  = r.teams?.current_phase;
-      if(!pid||!ph) return;
-      const key = pid+'|'+ph;
-      counts[key] = (counts[key]||0)+1;
-    });
+    const counts = await computeCompletionActuals();
     const saves = Object.entries(counts).map(([key,val])=>{
       const [pid,ph] = key.split('|');
       return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:val},'partner_id,phase_code');
     });
     await Promise.all(saves);
-    toast('Actuals synced','Participant counts updated per partner & phase');
+    toast('Actuals synced','Completed-participant counts updated per partner & phase');
     loadPartnerPage();
     loadDashboard();
   } catch(e){ toast('Sync failed',e.message,'error'); }
