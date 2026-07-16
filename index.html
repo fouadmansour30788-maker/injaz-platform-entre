@@ -1644,14 +1644,15 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
       <div class="card">
         <table class="dtbl">
           <thead><tr>
-            <th style="width:18%">Team / Lead</th>
-            <th style="width:13%">Partner</th>
-            <th style="width:22%">Contact</th>
-            <th style="width:22%">Business idea</th>
-            <th style="width:8%">Members</th>
-            <th style="width:17%">Status</th>
+            <th style="width:17%">Team / Lead</th>
+            <th style="width:11%">Partner</th>
+            <th style="width:20%">Contact</th>
+            <th style="width:20%">Business idea</th>
+            <th style="width:7%">Members</th>
+            <th style="width:10%">Seed fund</th>
+            <th style="width:15%">Status</th>
           </tr></thead>
-          <tbody id="appst-tbody"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
+          <tbody id="appst-tbody"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -4176,7 +4177,7 @@ const APPST_TAG   = {pending:'twarn', approved_dt:'tdt', approved_fb1:'tfb1', in
 async function loadAppStatus(){
   const tbody = document.getElementById('appst-tbody');
   if(!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr>';
   try {
     _APPST = await sb.get('applications',
       'select=id,status,team_name,lead_name,lead_email,phone,members,partner,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
@@ -4198,7 +4199,7 @@ async function loadAppStatus(){
     }
     renderAppStatus();
   } catch(e){
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--fail-t)">Error loading applications: '+e.message+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--fail-t)">Error loading applications: '+e.message+'</td></tr>';
     console.error('loadAppStatus:',e);
   }
 }
@@ -4217,7 +4218,7 @@ function renderAppStatus(){
   );
   document.getElementById('appst-count').textContent = rows.length+' application'+(rows.length!==1?'s':'')+(rows.length!==_APPST.length?' of '+_APPST.length:'');
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="6">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r=>{
@@ -4227,15 +4228,19 @@ function renderAppStatus(){
     const idea = r.idea_title
       ? '<div style="font-weight:500">'+esc(r.idea_title)+'</div>'+(r.sector?'<div style="font-size:11px;color:var(--t3)">'+esc(r.sector)+'</div>':'')
       : '<span style="color:var(--t3)">—</span>';
+    const seedMatches = sfCheckApp(_SEEDFUND, r);
+    const seedTd = seedMatches.length
+      ? '<span class="tag terr" style="font-size:10px" title="'+esc(seedMatches.map(m=>m.rec.name+' ('+m.rec.program+')').join(', '))+'">⚠ Yes</span>'
+      : (_SEEDFUND&&!_SEEDFUND.error?'<span style="color:var(--t3);font-size:12px">No</span>':'<span style="color:var(--t3);font-size:12px">—</span>');
     return '<tr class="clk" onclick="viewAppStatus(\''+r.id+'\')">'
       + '<td><div style="font-weight:600">'+esc(r.team_name||r.lead_name||'—')+'</div>'
         + (r.team_name&&r.lead_name?'<div style="font-size:11px;color:var(--t3)">'+esc(r.lead_name)+'</div>':'')
-        + sfBadge(_SEEDFUND,r)
         + (r.governorate?'<div style="font-size:11px;color:var(--t3)">📍 '+esc(r.governorate)+'</div>':'')+'</td>'
       + '<td>'+(r.partner?'<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--bg);border:0.5px solid var(--bdr)">'+esc(r.partner)+'</span>':'<span style="color:var(--t3)">—</span>')+'</td>'
       + '<td>'+contact+'</td>'
       + '<td>'+idea+'</td>'
       + '<td>'+(r.member_count||1)+'</td>'
+      + '<td>'+seedTd+'</td>'
       + '<td><span class="tag '+(APPST_TAG[r.status]||'tpend')+'">'+(APPST_LABEL[r.status]||r.status||'—')+'</span></td>'
       + '</tr>';
   }).join('');
