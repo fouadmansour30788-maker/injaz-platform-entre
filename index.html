@@ -1399,6 +1399,9 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           <button class="btn btn-sm" onclick="openEditApp(_currentAppId)" style="font-size:12px;padding:5px 14px">✏ Edit application</button>
         </div>
 
+        <!-- Seed funding history alert -->
+        <div id="app-seed-alert"></div>
+
         <!-- Application info -->
         <div class="g2 mb15">
           <div class="card">
@@ -4022,6 +4025,106 @@ async function unlockApp(){
   } catch(e){ toast('Error',e.message,'error'); }
 }
 
+// ── SEED FUNDING VALIDATION ──
+// Live check against the "Seed Funding" Google Sheet of past recipients.
+// Matches primarily by phone number (normalized), secondarily by full name.
+const SEED_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1NlMpR_Q5gE0KG2Th7ZE7OdJrL-iUPuYNj34NPOCxxSk/gviz/tq?tqx=out:csv&gid=0';
+let _SEEDFUND = null;
+
+function sfNormPhone(p){
+  let d = String(p||'').replace(/\D/g,'');
+  if(d.startsWith('00')) d = d.slice(2);
+  if(d.startsWith('961')) d = d.slice(3);
+  d = d.replace(/^0+/,'');
+  return d.length>=7 ? d : '';
+}
+function sfNormName(n){ return String(n||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+
+function sfParseCSV(text){
+  const rows=[]; let row=[], cur='', inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else inQ=false; }
+      else cur+=c;
+    } else {
+      if(c==='"') inQ=true;
+      else if(c===','){ row.push(cur); cur=''; }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+      else if(c!=='\r') cur+=c;
+    }
+  }
+  if(cur!==''||row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
+async function loadSeedFund(){
+  if(_SEEDFUND) return _SEEDFUND;
+  try {
+    const res = await fetch(SEED_SHEET_URL);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const rows = sfParseCSV(await res.text());
+    const head = (rows[0]||[]).map(h=>String(h).toLowerCase());
+    const col  = s => head.findIndex(h=>h.includes(s));
+    const iF=col('first name'), iL=col('last name'), iP=col('phone'),
+          iT=col('team name'), iPr=col('program'), iA=col('seed fund');
+    const byPhone={}, byName={};
+    let count=0;
+    rows.slice(1).forEach(r=>{
+      const rec = {
+        name:   ((r[iF]||'')+' '+(r[iL]||'')).trim(),
+        phone:  r[iP]||'', team: r[iT]||'',
+        program:r[iPr]||'', amount: r[iA]||''
+      };
+      if(!rec.name && !rec.phone) return;
+      count++;
+      const p=sfNormPhone(rec.phone); if(p) byPhone[p]=rec;
+      const n=sfNormName(rec.name);   if(n) byName[n]=rec;
+    });
+    _SEEDFUND = {byPhone, byName, count};
+  } catch(e){
+    console.error('loadSeedFund:',e);
+    _SEEDFUND = {byPhone:{}, byName:{}, count:0, error:e.message};
+  }
+  return _SEEDFUND;
+}
+
+// Check one person → {rec, via} or null
+function sfCheckPerson(sf, phone, name){
+  if(!sf) return null;
+  const p = sfNormPhone(phone);
+  if(p && sf.byPhone[p]) return {rec:sf.byPhone[p], via:'phone'};
+  const n = sfNormName(name);
+  if(n && sf.byName[n]) return {rec:sf.byName[n], via:'name'};
+  return null;
+}
+
+// Check a whole application (lead + all members) → array of matches
+function sfCheckApp(sf, app){
+  if(!sf) return [];
+  const members = Array.isArray(app.members)?app.members:[];
+  const people = [{name:app.lead_name, phone:app.lead_phone||app.phone||members[0]?.phone, role:'Lead applicant'}];
+  members.forEach((m,i)=>{
+    if(i===0 && sfNormName(m.name)===sfNormName(app.lead_name)) return; // lead duplicated in members[0]
+    people.push({name:m.name, phone:m.phone, role:'Co-founder'});
+  });
+  const out=[], seen=new Set();
+  people.forEach(per=>{
+    const m = sfCheckPerson(sf, per.phone, per.name);
+    if(m){
+      const key = m.rec.name+'|'+m.rec.phone;
+      if(!seen.has(key)){ seen.add(key); out.push({...m, person:per}); }
+    }
+  });
+  return out;
+}
+
+function sfBadge(sf, app){
+  return sfCheckApp(sf, app).length
+    ? '<span class="tag terr" style="font-size:10px" title="Matches the seed funding recipients sheet">⚠ Seed funded before</span>'
+    : '';
+}
+
 async function loadApplications(){
   const listEl  = document.getElementById('app-list');
   const badgeEl = document.getElementById('app-pending-badge');
@@ -4032,7 +4135,8 @@ async function loadApplications(){
   const filter = document.getElementById('app-filter')?.value||'all';
   try {
     const all = await sb.get('applications',
-      'select=id,status,team_name,idea_title,member_count,created_at,lead_name,partner,sector,governorate&order=created_at.desc');
+      'select=id,status,team_name,idea_title,member_count,created_at,lead_name,phone,members,partner,sector,governorate&order=created_at.desc');
+    const SF = await loadSeedFund();
     const pending    = all.filter(r=>r.status==='pending').length;
     const appDT      = all.filter(r=>r.status==='approved_dt').length;
     const appFB1     = all.filter(r=>r.status==='approved_fb1').length;
@@ -4051,7 +4155,8 @@ async function loadApplications(){
       return '<div class="card clk" style="border:0.5px solid var(--bdr)" data-id="'+r.id+'" onclick="openApp(this.dataset.id)">'
         +'<div class="fbet"><div>'
         +'<div class="fctr g8 mb4"><p style="font-size:14px;font-weight:600">'+(r.team_name||r.lead_name||'—')+'</p>'
-        +'<span class="tag '+(stTag[r.status]||'tpend')+'" style="font-size:10px">'+(stLabel[r.status]||r.status)+'</span></div>'
+        +'<span class="tag '+(stTag[r.status]||'tpend')+'" style="font-size:10px">'+(stLabel[r.status]||r.status)+'</span>'
+        +sfBadge(SF,r)+'</div>'
         +'<p style="font-size:12px;color:var(--t2)">'+(r.idea_title?'💡 '+r.idea_title+' · ':'')+( r.partner?r.partner+' · ':'')+( r.member_count||1)+' members · '+date+'</p>'
         +(r.governorate?'<p style="font-size:11px;color:var(--t3);margin-top:2px">📍 '+r.governorate+(r.sector?' · '+r.sector:'')+'</p>':'')
         +'</div><button class="btn btn-sm">Review →</button></div></div>';
@@ -4074,7 +4179,8 @@ async function loadAppStatus(){
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr>';
   try {
     _APPST = await sb.get('applications',
-      'select=id,status,team_name,lead_name,lead_email,phone,partner,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
+      'select=id,status,team_name,lead_name,lead_email,phone,members,partner,idea_title,sector,member_count,governorate,created_at&order=created_at.desc');
+    await loadSeedFund();
     // KPI counts
     const count = s => _APPST.filter(r=>r.status===s).length;
     document.getElementById('appst-kpis').innerHTML =
@@ -4124,6 +4230,7 @@ function renderAppStatus(){
     return '<tr class="clk" onclick="viewAppStatus(\''+r.id+'\')">'
       + '<td><div style="font-weight:600">'+esc(r.team_name||r.lead_name||'—')+'</div>'
         + (r.team_name&&r.lead_name?'<div style="font-size:11px;color:var(--t3)">'+esc(r.lead_name)+'</div>':'')
+        + sfBadge(_SEEDFUND,r)
         + (r.governorate?'<div style="font-size:11px;color:var(--t3)">📍 '+esc(r.governorate)+'</div>':'')+'</td>'
       + '<td>'+(r.partner?'<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--bg);border:0.5px solid var(--bdr)">'+esc(r.partner)+'</span>':'<span style="color:var(--t3)">—</span>')+'</td>'
       + '<td>'+contact+'</td>'
@@ -4302,6 +4409,37 @@ async function openApp(id){
   try {
     const rows = await sb.get('applications','id=eq.'+id+'&select=*&limit=1');
     const r = rows[0]; if(!r) return;
+
+    // Seed funding history check (lead + all members vs Google Sheet)
+    const seedEl = document.getElementById('app-seed-alert');
+    if(seedEl){
+      seedEl.innerHTML='';
+      loadSeedFund().then(sf=>{
+        const escS = s => (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if(sf.error){
+          seedEl.innerHTML = '<div style="border-radius:8px;padding:8px 14px;background:var(--warn-bg);border:0.5px solid var(--warn);font-size:12px;color:var(--warn-t);margin-bottom:1rem">⚠ Could not check seed funding list: '+escS(sf.error)+'</div>';
+          return;
+        }
+        const matches = sfCheckApp(sf, r);
+        if(!matches.length){
+          seedEl.innerHTML = '<div style="border-radius:8px;padding:8px 14px;background:var(--pass-bg);border:0.5px solid var(--pass);font-size:12px;color:var(--pass-t);margin-bottom:1rem">✓ No prior seed funding found (checked against '+sf.count+' past recipients)</div>';
+          return;
+        }
+        seedEl.innerHTML =
+          '<div style="border-radius:10px;padding:14px 18px;background:var(--fail-bg);border:1.5px solid var(--fail);margin-bottom:1rem">'
+          +'<p style="font-size:14px;font-weight:700;color:var(--fail-t);margin-bottom:8px">⚠ Received seed funding before</p>'
+          +matches.map(m=>
+            '<div style="font-size:12.5px;color:var(--fail-t);padding:4px 0;border-top:0.5px solid var(--fail)">'
+            +'<b>'+escS(m.person.name||'—')+'</b> ('+m.person.role+') — matched by '+m.via+' to <b>'+escS(m.rec.name)+'</b>'
+            +(m.rec.phone?' · ☎ '+escS(m.rec.phone):'')
+            +(m.rec.team?' · Team: '+escS(m.rec.team):'')
+            +(m.rec.program?' · '+escS(m.rec.program):'')
+            +(m.rec.amount?' · '+escS(m.rec.amount):'')
+            +'</div>'
+          ).join('')
+          +'</div>';
+      });
+    }
 
     // Populate lead applicant info
     const infoEl = document.getElementById('app-detail-info');
