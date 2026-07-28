@@ -1021,6 +1021,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           <select class="sel" id="cls-partner-f" onchange="loadClasses()" style="font-size:12px;padding:5px 9px">
             <option value="">All partners</option>
           </select>
+          <button class="btn btn-sm" id="cls-backfill-btn" onclick="backfillClassEnrollments()" title="Enroll every team's members into the class matching their phase + partner, for teams approved before class enrollment was wired up">↺ Backfill enrollments</button>
           <button class="btn-p btn-sm" onclick="showNewClassForm()">+ New class</button>
         </div>
       </div>
@@ -2940,6 +2941,52 @@ async function doSubmitAssessment(){
 }
 
 // ── CLASSES ──
+// One-time catch-up: enroll every team's members into the class matching their
+// phase + partner. Needed because approving an application used to create the
+// team/class but never wrote class_enrollments — see decideApp().
+async function backfillClassEnrollments(){
+  const btn=document.getElementById('cls-backfill-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Backfilling...'; }
+  try {
+    const [teams, classes, tmRows, ceRows] = await Promise.all([
+      sb.get('teams','select=id,current_phase,partner_id'),
+      sb.get('classes','select=id,phase_code,partner_id'),
+      sb.get('team_members','select=team_id,user_id'),
+      sb.get('class_enrollments','select=class_id,user_id'),
+    ]);
+
+    const ceSet = new Set(ceRows.map(r=>r.class_id+'|'+r.user_id));
+    const toInsert = [];
+    let teamsWithNoClass = 0;
+
+    teams.forEach(t=>{
+      if(!t.current_phase) return;
+      const cls = t.partner_id
+        ? classes.find(c=>c.phase_code===t.current_phase&&c.partner_id===t.partner_id)
+        : classes.find(c=>c.phase_code===t.current_phase);
+      if(!cls){ teamsWithNoClass++; return; }
+      tmRows.filter(m=>m.team_id===t.id).forEach(m=>{
+        const key=cls.id+'|'+m.user_id;
+        if(!ceSet.has(key)){ ceSet.add(key); toInsert.push({class_id:cls.id,user_id:m.user_id}); }
+      });
+    });
+
+    if(toInsert.length){
+      for(let i=0;i<toInsert.length;i+=200){
+        await sb.post('class_enrollments', toInsert.slice(i,i+200));
+      }
+    }
+
+    toast('Backfill complete', toInsert.length+' enrollment'+(toInsert.length===1?'':'s')+' added'+(teamsWithNoClass?' · '+teamsWithNoClass+' teams had no matching class':''),'success');
+    loadClasses();
+  } catch(e){
+    toast('Backfill failed', e.message, 'error');
+    console.error('backfillClassEnrollments:',e);
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='↺ Backfill enrollments'; }
+  }
+}
+
 async function loadClasses(){
   const phase   = document.getElementById('cls-phase-f')?.value||'';
   const partner = document.getElementById('cls-partner-f')?.value||'';
@@ -4665,6 +4712,7 @@ async function decideApp(decision){
     const leadMember = {name:app.lead_name,email:app.lead_email,role:'lead',...(allMembers[0]||{})};
     const members = [leadMember, ...allMembers.slice(1)];
 
+    const memberUserIds=[];
     for(const m of members){
       if(!m.email) continue;
       let userId = null;
@@ -4684,6 +4732,7 @@ async function decideApp(decision){
       }
       if(userId){
         await sb.post('team_members',{team_id:teamId,user_id:userId,role_in_team:m.role||'member'}).catch(()=>{});
+        memberUserIds.push(userId);
       }
     }
 
@@ -4700,7 +4749,19 @@ async function decideApp(decision){
       classId = Array.isArray(cls)?cls[0]?.id:cls?.id;
     }
 
-    toast('Team enrolled in '+phase,''+members.length+' members added to program');
+    // Actually enroll the members in that class (this step was previously missing)
+    if(classId && memberUserIds.length){
+      const already = await sb.get('class_enrollments',
+        'class_id=eq.'+classId+'&user_id=in.('+memberUserIds.join(',')+')&select=user_id'
+      ).catch(()=>[]);
+      const alreadySet = new Set(already.map(e=>e.user_id));
+      const toEnroll = memberUserIds.filter(id=>!alreadySet.has(id));
+      if(toEnroll.length){
+        await sb.post('class_enrollments', toEnroll.map(user_id=>({class_id:classId,user_id}))).catch(()=>{});
+      }
+    }
+
+    toast('Team enrolled in '+phase, members.length+' members added'+(classId?' and enrolled in class':' (no class found — enroll manually)'));
     loadApplications();
   } catch(e){ toast('Error',e.message,'error'); console.error('decideApp:',e); }
 }
