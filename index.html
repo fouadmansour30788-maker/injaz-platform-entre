@@ -1792,8 +1792,13 @@ const SUPA_URL = 'https://gjgycqhxfwvtjpkboxsy.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqZ3ljcWh4Znd2dGpwa2JveHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTEzOTMsImV4cCI6MjA4OTc2NzM5M30.8Ka4iq-Dmgcx9HOaagxOS6SRTXNhKwVfiyYWmc3YBP8';
 
 // ── Supabase REST client ──
+// Access tokens expire (~1h). On a JWT-expired response we transparently
+// refresh once using the stored refresh_token and retry the request, so a
+// long-open tab doesn't start throwing "JWT expired" at the user mid-session.
 const sb = {
   _token: null,
+  _refresh: null,
+  _refreshing: null,
   _h(extra={}) {
     return { 'Content-Type':'application/json', 'apikey':SUPA_KEY,
       'Authorization':'Bearer '+(this._token||SUPA_KEY), ...extra };
@@ -1803,48 +1808,92 @@ const sb = {
       { method:'POST', headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
         body:JSON.stringify({email,password:pw}) });
     const d = await r.json();
-    if(d.access_token){ this._token=d.access_token; this._uid=d.user?.id;
+    if(d.access_token){ this._token=d.access_token; this._refresh=d.refresh_token; this._uid=d.user?.id;
       localStorage.setItem('_sbtoken',d.access_token);
+      localStorage.setItem('_sbrefresh',d.refresh_token||'');
       localStorage.setItem('_sbuid',d.user?.id||''); }
     if(d.error_description) throw new Error(d.error_description);
     return d;
   },
   async signOut() {
-    await fetch(`${SUPA_URL}/auth/v1/logout`,{method:'POST',headers:this._h()});
-    this._token=null; this._uid=null;
-    localStorage.removeItem('_sbtoken'); localStorage.removeItem('_sbuid');
+    await fetch(`${SUPA_URL}/auth/v1/logout`,{method:'POST',headers:this._h()}).catch(()=>{});
+    this._token=null; this._refresh=null; this._uid=null;
+    localStorage.removeItem('_sbtoken'); localStorage.removeItem('_sbrefresh'); localStorage.removeItem('_sbuid');
   },
   restore() {
     const t=localStorage.getItem('_sbtoken'); const u=localStorage.getItem('_sbuid');
-    if(t){this._token=t; this._uid=u; return true;} return false;
+    const rt=localStorage.getItem('_sbrefresh');
+    if(t){this._token=t; this._uid=u; this._refresh=rt||null; return true;} return false;
+  },
+  // Refreshes the access token using the stored refresh_token. Concurrent
+  // callers share one in-flight refresh instead of racing separate requests.
+  async _doRefresh() {
+    if(this._refreshing) return this._refreshing;
+    this._refreshing = (async () => {
+      if(!this._refresh) return false;
+      try {
+        const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`,
+          { method:'POST', headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+            body:JSON.stringify({refresh_token:this._refresh}) });
+        const d = await r.json();
+        if(!r.ok || !d.access_token) return false;
+        this._token=d.access_token; this._refresh=d.refresh_token||this._refresh;
+        localStorage.setItem('_sbtoken',d.access_token);
+        localStorage.setItem('_sbrefresh',this._refresh||'');
+        return true;
+      } catch(e){ return false; }
+    })();
+    const ok = await this._refreshing;
+    this._refreshing = null;
+    return ok;
+  },
+  _isExpired(status, text) {
+    return status===401 || /JWT expired|PGRST303/i.test(text||'');
+  },
+  async _fetch(url, opts, isRetry=false) {
+    const r = await fetch(url, opts);
+    if(!r.ok) {
+      const text = await r.text();
+      if(!isRetry && this._isExpired(r.status, text) && await this._doRefresh()) {
+        const retryOpts = {...opts, headers: this._h(opts._extra)};
+        return this._fetch(url, retryOpts, true);
+      }
+      if(this._isExpired(r.status, text)){
+        if(typeof onSessionExpired==='function') onSessionExpired();
+      }
+      throw new Error(text);
+    }
+    return r;
   },
   async get(table,qs='') {
-    const r=await fetch(`${SUPA_URL}/rest/v1/${table}${qs?'?'+qs:''}`,
-      {headers:this._h({'Prefer':'return=representation'})});
-    if(!r.ok) throw new Error(await r.text()); return r.json();
+    const extra={'Prefer':'return=representation'};
+    const r=await this._fetch(`${SUPA_URL}/rest/v1/${table}${qs?'?'+qs:''}`,
+      {headers:this._h(extra), _extra:extra});
+    return r.json();
   },
   async post(table,body) {
-    const r=await fetch(`${SUPA_URL}/rest/v1/${table}`,
-      {method:'POST',headers:this._h({'Prefer':'return=representation'}),
-       body:JSON.stringify(body)});
-    if(!r.ok) throw new Error(await r.text()); return r.json();
+    const extra={'Prefer':'return=representation'};
+    const r=await this._fetch(`${SUPA_URL}/rest/v1/${table}`,
+      {method:'POST',headers:this._h(extra),body:JSON.stringify(body), _extra:extra});
+    return r.json();
   },
   async patch(table,qs,body) {
-    const r=await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`,
-      {method:'PATCH',headers:this._h({'Prefer':'return=representation'}),
-       body:JSON.stringify(body)});
-    if(!r.ok) throw new Error(await r.text()); return r.json();
+    const extra={'Prefer':'return=representation'};
+    const r=await this._fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`,
+      {method:'PATCH',headers:this._h(extra),body:JSON.stringify(body), _extra:extra});
+    return r.json();
   },
   async upsert(table,body,onConflict) {
-    const r=await fetch(`${SUPA_URL}/rest/v1/${table}${onConflict?'?on_conflict='+onConflict:''}`,
-      {method:'POST',headers:this._h({'Prefer':'return=representation,resolution=merge-duplicates'}),
-       body:JSON.stringify(body)});
-    if(!r.ok) throw new Error(await r.text()); return r.json();
+    const extra={'Prefer':'return=representation,resolution=merge-duplicates'};
+    const r=await this._fetch(`${SUPA_URL}/rest/v1/${table}${onConflict?'?on_conflict='+onConflict:''}`,
+      {method:'POST',headers:this._h(extra),body:JSON.stringify(body), _extra:extra});
+    return r.json();
   },
   async del(table,qs) {
-    const r=await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`,
-      {method:'DELETE',headers:this._h()});
-    if(!r.ok) throw new Error(await r.text()); return true;
+    const extra={};
+    await this._fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`,
+      {method:'DELETE',headers:this._h(extra), _extra:extra});
+    return true;
   },
 };
 
@@ -2130,6 +2179,21 @@ function doLogout(){
   confirm2('Sign out','Are you sure you want to sign out?',async()=>{
     await sb.signOut(); location.reload();
   });
+}
+
+// Fired by sb._fetch when a request fails auth even after a refresh attempt
+// (refresh_token itself expired/invalid). Bounce to a clean login screen
+// instead of leaving the app half-working with "JWT expired" errors.
+let _sessionExpiredHandled=false;
+function onSessionExpired(){
+  if(_sessionExpiredHandled) return;
+  _sessionExpiredHandled=true;
+  sb._token=null; sb._refresh=null; sb._uid=null;
+  localStorage.removeItem('_sbtoken'); localStorage.removeItem('_sbrefresh'); localStorage.removeItem('_sbuid');
+  const appEl=document.getElementById('app'); if(appEl) appEl.style.display='none';
+  showAuth();
+  const errEl=document.getElementById('auth-err');
+  if(errEl){ errEl.textContent='Your session expired — please sign in again.'; errEl.style.display='block'; }
 }
 
 // ── HELPERS ──
