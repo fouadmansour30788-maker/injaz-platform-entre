@@ -1666,19 +1666,48 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         </div>
       </div>
       <div class="g4 mb15" id="appst-kpis"></div>
+
+      <!-- Bulk enroll bar - shown when 1+ approved applications are selected -->
+      <div id="appst-bulk-bar" style="display:none;align-items:center;gap:10px;background:var(--bg);border:0.5px solid var(--bdr);border-radius:8px;padding:8px 14px;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600" id="appst-bulk-count">0 selected</span>
+        <button class="btn-p btn-sm" onclick="showBulkEnrollModal()">Enroll in class</button>
+        <button class="btn btn-sm" onclick="appstClearSelection()">Clear</button>
+      </div>
+
       <div class="card">
         <table class="dtbl">
           <thead><tr>
-            <th style="width:17%">Team / Lead</th>
-            <th style="width:11%">Partner</th>
-            <th style="width:20%">Contact</th>
-            <th style="width:20%">Business idea</th>
-            <th style="width:7%">Members</th>
-            <th style="width:10%">Seed fund</th>
-            <th style="width:15%">Status</th>
+            <th style="width:3%"><input type="checkbox" id="appst-select-all" onchange="appstToggleSelectAll(this.checked)"></th>
+            <th style="width:16%">Team / Lead</th>
+            <th style="width:10%">Partner</th>
+            <th style="width:18%">Contact</th>
+            <th style="width:18%">Business idea</th>
+            <th style="width:6%">Members</th>
+            <th style="width:9%">Seed fund</th>
+            <th style="width:14%">Status</th>
           </tr></thead>
-          <tbody id="appst-tbody"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
+          <tbody id="appst-tbody"><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Bulk enroll modal (Applications status page) -->
+    <div id="bulk-enroll-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--card);border-radius:14px;padding:1.5rem;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+        <div class="fbet mb15">
+          <h3 style="font-size:16px;font-weight:700">Enroll selected in class</h3>
+          <button onclick="closeBulkEnrollModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3)">×</button>
+        </div>
+        <p style="font-size:13px;color:var(--t2);margin-bottom:1rem" id="bulk-enroll-summary"></p>
+        <div class="mb12">
+          <label class="flbl">Class</label>
+          <select class="sel w100" id="bulk-enroll-class"><option value="">Loading classes...</option></select>
+        </div>
+        <div id="bulk-enroll-err" style="display:none;color:var(--fail-t);font-size:13px;padding:8px 12px;background:var(--fail-bg);border-radius:6px;margin-bottom:10px"></div>
+        <div class="fbet">
+          <button class="btn" onclick="closeBulkEnrollModal()">Cancel</button>
+          <button class="btn-p" id="bulk-enroll-submit" onclick="doBulkEnroll()">Enroll</button>
+        </div>
       </div>
     </div>
 
@@ -4378,7 +4407,8 @@ function renderAppStatus(){
   );
   document.getElementById('appst-count').textContent = rows.length+' application'+(rows.length!==1?'s':'')+(rows.length!==_APPST.length?' of '+_APPST.length:'');
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="7">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
+    appstUpdateBulkBar();
     return;
   }
   tbody.innerHTML = rows.map(r=>{
@@ -4392,7 +4422,11 @@ function renderAppStatus(){
     const seedTd = seedMatches.length
       ? '<span class="tag terr" style="font-size:10px" title="'+esc(seedMatches.map(m=>m.rec.name+' ('+m.rec.program+')').join(', '))+'">⚠ Yes</span>'
       : (_SEEDFUND&&!_SEEDFUND.error?'<span style="color:var(--t3);font-size:12px">No</span>':'<span style="color:var(--t3);font-size:12px">—</span>');
+    const chk = appstEligible(r)
+      ? '<input type="checkbox" class="appst-row-chk" value="'+r.id+'"'+(_appstSelected.has(r.id)?' checked':'')+' onchange="appstToggleRow(\''+r.id+'\',this.checked)">'
+      : '<span style="color:var(--t3)" title="Only approved applications can be enrolled">—</span>';
     return '<tr class="clk" onclick="viewAppStatus(\''+r.id+'\')">'
+      + '<td onclick="event.stopPropagation()">'+chk+'</td>'
       + '<td><div style="font-weight:600">'+esc(r.team_name||r.lead_name||'—')+'</div>'
         + (r.team_name&&r.lead_name?'<div style="font-size:11px;color:var(--t3)">'+esc(r.lead_name)+'</div>':'')
         + (r.governorate?'<div style="font-size:11px;color:var(--t3)">📍 '+esc(r.governorate)+'</div>':'')+'</td>'
@@ -4404,6 +4438,108 @@ function renderAppStatus(){
       + '<td><span class="tag '+(APPST_TAG[r.status]||'tpend')+'">'+(APPST_LABEL[r.status]||r.status||'—')+'</span></td>'
       + '</tr>';
   }).join('');
+  appstUpdateBulkBar();
+}
+
+// ── Bulk enroll (from Applications status page) ──
+let _appstSelected = new Set();
+function appstEligible(r){ return r.status==='approved_dt'||r.status==='approved_fb1'; }
+
+function appstToggleRow(id,checked){
+  if(checked) _appstSelected.add(id); else _appstSelected.delete(id);
+  appstUpdateBulkBar();
+}
+function appstToggleSelectAll(checked){
+  document.querySelectorAll('.appst-row-chk').forEach(cb=>{
+    cb.checked = checked;
+    if(checked) _appstSelected.add(cb.value); else _appstSelected.delete(cb.value);
+  });
+  appstUpdateBulkBar();
+}
+function appstClearSelection(){
+  _appstSelected.clear();
+  document.querySelectorAll('.appst-row-chk').forEach(cb=>cb.checked=false);
+  const sa=document.getElementById('appst-select-all'); if(sa) sa.checked=false;
+  appstUpdateBulkBar();
+}
+function appstUpdateBulkBar(){
+  const bar=document.getElementById('appst-bulk-bar');
+  if(!bar) return;
+  const n=_appstSelected.size;
+  bar.style.display = n?'flex':'none';
+  const countEl=document.getElementById('appst-bulk-count');
+  if(countEl) countEl.textContent = n+' selected';
+}
+
+async function showBulkEnrollModal(){
+  if(!_appstSelected.size) return;
+  const errEl=document.getElementById('bulk-enroll-err'); if(errEl) errEl.style.display='none';
+  const selectedApps=_APPST.filter(r=>_appstSelected.has(r.id));
+  const totalMembers=selectedApps.reduce((s,r)=>s+(r.member_count||1),0);
+  document.getElementById('bulk-enroll-summary').textContent=
+    selectedApps.length+' application'+(selectedApps.length===1?'':'s')+' selected · up to '+totalMembers+' member'+(totalMembers===1?'':'s')+' will be enrolled';
+  const sel=document.getElementById('bulk-enroll-class');
+  sel.innerHTML='<option value="">Loading classes...</option>';
+  document.getElementById('bulk-enroll-modal').style.display='flex';
+  try {
+    const classes=await sb.get('classes','order=start_date,name');
+    if(!classes.length){ sel.innerHTML='<option value="">No classes available — create one first</option>'; return; }
+    sel.innerHTML=classes.map(c=>{
+      const p=PARTNERS.find(x=>x.id===c.partner_id);
+      return '<option value="'+c.id+'">'+c.phase_code+' · '+esc(c.name)+(p?' · '+esc(p.label):'')+'</option>';
+    }).join('');
+  } catch(e){
+    sel.innerHTML='<option value="">Failed to load classes</option>';
+    console.error('showBulkEnrollModal:',e);
+  }
+}
+function closeBulkEnrollModal(){
+  document.getElementById('bulk-enroll-modal').style.display='none';
+}
+async function doBulkEnroll(){
+  const errEl=document.getElementById('bulk-enroll-err');
+  const classId=document.getElementById('bulk-enroll-class').value;
+  if(!classId){ errEl.textContent='Pick a class.'; errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  const btn=document.getElementById('bulk-enroll-submit');
+  btn.disabled=true; btn.textContent='Enrolling...';
+  try {
+    const selectedApps=_APPST.filter(r=>_appstSelected.has(r.id));
+    // Every approved application already has a user account per member (created at
+    // approval time in decideApp), matched by email. Resolve those to enroll them.
+    const emails=new Set();
+    selectedApps.forEach(r=>{
+      if(r.lead_email) emails.add(r.lead_email);
+      (Array.isArray(r.members)?r.members:[]).forEach(m=>{ if(m.email) emails.add(m.email); });
+    });
+    if(!emails.size) throw new Error('None of the selected applications have member emails on file');
+
+    const emailList=[...emails];
+    let users=[];
+    for(let i=0;i<emailList.length;i+=100){
+      const chunk=emailList.slice(i,i+100).map(e=>encodeURIComponent(e)).join(',');
+      const found=await sb.get('users','email=in.('+chunk+')&select=id,email');
+      users=users.concat(found);
+    }
+    const userIds=[...new Set(users.map(u=>u.id))];
+    const notFound=emailList.length-users.length;
+    if(!userIds.length) throw new Error('No matching participant accounts found for these applications yet');
+
+    const existing=await sb.get('class_enrollments','class_id=eq.'+classId+'&user_id=in.('+userIds.join(',')+')&select=user_id');
+    const already=new Set(existing.map(e=>e.user_id));
+    const toAdd=userIds.filter(id=>!already.has(id));
+    if(toAdd.length){
+      await sb.post('class_enrollments', toAdd.map(user_id=>({class_id:classId,user_id})));
+    }
+    toast('Enrolled', toAdd.length+' member'+(toAdd.length===1?'':'s')+' added'+(already.size?' · '+already.size+' already enrolled':'')+(notFound>0?' · '+notFound+' had no account yet':''),'success');
+    appstClearSelection();
+    closeBulkEnrollModal();
+  } catch(e){
+    errEl.textContent=e.message; errEl.style.display='block';
+    console.error('doBulkEnroll:',e);
+  } finally {
+    btn.disabled=false; btn.textContent='Enroll';
+  }
 }
 
 function viewAppStatus(id){
