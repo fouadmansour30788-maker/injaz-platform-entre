@@ -2069,12 +2069,29 @@ async function afterLogin(){
       const email=authUser.email||'';
       const full_name=authUser.user_metadata?.full_name||email.split('@')[0]||'Participant';
 
-      await fetch(SUPA_URL+'/rest/v1/users',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,
-          'Authorization':'Bearer '+sb._token,'Prefer':'return=minimal'},
-        body:JSON.stringify({auth_id:sb._uid,email,full_name,role:'participant'})
-      });
+      // An approved application may have already created a fully-populated
+      // profile for this email (gender/nationality/dob/team) with no auth_id
+      // yet (nobody had signed in as them). Attach this login to THAT row
+      // instead of creating a second, blank duplicate that ends up tracked
+      // separately for attendance/enrollment.
+      const existing = email
+        ? await sb.get('users','email=eq.'+encodeURIComponent(email)+'&auth_id=is.null&limit=1').catch(()=>[])
+        : [];
+      if(existing.length){
+        await fetch(SUPA_URL+'/rest/v1/users?id=eq.'+existing[0].id,{
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','apikey':SUPA_KEY,
+            'Authorization':'Bearer '+sb._token,'Prefer':'return=minimal'},
+          body:JSON.stringify({auth_id:sb._uid})
+        });
+      } else {
+        await fetch(SUPA_URL+'/rest/v1/users',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SUPA_KEY,
+            'Authorization':'Bearer '+sb._token,'Prefer':'return=minimal'},
+          body:JSON.stringify({auth_id:sb._uid,email,full_name,role:'participant'})
+        });
+      }
       // Re-fetch
       profiles=await sb.get('users','auth_id=eq.'+sb._uid+'&limit=1');
     } catch(e){ console.error('Auto-create profile failed:',e); }
