@@ -3565,6 +3565,16 @@ async function loadAttendanceRegister(){
     // Load class info
     const [cls]=await sb.get('classes','id=eq.'+classId);
     const days=PHASE_DAYS[cls.phase_code]||3;
+    // Rate = present ÷ days elapsed so far, not ÷ days that happen to have a
+    // recorded row — otherwise someone marked P on day 1 with days 2-7 never
+    // recorded reads as "100%" instead of their real rate. Future days (not
+    // yet reached) don't count against anyone.
+    const today0=new Date(); today0.setHours(0,0,0,0);
+    let elapsedDays=days;
+    if(cls.start_date){
+      const start0=new Date(cls.start_date); start0.setHours(0,0,0,0);
+      elapsedDays=Math.max(0,Math.min(days,Math.floor((today0-start0)/86400000)+1));
+    }
     // Load enrollments for this class
     const enrollments=await sb.get('class_enrollments','class_id=eq.'+classId+'&select=user_id');
     const userIds=enrollments.map(e=>e.user_id);
@@ -3600,9 +3610,8 @@ async function loadAttendanceRegister(){
         </tr></thead>
         <tbody>${members.map(m=>{
           const mData=attData[m.id]||{};
-          const recorded=Object.values(mData);
-          const present=recorded.filter(s=>s==='P').length;
-          const rate=recorded.length?Math.round((present/recorded.length)*100):null;
+          const present=Object.values(mData).filter(s=>s==='P').length;
+          const rate=elapsedDays>0?Math.round((present/elapsedDays)*100):null;
           return `<tr>
             <td style="font-weight:500">${m.full_name}</td>
             ${Array.from({length:days},(_,i)=>{
