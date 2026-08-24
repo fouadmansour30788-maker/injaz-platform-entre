@@ -3268,7 +3268,6 @@ async function openClassDetail(classId){
     });
 
     const days = PHASE_DAYS[cls.phase_code]||3;
-    const fmtDate = d=>d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
     const today = new Date(); today.setHours(0,0,0,0);
     const daysLeft = cls.end_date ? Math.ceil((new Date(cls.end_date)-today)/(1000*60*60*24)) : null;
 
@@ -3321,14 +3320,20 @@ async function openClassDetail(classId){
       +'<div class="g2 mb15">'
       +'<div class="card">'
       +'<div class="clbl mb12">Class details</div>'
-      +'<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'
-      +'<div class="fbet"><span style="color:var(--t3)">Facilitator</span><span style="font-weight:500">'+( cls.facilitator||'—')+'</span></div>'
-      +'<div class="fbet"><span style="color:var(--t3)">Location</span><span style="font-weight:500">'+( cls.location||'—')+'</span></div>'
-      +'<div class="fbet"><span style="color:var(--t3)">Start date</span><span>'+fmtDate(cls.start_date)+'</span></div>'
-      +'<div class="fbet"><span style="color:var(--t3)">End date</span><span>'+fmtDate(cls.end_date)+'</span></div>'
-      +'<div class="fbet"><span style="color:var(--t3)">Duration</span><span>'+days+' program days</span></div>'
-      +'<div class="fbet"><span style="color:var(--t3)">Partner</span><span>'+p.label+'</span></div>'
-      +'<div class="fbet"><span style="color:var(--t3)">Phase</span>'+phaseTag(cls.phase_code)+'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:10px;font-size:13px">'
+      +'<div><label class="flbl">Name</label><input class="inp w100" id="cls-e-name" value="'+esc(cls.name)+'"></div>'
+      +'<div><label class="flbl">Facilitator</label><input class="inp w100" id="cls-e-facilitator" value="'+esc(cls.facilitator||'')+'"></div>'
+      +'<div><label class="flbl">Location</label><input class="inp w100" id="cls-e-location" value="'+esc(cls.location||'')+'"></div>'
+      +'<div class="g2">'
+      +'<div><label class="flbl">Start date</label><input type="date" class="inp w100" id="cls-e-start" value="'+(cls.start_date||'').slice(0,10)+'"></div>'
+      +'<div><label class="flbl">End date</label><input type="date" class="inp w100" id="cls-e-end" value="'+(cls.end_date||'').slice(0,10)+'"></div>'
+      +'</div>'
+      +'<div class="g2">'
+      +'<div><label class="flbl">Partner</label><select class="sel w100" id="cls-e-partner">'+PARTNERS.map(x=>'<option value="'+x.code+'"'+(x.id===cls.partner_id?' selected':'')+'>'+esc(x.label)+'</option>').join('')+'</select></div>'
+      +'<div><label class="flbl">Phase</label><select class="sel w100" id="cls-e-phase">'+['DT','FB1','FB2','INC'].map(ph=>'<option value="'+ph+'"'+(ph===cls.phase_code?' selected':'')+'>'+ph+'</option>').join('')+'</select></div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--t3)">Duration ('+days+' program days) follows the selected phase</div>'
+      +'<button class="btn-p btn-sm" style="align-self:flex-start" data-cid="'+classId+'" id="cls-e-save" onclick="saveClassDetails(this.dataset.cid)">Save details</button>'
       +'</div></div>'
 
       +'<div class="card">'
@@ -3445,8 +3450,34 @@ async function saveClassStatus(classId){
   try {
     await sb.patch('classes','id=eq.'+classId,{status});
     toast('Status updated','Class marked as '+status);
-    loadClasses();
+    openClassDetail(classId);
   } catch(e){ toast('Error',e.message,'error'); }
+}
+
+async function saveClassDetails(classId){
+  const btn=document.getElementById('cls-e-save');
+  const name=document.getElementById('cls-e-name').value.trim();
+  if(!name){ toast('Name required','Class name cannot be empty','error'); return; }
+  const partnerCode=document.getElementById('cls-e-partner').value;
+  const p=PARTNERS.find(x=>x.code===partnerCode);
+  if(!p){ toast('Select a partner','','error'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Saving...'; }
+  try {
+    await sb.patch('classes','id=eq.'+classId,{
+      name,
+      facilitator: document.getElementById('cls-e-facilitator').value.trim(),
+      location: document.getElementById('cls-e-location').value.trim(),
+      start_date: document.getElementById('cls-e-start').value||null,
+      end_date: document.getElementById('cls-e-end').value||null,
+      partner_id: p.id,
+      phase_code: document.getElementById('cls-e-phase').value,
+    });
+    toast('Class updated', name);
+    openClassDetail(classId);
+  } catch(e){
+    toast('Error saving',e.message,'error');
+    if(btn){ btn.disabled=false; btn.textContent='Save details'; }
+  }
 }
 
 async function exportClassCSV(classId, className){
