@@ -590,12 +590,12 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <div style="display:flex;align-items:center;gap:10px;margin:1.75rem 0 .85rem">
           <span style="width:26px;height:26px;border-radius:8px;background:#ECFDF5;color:#047857;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">4</span>
           <h3 style="font-size:15px;font-weight:700;color:#047857">Completed</h3>
-          <span id="sec-completed-sub" style="font-size:12px;color:var(--t3)">Team passed a phase gate</span>
+          <span id="sec-completed-sub" style="font-size:12px;color:var(--t3)">≥60% attendance</span>
           <div style="flex:1;height:2px;background:#A7F3D0;border-radius:1px"></div>
         </div>
         <div class="g4 mb15">
           <div class="stat"><div class="slbl">Completed participants</div><div class="sval" id="dash-cp-ind" style="color:#047857">—</div><div class="ssub" id="dash-cp-ind-sub"></div></div>
-          <div class="stat"><div class="slbl">Teams passed a phase</div><div class="sval" id="dash-cp-teams" style="color:#047857">—</div></div>
+          <div class="stat"><div class="slbl">Teams with a completer</div><div class="sval" id="dash-cp-teams" style="color:#047857">—</div></div>
           <div class="stat"><div class="slbl">Total target</div><div class="sval" id="kpi-total-target" style="color:var(--t2)">—</div></div>
           <div class="stat"><div class="slbl">Overall % achieved</div><div class="sval" id="kpi-overall-pct" style="color:var(--pass)">—</div><div class="ssub">of 2-year target</div></div>
         </div>
@@ -2207,6 +2207,50 @@ function pctBadge(p,t,a){
 }
 function emptyState(icon,h,p){ return`<div class="empty"><div class="empty-icon">${icon}</div><h3>${h}</h3><p>${p}</p></div>`; }
 
+// "Completed" = the participant personally attended >=60% of the class days that
+// have elapsed so far for the class they were enrolled in (same rule as the Gate
+// column on the class detail page). Replaces the older, team-level definition
+// (team's assessment score passed a phase gate) everywhere completion is reported.
+// getCompletionRecords() is the phase/partner-aware base (one row per qualifying
+// class enrollment); getCompletedUserIds() is the flat set most pages just need.
+async function getCompletionRecords(){
+  const [classes, ceRows, attRows] = await Promise.all([
+    sb.get('classes','select=id,phase_code,partner_id,start_date').catch(()=>[]),
+    sb.get('class_enrollments','select=class_id,user_id').catch(()=>[]),
+    sb.get('attendance','select=class_id,user_id,status').catch(()=>[]),
+  ]);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const classById={};
+  classes.forEach(c=>{
+    const totalDays=PHASE_DAYS[c.phase_code]||3;
+    let elapsed=totalDays;
+    if(c.start_date){
+      const start=new Date(c.start_date); start.setHours(0,0,0,0);
+      elapsed=Math.max(0,Math.min(totalDays,Math.floor((today-start)/86400000)+1));
+    }
+    classById[c.id]={phase_code:c.phase_code, partner_id:c.partner_id, elapsed};
+  });
+  const pCount={};
+  attRows.forEach(a=>{
+    if(a.status!=='P') return;
+    const key=a.class_id+'|'+a.user_id;
+    pCount[key]=(pCount[key]||0)+1;
+  });
+  const records=[];
+  ceRows.forEach(ce=>{
+    const cls=classById[ce.class_id];
+    if(!cls||!cls.elapsed) return;
+    const p=pCount[ce.class_id+'|'+ce.user_id]||0;
+    if(Math.round(p/cls.elapsed*100)>=60){
+      records.push({user_id:ce.user_id, class_id:ce.class_id, phase_code:cls.phase_code, partner_id:cls.partner_id});
+    }
+  });
+  return records;
+}
+async function getCompletedUserIds(){
+  return new Set((await getCompletionRecords()).map(r=>r.user_id));
+}
+
 // ── DASHBOARD ──
 async function loadDashboard(){
   const partner  = document.getElementById('dash-partner-filter')?.value||'all';
@@ -2214,21 +2258,22 @@ async function loadDashboard(){
   const genderF  = document.getElementById('dash-gender-filter')?.value||'all';
   const natF     = document.getElementById('dash-nat-filter')?.value||'all';
 
-  // Auto-sync partner actuals from COMPLETED phases (participants whose team passed each phase)
+  // Auto-sync partner actuals from COMPLETED phases (participants who personally
+  // attended >=60% of their class)
   try {
     const sc=await computeCompletionActuals();
     await Promise.all(Object.entries(sc).map(([k,v])=>{const[pid,ph]=k.split('|');return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:v},'partner_id,phase_code').catch(()=>{});}));
   } catch(e){ console.warn('Actuals sync failed:', e.message); }
 
   try {
-    const [paRows,allTeams,allUsers,appRows,attRows,tmRows,peRows] = await Promise.all([
+    const [paRows,allTeams,allUsers,appRows,attRows,tmRows,attCompletedIds] = await Promise.all([
       sb.get('partner_achievement','order=partner_code,phase_code'),
       sb.get('teams','select=id,name,current_phase,partner_id,sector'),
       sb.get('users','select=id,gender,nationality,governorate,date_of_birth,has_disability&role=eq.participant'),
       sb.get('applications','select=status,partner,team_name,lead_name,member_count,sector,idea_stage,challenges,sdgs,governorate,members,has_bmc').catch(()=>[]),
       sb.get('attendance','select=user_id,class_id,status,classes(name,phase_code)').catch(()=>[]),
       sb.get('team_members','select=user_id,team_id').catch(()=>[]),
-      sb.get('phase_enrollments','select=team_id,status&status=eq.passed').catch(()=>[]),
+      getCompletedUserIds().catch(()=>new Set()),
     ]);
 
     // Apply filters
@@ -2236,40 +2281,41 @@ async function loadDashboard(){
     if(partner!=='all') filtTeams=filtTeams.filter(t=>PARTNERS.find(p=>p.code===partner&&p.id===t.partner_id));
     if(phaseF!=='all')  filtTeams=filtTeams.filter(t=>t.current_phase===phaseF);
 
-    // ── Funnel stage sets: applied → approved → enrolled (attending) → completed (passed a phase) ──
+    // ── Funnel stage sets: applied → approved → enrolled (attending) → completed (>=60% attendance) ──
     const appTeamName=r=>r.team_name||((r.lead_name||'')+' Team');
     const appMembers=r=>Array.isArray(r.members)&&r.members.length?r.members.length:(r.member_count||1);
     const filtTeamIds=new Set(filtTeams.map(t=>t.id));
     const nameToTeamId={}; filtTeams.forEach(t=>{if(t.name)nameToTeamId[t.name]=t.id;});
-    const userTeam={}; tmRows.forEach(r=>{userTeam[r.user_id]=r.team_id;});
     const attUserIds=new Set(attRows.map(r=>r.user_id).filter(Boolean));
     const attTeamIds=new Set(tmRows.filter(r=>attUserIds.has(r.user_id)).map(r=>r.team_id));
-    const passedTeamIds=new Set(peRows.map(r=>r.team_id));
+    // A team counts toward the "completed" funnel/app-matching stages if at least
+    // one of its members individually met the attendance bar.
+    const completedTeamIds=new Set(tmRows.filter(r=>attCompletedIds.has(r.user_id)).map(r=>r.team_id));
     const appsBase=(partner==='all')?appRows:appRows.filter(r=>r.partner===partner);
     const approvedApps=appsBase.filter(r=>r.status==='approved_dt'||r.status==='approved_fb1');
     const enrolledApps=approvedApps.filter(r=>attTeamIds.has(nameToTeamId[appTeamName(r)]));
-    const completedApps=approvedApps.filter(r=>passedTeamIds.has(nameToTeamId[appTeamName(r)]));
+    const completedApps=approvedApps.filter(r=>completedTeamIds.has(nameToTeamId[appTeamName(r)]));
 
     const filtTmUserIds=new Set(tmRows.filter(r=>filtTeamIds.has(r.team_id)).map(r=>r.user_id));
     let filtUsers=allUsers.filter(u=>filtTmUserIds.size===0||filtTmUserIds.has(u.id));
     if(genderF!=='all') filtUsers=filtUsers.filter(u=>u.gender===genderF);
     if(natF!=='all')    filtUsers=filtUsers.filter(u=>u.nationality===natF);
-    // Per-section user cohorts
+    // Per-section user cohorts — completion is checked per individual, not via teammates
     const enrolledUsers=filtUsers.filter(u=>attUserIds.has(u.id));
-    const completedUsers=filtUsers.filter(u=>passedTeamIds.has(userTeam[u.id]));
+    const completedUsers=filtUsers.filter(u=>attCompletedIds.has(u.id));
 
     // ── Participant funnel: applied → approved → enrolled → completed ──
     const enrolledUserIds=new Set(tmRows.filter(r=>attUserIds.has(r.user_id)&&filtTeamIds.has(r.team_id)).map(r=>r.user_id));
-    const completedUserIds=new Set(tmRows.filter(r=>passedTeamIds.has(r.team_id)&&filtTeamIds.has(r.team_id)).map(r=>r.user_id));
+    const completedUserIds=new Set(tmRows.filter(r=>attCompletedIds.has(r.user_id)&&filtTeamIds.has(r.team_id)).map(r=>r.user_id));
     const enrolledTeamsN=filtTeams.filter(t=>attTeamIds.has(t.id)).length;
-    const completedTeamsN=filtTeams.filter(t=>passedTeamIds.has(t.id)).length;
+    const completedTeamsN=filtTeams.filter(t=>completedTeamIds.has(t.id)).length;
     const appliedInd=appsBase.reduce((s,r)=>s+appMembers(r),0);
     const approvedInd=approvedApps.reduce((s,r)=>s+appMembers(r),0);
     const FUNNEL=[
       {l:'Applied',   n:appliedInd,           sub:appsBase.length+' applications',      col:'#F59E0B', hint:'Submitted an application',        sec:'sec-applied'},
       {l:'Approved',  n:approvedInd,          sub:approvedApps.length+' applications',  col:'#7C3AED', hint:'Application accepted (DT / FB1)', sec:'sec-approved'},
       {l:'Enrolled',  n:enrolledUserIds.size, sub:enrolledTeamsN+' teams attending',    col:'#0EA5E9', hint:'Attending classes',               sec:'sec-enrolled'},
-      {l:'Completed', n:completedUserIds.size,sub:completedTeamsN+' teams passed',      col:'#10B981', hint:'Team passed a phase',             sec:'sec-completed'},
+      {l:'Completed', n:completedUserIds.size,sub:completedTeamsN+' teams with a completer',col:'#10B981', hint:'≥60% attendance',            sec:'sec-completed'},
     ];
     const fMax=FUNNEL[0].n||1;
     document.getElementById('dash-funnel').innerHTML=FUNNEL.map((f,i)=>{
@@ -2331,7 +2377,7 @@ async function loadDashboard(){
     const pctEl=document.getElementById('kpi-overall-pct');
     pctEl.textContent=grandT?grandPct+'%':'—';
     pctEl.style.color=pctColor(grandPct);
-    document.getElementById('sec-completed-sub').textContent=completedUsers.length?completedUsers.length+' participants · '+completedTeamsN+' teams passed a phase':'Team passed a phase gate';
+    document.getElementById('sec-completed-sub').textContent=completedUsers.length?completedUsers.length+' participants · '+completedTeamsN+' teams with a completer':'≥60% attendance';
     renderDashUserCharts(completedUsers,{gender:'dash-cp-gender',nat:'dash-cp-nat',gov:'dash-cp-gov'});
 
     // ── Phase pipeline ──
@@ -3688,29 +3734,28 @@ function ptUpdate(inp){
   if(!partnerActuals[code]) partnerActuals[code]={};
   partnerActuals[code][ph]=val;
 }
-// Achievement = COMPLETION: count participants whose team PASSED each phase (not just applied/enrolled).
-// Returns { 'partnerId|phaseCode': count }. Program phases (DT/FB1/FB2/INC) are zero-filled for every
-// partner with teams so stale enrollment-based actuals get reset; IE is left for manual entry.
+// Achievement = COMPLETION: count participants who personally attended >=60% of
+// their class (not just applied/enrolled, and not merely because their team
+// passed an assessment). Returns { 'partnerId|phaseCode': count }. Program
+// phases (DT/FB1/FB2/INC) are zero-filled for every partner with teams so stale
+// actuals get reset; IE is left for manual entry.
 async function computeCompletionActuals(){
-  const [peRows,tmRows,teams] = await Promise.all([
-    sb.get('phase_enrollments','select=team_id,phase_code,status&status=eq.passed'),
-    sb.get('team_members','select=user_id,team_id'),
+  const [records,teams] = await Promise.all([
+    getCompletionRecords(),
     sb.get('teams','select=id,partner_id'),
   ]);
-  const memCount={}; tmRows.forEach(r=>{memCount[r.team_id]=(memCount[r.team_id]||0)+1;});
-  const teamPartner={}; teams.forEach(t=>{teamPartner[t.id]=t.partner_id;});
   const counts={};
   const PH_SYNC=['DT','FB1','FB2','INC'];
-  teams.forEach(t=>{ if(t.partner_id) PH_SYNC.forEach(ph=>{ counts[t.partner_id+'|'+ph]=counts[t.partner_id+'|'+ph]||0; }); });
+  const partnerIds=new Set(teams.map(t=>t.partner_id).filter(Boolean));
+  partnerIds.forEach(pid=>PH_SYNC.forEach(ph=>{ counts[pid+'|'+ph]=counts[pid+'|'+ph]||0; }));
   const seen=new Set();
-  peRows.forEach(r=>{
-    const pid=teamPartner[r.team_id], ph=r.phase_code;
-    if(!pid||!ph) return;
-    const dk=r.team_id+'|'+ph;
+  records.forEach(r=>{
+    if(!r.partner_id||!r.phase_code) return;
+    const dk=r.user_id+'|'+r.phase_code; // count each participant once per phase
     if(seen.has(dk)) return;
     seen.add(dk);
-    const k=pid+'|'+ph;
-    counts[k]=(counts[k]||0)+(memCount[r.team_id]||0);
+    const k=r.partner_id+'|'+r.phase_code;
+    counts[k]=(counts[k]||0)+1;
   });
   return counts;
 }
@@ -4679,25 +4724,25 @@ async function loadPartnerApps(){
     let enrolledN = '—', completedN = '—';
     try {
       const pid = PARTNERS.find(p=>p.code===code)?.id;
-      const [pTeams, peRows, tmRows, attRows] = await Promise.all([
+      const [pTeams, tmRows, attRows, completedUserIds] = await Promise.all([
         pid ? sb.get('teams','select=id,name&partner_id=eq.'+pid) : [],
-        sb.get('phase_enrollments','select=team_id,status&status=eq.passed'),
         sb.get('team_members','select=user_id,team_id'),
         sb.get('attendance','select=user_id'),
+        getCompletedUserIds(),
       ]);
       const attU = new Set(attRows.map(r=>r.user_id).filter(Boolean));
       const attT = new Set(tmRows.filter(r=>attU.has(r.user_id)).map(r=>r.team_id));
-      const passT = new Set(peRows.map(r=>r.team_id));
+      const completedT = new Set(tmRows.filter(r=>completedUserIds.has(r.user_id)).map(r=>r.team_id));
       const nameToId = {}; pTeams.forEach(t=>{ if(t.name) nameToId[t.name]=t.id; });
       const appName = r => r.team_name||((r.lead_name||'')+' Team');
       enrolledN  = approvedApps.filter(r=>attT.has(nameToId[appName(r)])).length;
-      completedN = approvedApps.filter(r=>passT.has(nameToId[appName(r)])).length;
+      completedN = approvedApps.filter(r=>completedT.has(nameToId[appName(r)])).length;
     } catch(e){ console.warn('partner funnel:', e.message); }
     document.getElementById('pa-kpis').innerHTML =
       '<div class="stat"><div class="slbl">Applied</div><div class="sval" style="color:var(--warn)">'+_PA.length+'</div><div class="ssub">'+count('pending')+' pending · '+count('ineligible')+' rejected</div></div>'+
       '<div class="stat"><div class="slbl">Approved</div><div class="sval" style="color:var(--dt)">'+approvedApps.length+'</div><div class="ssub">'+count('approved_dt')+' DT · '+count('approved_fb1')+' FB1</div></div>'+
       '<div class="stat"><div class="slbl">Enrolled</div><div class="sval" style="color:var(--fb1)">'+enrolledN+'</div><div class="ssub">attending classes</div></div>'+
-      '<div class="stat"><div class="slbl">Completed</div><div class="sval" style="color:var(--pass)">'+completedN+'</div><div class="ssub">passed a phase</div></div>';
+      '<div class="stat"><div class="slbl">Completed</div><div class="sval" style="color:var(--pass)">'+completedN+'</div><div class="ssub">≥60% attendance</div></div>';
     renderPartnerCharts();
     renderPartnerApps();
   } catch(e){
@@ -5771,12 +5816,11 @@ async function openNewReport() {
 
 async function autoSnap() {
   try {
-    const [teams, allUsers, paRows, appRows, allTm] = await Promise.all([
+    const [teams, allUsers, paRows, appRows] = await Promise.all([
       sb.get('teams','select=id,current_phase,partner_id'),
       sb.get('users','select=id,gender,nationality,has_disability&role=eq.participant'),
       sb.get('partner_achievement','order=partner_code,phase_code').catch(()=>[]),
       sb.get('applications','select=status,members,governorate').catch(()=>[]),
-      sb.get('team_members','select=user_id,team_id').catch(()=>[]),
     ]);
 
     // ── APPLIED: all participants in the system (users with role=participant)
@@ -5795,13 +5839,9 @@ async function autoSnap() {
     const enrolledNat={};
     enrolledUsers.forEach(u=>{ if(u.nationality){const k=normNat(u.nationality);enrolledNat[k]=(enrolledNat[k]||0)+1;} });
 
-    // ── COMPLETED: participants whose team passed at least one phase (enrollment status='passed')
-    const passedEnroll = await sb.get('phase_enrollments','select=team_id,status&status=eq.passed').catch(()=>[]);
-    const passedTeamIds = new Set(passedEnroll.map(r=>r.team_id));
-    const completedUsers = allUsers.filter(u=>{
-      const teamId = allTm.find(t=>t.user_id===u.id)?.team_id;
-      return teamId && passedTeamIds.has(teamId);
-    });
+    // ── COMPLETED: participants who personally attended >=60% of their class
+    const completedUserIds = await getCompletedUserIds();
+    const completedUsers = allUsers.filter(u=>completedUserIds.has(u.id));
     const completedFemale   = completedUsers.filter(u=>u.gender==='Female').length;
     const completedDisabled = completedUsers.filter(u=>u.has_disability===true).length;
     const completedNat={};
