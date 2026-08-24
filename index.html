@@ -839,55 +839,6 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <div id="td-docs"></div>
       </div>
 
-      <!-- Edit member modal -->
-      <div id="member-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
-        <div style="background:var(--card);border-radius:14px;padding:1.5rem;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
-          <div class="fbet mb15">
-            <h3 style="font-size:16px;font-weight:700">Edit participant</h3>
-            <button onclick="closeMemberEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3)">×</button>
-          </div>
-          <div class="mb12"><label class="flbl">Full name</label><input class="inp w100" id="me-name"></div>
-          <div class="g2 mb12">
-            <div><label class="flbl">Gender</label><select class="sel w100" id="me-gender">
-              <option value="">Select...</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Prefer not to say">Prefer not to say</option>
-            </select></div>
-            <div><label class="flbl">Date of birth</label><input type="date" class="inp w100" id="me-dob"></div>
-          </div>
-          <div class="g2 mb12">
-            <div><label class="flbl">Nationality</label><select class="sel w100" id="me-nat">
-              <option value="">Select...</option>
-              <option value="Lebanese">Lebanese</option>
-              <option value="Syrian">Syrian</option>
-              <option value="Palestinian (PRL)">Palestinian (PRL)</option>
-              <option value="Palestinian (PRS)">Palestinian (PRS)</option>
-              <option value="Iraqi">Iraqi</option>
-              <option value="Jordanian">Jordanian</option>
-              <option value="Other">Other</option>
-            </select></div>
-            <div><label class="flbl">Governorate</label><select class="sel w100" id="me-gov">
-              <option value="">Select...</option>
-              <option value="Beirut">Beirut</option>
-              <option value="Mount Lebanon">Mount Lebanon</option>
-              <option value="North Lebanon">North Lebanon</option>
-              <option value="South Lebanon">South Lebanon</option>
-              <option value="Bekaa">Bekaa</option>
-              <option value="Nabatieh">Nabatieh</option>
-              <option value="Akkar">Akkar</option>
-              <option value="Baalbek-Hermel">Baalbek-Hermel</option>
-            </select></div>
-          </div>
-          <div class="mb12"><label class="fctr g8" style="font-size:13px;cursor:pointer"><input type="checkbox" id="me-disability"> Has a disability</label></div>
-          <div id="me-err" style="display:none;color:var(--fail-t);font-size:13px;padding:8px 12px;background:var(--fail-bg);border-radius:6px;margin-bottom:10px"></div>
-          <div class="fbet">
-            <button class="btn" onclick="closeMemberEdit()">Cancel</button>
-            <button class="btn-p" id="me-save" onclick="saveMemberEdit()">Save</button>
-          </div>
-        </div>
-      </div>
-
       <!-- Enroll in class modal -->
       <div id="enroll-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
         <div style="background:var(--card);border-radius:14px;padding:1.5rem;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
@@ -1813,6 +1764,55 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 <!-- Toast -->
 <div id="toast-container"></div>
 
+<!-- Edit member modal (global -- reachable from Team Detail and Class Detail) -->
+<div id="member-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--card);border-radius:14px;padding:1.5rem;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div class="fbet mb15">
+      <h3 style="font-size:16px;font-weight:700">Edit participant</h3>
+      <button onclick="closeMemberEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3)">×</button>
+    </div>
+    <div class="mb12"><label class="flbl">Full name</label><input class="inp w100" id="me-name"></div>
+    <div class="g2 mb12">
+      <div><label class="flbl">Gender</label><select class="sel w100" id="me-gender">
+        <option value="">Select...</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Prefer not to say">Prefer not to say</option>
+      </select></div>
+      <div><label class="flbl">Date of birth</label><input type="date" class="inp w100" id="me-dob"></div>
+    </div>
+    <div class="g2 mb12">
+      <div><label class="flbl">Nationality</label><select class="sel w100" id="me-nat">
+        <option value="">Select...</option>
+        <option value="Lebanese">Lebanese</option>
+        <option value="Syrian">Syrian</option>
+        <option value="Palestinian (PRL)">Palestinian (PRL)</option>
+        <option value="Palestinian (PRS)">Palestinian (PRS)</option>
+        <option value="Iraqi">Iraqi</option>
+        <option value="Jordanian">Jordanian</option>
+        <option value="Other">Other</option>
+      </select></div>
+      <div><label class="flbl">Governorate</label><select class="sel w100" id="me-gov">
+        <option value="">Select...</option>
+        <option value="Beirut">Beirut</option>
+        <option value="Mount Lebanon">Mount Lebanon</option>
+        <option value="North Lebanon">North Lebanon</option>
+        <option value="South Lebanon">South Lebanon</option>
+        <option value="Bekaa">Bekaa</option>
+        <option value="Nabatieh">Nabatieh</option>
+        <option value="Akkar">Akkar</option>
+        <option value="Baalbek-Hermel">Baalbek-Hermel</option>
+      </select></div>
+    </div>
+    <div class="mb12"><label class="fctr g8" style="font-size:13px;cursor:pointer"><input type="checkbox" id="me-disability"> Has a disability</label></div>
+    <div id="me-err" style="display:none;color:var(--fail-t);font-size:13px;padding:8px 12px;background:var(--fail-bg);border-radius:6px;margin-bottom:10px"></div>
+    <div class="fbet">
+      <button class="btn" onclick="closeMemberEdit()">Cancel</button>
+      <button class="btn-p" id="me-save" onclick="saveMemberEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════
 //  SUPABASE CONFIG — replace these two lines
@@ -2710,7 +2710,7 @@ async function openTeam(id){
         <div><p style="font-size:13px;font-weight:500">${m.full_name||'—'}</p>
           <span style="font-size:11px;color:var(--t3)">${role} · Age ${(m.date_of_birth ? Math.floor((Date.now()-new Date(m.date_of_birth))/(365.25*24*3600*1000)) : null)||'—'} · ${m.nationality||'—'}${m.has_disability?' · Disability':''}</span>
         </div></div>
-        <button class="btn btn-sm" style="font-size:11px;padding:3px 8px" data-uid="${m.id}" onclick="openMemberEdit(this.dataset.uid)">Edit</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:3px 8px" data-uid="${m.id}" onclick="openMemberEdit(this.dataset.uid,'team','${id}')">Edit</button>
         </div>`;
     }).join(''):emptyState('👥','No members found','');
 
@@ -2740,9 +2740,9 @@ async function openTeam(id){
 // canonical English value, so a record whose data was imported in Arabic
 // still pre-selects the right option here -- saving then writes the clean
 // English value back, fixing the record in the process.
-let _meUserId=null;
-async function openMemberEdit(userId){
-  _meUserId=userId;
+let _meUserId=null, _meRefreshKind=null, _meRefreshArg=null;
+async function openMemberEdit(userId,refreshKind,refreshArg){
+  _meUserId=userId; _meRefreshKind=refreshKind||null; _meRefreshArg=refreshArg||null;
   const errEl=document.getElementById('me-err'); if(errEl) errEl.style.display='none';
   try {
     const [u]=await sb.get('users','id=eq.'+userId);
@@ -2758,7 +2758,7 @@ async function openMemberEdit(userId){
 }
 function closeMemberEdit(){
   document.getElementById('member-edit-modal').style.display='none';
-  _meUserId=null;
+  _meUserId=null; _meRefreshKind=null; _meRefreshArg=null;
 }
 async function saveMemberEdit(){
   if(!_meUserId) return;
@@ -2768,6 +2768,7 @@ async function saveMemberEdit(){
   errEl.style.display='none';
   const btn=document.getElementById('me-save');
   btn.disabled=true; btn.textContent='Saving...';
+  const refreshKind=_meRefreshKind, refreshArg=_meRefreshArg;
   try {
     await sb.patch('users','id=eq.'+_meUserId,{
       full_name: name,
@@ -2779,7 +2780,8 @@ async function saveMemberEdit(){
     });
     toast('Participant updated',name);
     closeMemberEdit();
-    if(currentTeam) openTeam(currentTeam.id);
+    if(refreshKind==='class'&&refreshArg) openClassDetail(refreshArg);
+    else if(refreshKind==='team'&&refreshArg) openTeam(refreshArg);
   } catch(e){
     errEl.textContent=e.message; errEl.style.display='block';
   } finally {
@@ -3519,7 +3521,8 @@ async function openClassDetail(classId){
               : '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--fail-bg);color:var(--fail-t)">✗ Risk</span>'
             : '<span style="font-size:10px;color:var(--t3)">—</span>')
           +'</td>'
-          +'<td style="padding:8px 10px;border-bottom:0.5px solid var(--bdr);text-align:center">'
+          +'<td style="padding:8px 10px;border-bottom:0.5px solid var(--bdr);text-align:center;white-space:nowrap">'
+          +'<button class="btn btn-sm" style="font-size:10px;padding:3px 8px;margin-right:4px" data-uid="'+m.id+'" data-cid="'+classId+'" onclick="openMemberEdit(this.dataset.uid,\'class\',this.dataset.cid)">Edit</button>'
           +'<button class="btn btn-sm" style="font-size:10px;padding:3px 8px;color:var(--fail-t)" data-cid="'+classId+'" data-uid="'+m.id+'" data-name="'+esc(m.full_name||'this participant')+'" onclick="removeFromClass(this.dataset.cid,this.dataset.uid,this.dataset.name)">Remove</button>'
           +'</td></tr>';
       });
