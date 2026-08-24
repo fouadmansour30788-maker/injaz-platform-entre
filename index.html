@@ -3226,11 +3226,21 @@ async function openClassDetail(classId){
     const today = new Date(); today.setHours(0,0,0,0);
     const daysLeft = cls.end_date ? Math.ceil((new Date(cls.end_date)-today)/(1000*60*60*24)) : null;
 
+    // Rate should be present-days ÷ days that have actually happened so far —
+    // not ÷ days that happen to have an attendance row. Otherwise a participant
+    // marked present on day 1 with days 2-7 never recorded reads as "100%".
+    // Days that haven't occurred yet don't count against anyone.
+    let elapsedDays = days;
+    if(cls.start_date){
+      const start = new Date(cls.start_date); start.setHours(0,0,0,0);
+      elapsedDays = Math.max(0, Math.min(days, Math.floor((today-start)/86400000)+1));
+    }
+
     // Class-level stats
-    const totalRec = attRows.length;
+    const totalPossible = members.length*elapsedDays;
     const totalP   = attRows.filter(a=>a.status==='P').length;
-    const classRate= totalRec ? Math.round(totalP/totalRec*100) : null;
-    const atRisk   = members.filter(m=>{ const a=userAtt[m.id]; return a&&a.total>0&&Math.round(a.P/a.total*100)<60; }).length;
+    const classRate= totalPossible ? Math.round(totalP/totalPossible*100) : null;
+    const atRisk   = members.filter(m=>{ const a=userAtt[m.id]; const p=a?a.P:0; return elapsedDays>0&&Math.round(p/elapsedDays*100)<60; }).length;
 
     let html =
       // Header
@@ -3280,17 +3290,15 @@ async function openClassDetail(classId){
       +'<div style="display:flex;flex-direction:column;gap:8px">'
         +'<button class="btn" style="width:100%;text-align:left;padding:10px 14px;font-size:13px" onclick="goToAttendance()">'
         +'📋 Open attendance register</button>'
-      +'📋 Open attendance register</button>'
         +'<button class="btn" style="width:100%;text-align:left;padding:10px 14px;font-size:13px" data-cid="'+classId+'" data-cname="'+cls.name+'" onclick="exportClassCSV(this.dataset.cid,this.dataset.cname)">'
         +'⬇ Export attendance CSV</button>'
-      +'⬇ Export attendance CSV</button>'
       +'</div></div>'
       +'</div>'
 
       // Participant attendance table
       +'<div class="card" style="overflow-x:auto">'
       +'<div class="fbet mb12"><div class="clbl" style="margin:0">Participant attendance</div>'
-      +(classRate!==null?'<span style="font-size:12px;font-weight:600;color:'+(classRate>=60?'var(--pass)':'var(--fail)')+'">Avg '+classRate+'% present</span>':'')
+      +'<span style="font-size:11px;color:var(--t3)">'+(classRate!==null?'Avg '+classRate+'% present · ':'')+'click a day to change it</span>'
       +'</div>';
 
     if(!members.length){
@@ -3306,11 +3314,12 @@ async function openClassDetail(classId){
       dayNums.forEach(d=>html+='<th style="text-align:center;padding:8px 4px;border-bottom:1px solid var(--bdr);min-width:38px;font-size:10px;font-weight:700;color:var(--t3)">D'+d+'</th>');
       html += '<th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Rate</th>'
         +'<th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)">Gate</th>'
+        +'<th style="text-align:center;padding:8px 10px;border-bottom:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--t3)"></th>'
         +'</tr></thead><tbody>';
 
       members.forEach((m,i)=>{
         const a   = userAtt[m.id]||{P:0,A:0,E:0,total:0,days:{}};
-        const rate= a.total ? Math.round(a.P/a.total*100) : null;
+        const rate= elapsedDays>0 ? Math.round(a.P/elapsedDays*100) : null;
         const col = rate!==null ? rate>=60?'var(--pass)':'var(--fail)' : 'var(--t3)';
         const age = m.date_of_birth ? Math.floor((Date.now()-new Date(m.date_of_birth))/(365.25*24*3600*1000)) : null;
         html += '<tr style="'+(i%2===0?'':'background:rgba(0,0,0,0.01)')+'">'
@@ -3322,11 +3331,12 @@ async function openClassDetail(classId){
           +'<td style="padding:8px 6px;border-bottom:0.5px solid var(--bdr);text-align:center;font-size:11px;color:var(--t2)">'+( m.nationality||'—')+'</td>';
 
         dayNums.forEach(d=>{
-          const s = a.days[d];
-          const dayCol = s==='P'?'var(--pass-bg)':s==='A'?'var(--fail-bg)':s==='E'?'var(--warn-bg)':'';
-          const dayTxt = s==='P'?'var(--pass-t)':s==='A'?'var(--fail-t)':s==='E'?'var(--warn-t)':'var(--bdr)';
+          const s = a.days[d]||'—';
+          const dayCol = s==='P'?'var(--pass-bg)':s==='A'?'var(--fail-bg)':s==='E'?'var(--warn-bg)':'transparent';
+          const dayTxt = s==='P'?'var(--pass-t)':s==='A'?'var(--fail-t)':s==='E'?'var(--warn-t)':'var(--t3)';
           html += '<td style="padding:6px 4px;border-bottom:0.5px solid var(--bdr);text-align:center">'
-            +'<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;background:'+dayCol+';color:'+dayTxt+'">'+( s||'—')+'</span>'
+            +'<button onclick="cycleClassAttendance(\''+classId+'\',\''+m.id+'\','+d+',\''+s+'\',this)" title="Click to change" '
+            +'style="border:0.5px solid var(--bdr);cursor:pointer;font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:'+dayCol+';color:'+dayTxt+'">'+s+'</button>'
             +'</td>';
         });
 
@@ -3337,6 +3347,9 @@ async function openClassDetail(classId){
               ? '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--pass-bg);color:var(--pass-t)">✓ Met</span>'
               : '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--fail-bg);color:var(--fail-t)">✗ Risk</span>'
             : '<span style="font-size:10px;color:var(--t3)">—</span>')
+          +'</td>'
+          +'<td style="padding:8px 10px;border-bottom:0.5px solid var(--bdr);text-align:center">'
+          +'<button class="btn btn-sm" style="font-size:10px;padding:3px 8px;color:var(--fail-t)" data-cid="'+classId+'" data-uid="'+m.id+'" data-name="'+esc(m.full_name||'this participant')+'" onclick="removeFromClass(this.dataset.cid,this.dataset.uid,this.dataset.name)">Remove</button>'
           +'</td></tr>';
       });
       html += '</tbody></table>';
@@ -3349,6 +3362,34 @@ async function openClassDetail(classId){
     el.innerHTML = '<div class="card">'+emptyState('❌','Error',e.message)+'</div>';
     console.error('Class detail error:',e);
   }
+}
+
+const CLS_ATT_CYCLE=['—','P','A','E'];
+async function cycleClassAttendance(classId,userId,day,current,btn){
+  const next = CLS_ATT_CYCLE[(CLS_ATT_CYCLE.indexOf(current)+1)%CLS_ATT_CYCLE.length];
+  btn.disabled=true;
+  try {
+    if(next==='—'){
+      await sb.del('attendance','class_id=eq.'+classId+'&user_id=eq.'+userId+'&day_number=eq.'+day);
+    } else {
+      await sb.upsert('attendance',{class_id:classId,user_id:userId,day_number:day,status:next},'class_id,user_id,day_number');
+    }
+    openClassDetail(classId);
+  } catch(e){
+    toast('Error saving attendance',e.message,'error');
+    btn.disabled=false;
+  }
+}
+
+function removeFromClass(classId,userId,name){
+  confirm2('Remove participant','Remove '+name+' from this class? Their attendance records for it will be deleted too.',async()=>{
+    try {
+      await sb.del('class_enrollments','class_id=eq.'+classId+'&user_id=eq.'+userId);
+      await sb.del('attendance','class_id=eq.'+classId+'&user_id=eq.'+userId);
+      toast('Removed',name+' removed from class');
+      openClassDetail(classId);
+    } catch(e){ toast('Error',e.message,'error'); }
+  });
 }
 
 function goToAttendance(){ nav("pg-attendance"); setTimeout(()=>loadAttendanceClasses(),300); }
