@@ -2333,16 +2333,17 @@ async function loadDashboard(){
   const genderF  = document.getElementById('dash-gender-filter')?.value||'all';
   const natF     = document.getElementById('dash-nat-filter')?.value||'all';
 
-  // Fires independently -- a slow/failed external sheet fetch shouldn't block
-  // the rest of the dashboard from loading.
-  loadPreGil();
-
   // Auto-sync partner actuals from COMPLETED phases (participants who personally
   // attended >=60% of their class)
   try {
     const sc=await computeCompletionActuals();
     await Promise.all(Object.entries(sc).map(([k,v])=>{const[pid,ph]=k.split('|');return sb.upsert('partner_actuals',{partner_id:pid,phase_code:ph,actual:v},'partner_id,phase_code').catch(()=>{});}));
   } catch(e){ console.warn('Actuals sync failed:', e.message); }
+
+  // Auto-sync IE actuals from the Pre-GIL Google Sheet, before the achievement
+  // table below reads partner_achievement, so the IE column is fresh on first render.
+  try { await syncPreGilActuals(); } catch(e){ console.warn('Pre-GIL actuals sync failed:', e.message); }
+  loadPreGil(); // display card -- reuses the sheet data already fetched above, no refetch
 
   try {
     const [paRows,allTeams,allUsers,appRows,attRows,tmRows,attCompletedIds] = await Promise.all([
@@ -3914,7 +3915,8 @@ function ptUpdate(inp){
 // their class (not just applied/enrolled, and not merely because their team
 // passed an assessment). Returns { 'partnerId|phaseCode': count }. Program
 // phases (DT/FB1/FB2/INC) are zero-filled for every partner with teams so stale
-// actuals get reset; IE is left for manual entry.
+// actuals get reset. IE is synced separately from the Pre-GIL sheet, see
+// syncPreGilActuals().
 async function computeCompletionActuals(){
   const [records,teams] = await Promise.all([
     getCompletionRecords(),
@@ -4610,20 +4612,47 @@ async function loadSeedFund(){
 // this platform's database. Dashboard shows a live read-only summary fetched
 // straight from the published sheet -- same technique as the seed-fund check.
 const PREGIL_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1GxYKkslrZ4AO3bNj1m1anHTx7NvjAAL-I23xJntxWgk/gviz/tq?tqx=out:csv&gid=1005848263';
-let _PREGIL = null;
+// Group Code -> partner code. Confirmed with the program manager: WK and HRAR
+// are sites run by partner "AND"; Midan's own group maps to itself.
+const PREGIL_GROUP_PARTNER = { 'C1PREMIDAN':'Midan', 'C1PREWK':'AND', 'C2PREWK':'AND', 'C1PREHRAR':'AND' };
+let _PREGIL = null, _PREGIL_RAW = null;
+
+// Row 0 = header (column A's cell also carries a long sheet-note prefix,
+// harmless since we only match header names, not use column 0's text).
+async function fetchPreGilData(force){
+  if(_PREGIL_RAW && !force) return _PREGIL_RAW;
+  const res = await fetch(PREGIL_SHEET_URL);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const rows = sfParseCSV(await res.text());
+  const header = rows[0]||[];
+  const data = rows.slice(1).filter(r=>r.length>1 && r.some(v=>v));
+  _PREGIL_RAW = {header, data};
+  return _PREGIL_RAW;
+}
+
+// Writes each partner's Pre-GIL headcount into partner_actuals as phase_code
+// 'IE', so it shows up in the Achievement per partner per phase table. Every
+// partner is zero-filled first so one that loses all its Pre-GIL participants
+// doesn't keep showing a stale actual.
+async function syncPreGilActuals(){
+  const {header,data} = await fetchPreGilData();
+  const iGroup = header.indexOf('Group Code');
+  const counts = {};
+  data.forEach(r=>{
+    const code = PREGIL_GROUP_PARTNER[(r[iGroup]||'').trim()];
+    if(code) counts[code]=(counts[code]||0)+1;
+  });
+  await Promise.all(PARTNERS.map(p=>
+    sb.upsert('partner_actuals',{partner_id:p.id,phase_code:'IE',actual:counts[p.code]||0},'partner_id,phase_code').catch(()=>{})
+  ));
+}
+
 async function loadPreGil(force){
   const el = document.getElementById('pregil-content');
   if(!el) return;
-  if(_PREGIL && !force){ renderPreGil(_PREGIL); return; }
   el.innerHTML = '<p style="font-size:12px;color:var(--t3)">Loading...</p>';
   try {
-    const res = await fetch(PREGIL_SHEET_URL);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const rows = sfParseCSV(await res.text());
-    // Row 0 = header (column A's cell also carries a long sheet-note prefix,
-    // harmless since we only match header names, not use column 0's text).
-    const header = rows[0]||[];
-    const data = rows.slice(1).filter(r=>r.length>1 && r.some(v=>v));
+    const {header,data} = await fetchPreGilData(force);
     const idx = name => header.indexOf(name);
     const iGender=idx('Gender'), iGov=idx('Governorate'), iGroup=idx('Group Code'),
           iStatus=idx('Required Fields Status'), iNat=idx('Adolescent Nationality');
