@@ -503,6 +503,15 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
         <div id="dash-funnel" style="display:flex;gap:8px;flex-wrap:wrap"><p style="color:var(--t3);font-size:13px">Loading...</p></div>
       </div>
 
+      <!-- Pre-GIL / Intro to Entrepreneurship (IE) — earlier feeder stage, live from Google Sheet -->
+      <div class="card mb15">
+        <div class="fbet mb12">
+          <div><div class="clbl" style="margin:0">Pre-GIL / Intro to Entrepreneurship (IE)</div><p style="font-size:11px;color:var(--t3)">Live from Google Sheet · earlier feeder stage, not yet in this platform's database</p></div>
+          <button class="btn btn-sm" style="font-size:11px;padding:4px 10px" onclick="loadPreGil(true)">↺ Refresh</button>
+        </div>
+        <div id="pregil-content"><p style="font-size:12px;color:var(--t3)">Loading...</p></div>
+      </div>
+
       <!-- ═══ SECTION 1: APPLIED ═══ -->
       <div id="sec-applied">
         <div style="display:flex;align-items:center;gap:10px;margin:1.75rem 0 .85rem">
@@ -2323,6 +2332,10 @@ async function loadDashboard(){
   const phaseF   = document.getElementById('dash-phase-filter')?.value||'all';
   const genderF  = document.getElementById('dash-gender-filter')?.value||'all';
   const natF     = document.getElementById('dash-nat-filter')?.value||'all';
+
+  // Fires independently -- a slow/failed external sheet fetch shouldn't block
+  // the rest of the dashboard from loading.
+  loadPreGil();
 
   // Auto-sync partner actuals from COMPLETED phases (participants who personally
   // attended >=60% of their class)
@@ -4590,6 +4603,65 @@ async function loadSeedFund(){
     _SEEDFUND = {byPhone:{}, byName:{}, count:0, error:e.message};
   }
   return _SEEDFUND;
+}
+
+// ── PRE-GIL / INTRO TO ENTREPRENEURSHIP (IE) ──
+// Earlier feeder stage tracked only in a Google Sheet, not yet migrated into
+// this platform's database. Dashboard shows a live read-only summary fetched
+// straight from the published sheet -- same technique as the seed-fund check.
+const PREGIL_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1GxYKkslrZ4AO3bNj1m1anHTx7NvjAAL-I23xJntxWgk/gviz/tq?tqx=out:csv&gid=1005848263';
+let _PREGIL = null;
+async function loadPreGil(force){
+  const el = document.getElementById('pregil-content');
+  if(!el) return;
+  if(_PREGIL && !force){ renderPreGil(_PREGIL); return; }
+  el.innerHTML = '<p style="font-size:12px;color:var(--t3)">Loading...</p>';
+  try {
+    const res = await fetch(PREGIL_SHEET_URL);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const rows = sfParseCSV(await res.text());
+    // Row 0 = header (column A's cell also carries a long sheet-note prefix,
+    // harmless since we only match header names, not use column 0's text).
+    const header = rows[0]||[];
+    const data = rows.slice(1).filter(r=>r.length>1 && r.some(v=>v));
+    const idx = name => header.indexOf(name);
+    const iGender=idx('Gender'), iGov=idx('Governorate'), iGroup=idx('Group Code'),
+          iStatus=idx('Required Fields Status'), iNat=idx('Adolescent Nationality');
+    const count = i => { const c={}; data.forEach(r=>{ const v=(r[i]||'').trim()||'Unspecified'; c[v]=(c[v]||0)+1; }); return c; };
+    _PREGIL = {
+      total: data.length,
+      gender: count(iGender),
+      governorate: count(iGov),
+      group: count(iGroup),
+      status: count(iStatus),
+      nationality: count(iNat),
+    };
+    renderPreGil(_PREGIL);
+  } catch(e){
+    el.innerHTML = '<div style="color:var(--fail-t);background:var(--fail-bg);border-radius:8px;padding:12px;font-size:12px">⚠ Could not load Pre-GIL sheet: '+esc(e.message)+'</div>';
+    console.error('loadPreGil:',e);
+  }
+}
+function renderPreGil(d){
+  const el = document.getElementById('pregil-content');
+  if(!el) return;
+  const female=d.gender['Female']||0, male=d.gender['Male']||0;
+  const ready=d.status['READY']||0, notReady=d.total-ready;
+  const rows = obj => Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+    '<div class="fbet" style="font-size:12px;padding:3px 0"><span>'+esc(k)+'</span><span style="font-weight:600">'+v+'</span></div>'
+  ).join('');
+  el.innerHTML =
+    '<div class="g4 mb15">'
+    +'<div class="stat"><div class="slbl">Total Pre-GIL / IE</div><div class="sval" style="color:var(--or)">'+d.total+'</div></div>'
+    +'<div class="stat"><div class="slbl">Female</div><div class="sval" style="color:#EC4899">'+female+'</div><div class="ssub">'+(d.total?Math.round(female/d.total*100):0)+'%</div></div>'
+    +'<div class="stat"><div class="slbl">Male</div><div class="sval" style="color:var(--fb1)">'+male+'</div></div>'
+    +'<div class="stat"><div class="slbl">Record-ready</div><div class="sval" style="color:'+(notReady>0?'var(--warn)':'var(--pass)')+'">'+ready+'/'+d.total+'</div>'+(notReady?'<div class="ssub">'+notReady+' missing required fields</div>':'')+'</div>'
+    +'</div>'
+    +'<div class="g3">'
+    +'<div class="card"><div class="clbl mb12">Governorate</div>'+rows(d.governorate)+'</div>'
+    +'<div class="card"><div class="clbl mb12">Group / site</div>'+rows(d.group)+'</div>'
+    +'<div class="card"><div class="clbl mb12">Nationality</div>'+rows(d.nationality)+'</div>'
+    +'</div>';
 }
 
 // Check one person → {rec, via} or null
