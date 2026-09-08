@@ -371,7 +371,7 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
 <option value="Bekaa">Bekaa</option>
 <option value="Nabatieh">Nabatieh</option>
 <option value="Akkar">Akkar</option>
-<option value="Baalbek-Hermel">Baalbek-Hermel</option></select></div><div><label class="flbl">District</label><select class="finput" id="af-district" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option></select></div><div><label class="flbl">Education level *</label><select class="finput" id="af-education" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="High school or below">High school or below</option>
+<option value="Baalbek-Hermel">Baalbek-Hermel</option></select></div><div><label class="flbl">District</label><select class="finput" id="af-district" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option></select></div><div><label class="flbl">Which area would you like to attend? *</label><select class="finput" id="af-site" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="Qobbe – Tripoli, North Lebanon">Qobbe – Tripoli, North Lebanon</option><option value="Zgharta – North Lebanon">Zgharta – North Lebanon</option><option value="Hrar – Akkar">Hrar – Akkar</option><option value="Bednayel – Beqaa">Bednayel – Beqaa</option><option value="Al Ain – Beqaa">Al Ain – Beqaa</option><option value="Ferzol – Beqaa">Ferzol – Beqaa</option></select></div><div><label class="flbl">Education level *</label><select class="finput" id="af-education" style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0A1C3E;cursor:pointer;"><option value="">Select...</option><option value="High school or below">High school or below</option>
 <option value="Vocational / Technical">Vocational / Technical</option>
 <option value="Bachelor's (in progress)">Bachelor's (in progress)</option>
 <option value="Bachelor's (completed)">Bachelor's (completed)</option>
@@ -5172,6 +5172,7 @@ async function openApp(id){
         +fmtRow('Gender', r.lead_gender||r.members?.[0]?.gender||'—')
         +fmtRow('Nationality', r.lead_nationality||r.members?.[0]?.nationality||'—')
         +fmtRow('Governorate', (r.governorate||'—')+(r.district?' · '+r.district:''))
+        +fmtRow('Preferred site', r.preferred_site||'—')
         +fmtRow('Partner', r.partner||'—')
         +fmtRow('Education', r.lead_education||'—')
         +fmtRow('Employment', r.lead_employment||'—')
@@ -5528,6 +5529,7 @@ function afNext(step){
     if(!v('af-gender'))return afShowErr(1,'Please select gender.');
     if(!v('af-nationality'))return afShowErr(1,'Please select nationality.');
     if(!v('af-gov'))return afShowErr(1,'Please select governorate.');
+    if(!v('af-site'))return afShowErr(1,'Please select which area you would like to attend.');
     if(!v('af-partner'))return afShowErr(1,'Please select partner organisation.');
     afGoStep(2);
     // Populate first member slot
@@ -5617,6 +5619,7 @@ async function afSubmit(){
         lead_auth_id:authData.user.id,
         lead_name:v('af-name'),lead_email:email,lead_dob:v('af-dob'),
         phone:v('af-phone'),governorate:v('af-gov'),district:v('af-district'),
+        preferred_site:v('af-site'),
         facebook:v('af-fb'),instagram:v('af-ig'),linkedin:v('af-linkedin'),
         partner:v('af-partner'),
         applicant_type:document.querySelector('input[name=\"af-type\"]:checked')?.value||'new',
