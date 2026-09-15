@@ -5639,7 +5639,7 @@ async function afSubmit(){
       } catch(e){ console.error('BMC upload failed:', e.message); }
     }
 
-    await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({
+    const appRes=await fetch(SUPA_URL+'/rest/v1/applications',{method:'POST',headers:h,body:JSON.stringify({
         lead_auth_id:authData.user.id,
         lead_name:v('af-name'),lead_email:email,lead_dob:v('af-dob'),
         phone:v('af-phone'),governorate:v('af-gov'),district:v('af-district'),
@@ -5662,6 +5662,11 @@ async function afSubmit(){
         expectations:v('af-expectations'),
         member_count:members.length,members,status:'pending'
       })});
+    if(!appRes.ok){
+      const errText=await appRes.text().catch(()=>'');
+      console.error('Application save failed:',errText);
+      return afShowErr(4,'Your account was created but the application itself failed to save. Please contact INJAZ so we can recover it -- do not sign up again with this email.');
+    }
     // Update lead profile with full details
     await fetch(SUPA_URL+'/rest/v1/users?auth_id=eq.'+authData.user.id,{
       method:'PATCH',
