@@ -1676,6 +1676,9 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
           <select class="sel" id="appst-partner-filter" onchange="renderAppStatus()" style="font-size:12px">
             <option value="">All partners</option>
           </select>
+          <span style="font-size:11px;color:var(--t3);align-self:center">Submitted:</span>
+          <input type="date" class="sel" id="appst-date-from" onchange="renderAppStatus()" style="font-size:12px;padding:5px 9px" title="From">
+          <input type="date" class="sel" id="appst-date-to" onchange="renderAppStatus()" style="font-size:12px;padding:5px 9px" title="To">
           <button class="btn btn-sm" onclick="exportApplicationsXLS()" style="font-size:12px;padding:5px 10px">⬇ Export XLS</button>
         </div>
       </div>
@@ -1698,9 +1701,10 @@ body{font-family:var(--font);color:var(--t);background:#F4F7FB;font-size:14px;li
             <th style="width:18%">Business idea</th>
             <th style="width:6%">Members</th>
             <th style="width:9%">Seed fund</th>
-            <th style="width:14%">Status</th>
+            <th style="width:12%">Submitted</th>
+            <th style="width:12%">Status</th>
           </tr></thead>
-          <tbody id="appst-tbody"><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
+          <tbody id="appst-tbody"><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--t3)"><div class="spin" style="margin:0 auto"></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -4837,15 +4841,19 @@ function renderAppStatus(){
   const q  = (document.getElementById('appst-search')?.value||'').toLowerCase().trim();
   const st = document.getElementById('appst-status-filter')?.value||'';
   const pt = document.getElementById('appst-partner-filter')?.value||'';
+  const dFrom = document.getElementById('appst-date-from')?.value||'';
+  const dTo   = document.getElementById('appst-date-to')?.value||'';
   const esc = s => (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const rows = _APPST.filter(r=>
     (!st || r.status===st) &&
     (!pt || r.partner===pt) &&
+    (!dFrom || (r.created_at||'').slice(0,10)>=dFrom) &&
+    (!dTo   || (r.created_at||'').slice(0,10)<=dTo) &&
     (!q || [r.team_name,r.lead_name,r.idea_title,r.lead_email,r.partner,r.sector].some(v=>(v||'').toLowerCase().includes(q)))
   );
   document.getElementById('appst-count').textContent = rows.length+' application'+(rows.length!==1?'s':'')+(rows.length!==_APPST.length?' of '+_APPST.length:'');
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="8">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9">'+emptyState('📋','No applications found','Try a different search or filter')+'</td></tr>';
     appstUpdateBulkBar();
     return;
   }
@@ -4873,6 +4881,7 @@ function renderAppStatus(){
       + '<td>'+idea+'</td>'
       + '<td>'+(r.member_count||1)+'</td>'
       + '<td>'+seedTd+'</td>'
+      + '<td style="font-size:11px;color:var(--t2);white-space:nowrap">'+(r.created_at?new Date(r.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</td>'
       + '<td><span class="tag '+(APPST_TAG[r.status]||'tpend')+'">'+(APPST_LABEL[r.status]||r.status||'—')+'</span></td>'
       + '</tr>';
   }).join('');
